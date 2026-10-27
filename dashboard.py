@@ -58,7 +58,7 @@ datos_presupuesto = {
         "Instalación de guardaescobas"
     ],
     "Cantidad_Contratada": [5.00, 25.00, 80.00, 20.00],
-    "Precio_Unitario": [450000, 85000, 15000, 12000] # Ajustado a $85,000/m²
+    "Precio_Unitario": [450000, 55000, 15000, 12000] 
 }
 df_presupuesto = pd.DataFrame(datos_presupuesto)
 
