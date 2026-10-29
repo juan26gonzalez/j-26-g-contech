@@ -4,14 +4,13 @@ import requests
 import math
 
 # ==============================================================================
-# 1. CONFIGURACIÓN DE CONEXIÓN A SUPABASE (API REST DIRECTA)
+# 1. CONFIGURACIÓN DE CONEXIÓN A SUPABASE (API REST)
 # ==============================================================================
 SUPABASE_URL = "https://ktxbonxgrnpzearsgvtc.supabase.co"
-# Puedes usar la llave corta (publishable) o la larga (anon), este método acepta ambas
-SUPABASE_KEY = "sb_publishable_VUiAXSbX0Snwe-jvO4yEgA_8WLCK0Do"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eGJvbnhncm5wemVhcnNndnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyOTI4MDQsImV4cCI6MjEwODg2ODgwNH0.R_lmgkFXALpkmmqbz4rz5XvzqE6VdakUharpVsv-reY" 
 
 # ==============================================================================
-# 2. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS VISUALES
+# 2. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS
 # ==============================================================================
 st.set_page_config(page_title="JG ConTech | Control de Obra BIM", page_icon="🏗️", layout="wide")
 
@@ -154,20 +153,15 @@ if not df_obra.empty:
         else:
             st.info("💡 Aún no hay avance físico registrado para calcular explosión de insumos.")
             
-       with tab_registros:
+    with tab_registros:
         st.markdown("### 📡 Datos recibidos en tiempo real desde campo")
-        
-        # 1. Hacemos una copia para no alterar los datos crudos
         df_mostrar = df_obra.copy()
         
-        # 2. Convertimos el texto a fecha y lo pasamos a la zona horaria de Colombia
-        df_mostrar['created_at'] = pd.to_datetime(df_mostrar['created_at']).dt.tz_convert('America/Bogota')
-        
-        # 3. Creamos una columna nueva con un formato limpio de reloj de 12 horas
+        # Transformación segura de la zona horaria a hora de Colombia
+        df_mostrar['created_at'] = pd.to_datetime(df_mostrar['created_at'], utc=True).dt.tz_convert('America/Bogota')
         df_mostrar['Hora de Registro'] = df_mostrar['created_at'].dt.strftime('%d/%m/%Y %I:%M %p')
         
-        # 4. Mostramos la tabla usando la nueva columna limpia
         st.dataframe(df_mostrar[['Hora de Registro', 'fecha', 'actividad', 'unidad', 'cantidad', 'desperdicio']].sort_values(by='Hora de Registro', ascending=False), use_container_width=True, hide_index=True)
-   
-     else:
+
+else:
     st.info("📡 Conectado a la base de datos, pero aún no hay registros de obra subidos desde la aplicación web.")
