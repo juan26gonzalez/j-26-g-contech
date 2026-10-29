@@ -38,4 +38,4 @@ El ecosistema elimina la digitación manual y los reprocesos en hojas de cálcul
 * **BIM & Automatización CAD/3D:** Autodesk Revit 2027, Revit API (`Autodesk.Revit.DB`), Dynamo Visual Programming.
 
 ---
-**Desarrollado por:** Ing. Juan — *Ingeniero Civil | Especialista en Automatización BIM & Desarrollo ConTech*
+**Desarrollado por:** Ing. Juan González — *Ingeniero Civil | Desarrollador ConTech & Automatización BIM*
