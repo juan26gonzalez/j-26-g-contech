@@ -119,8 +119,42 @@ if not df_obra.empty:
         
         st.dataframe(informe_total[['Actividad', 'Cantidad_Contratada', 'Cantidad_Ejecutada', 'Presupuesto_Total', 'Costo_Ejecutado', 'Avance_Financiero_%']], use_container_width=True, hide_index=True)
 
-    with tab_materiales:
-        st.info("💡 Módulo de Explosión de Materiales operativo. Ingresa a la base BIM para ver requerimientos detallados.")
+with tab_materiales:
+        st.markdown("### 🧱 Requerimientos de Almacén (Cantidades Ejecutadas)")
+        
+        materiales_data = []
+        # Ciclo para calcular materiales según la actividad ejecutada
+        for index, row in informe_total.iterrows():
+            actividad = row['Actividad']
+            cant = row['Cantidad_Ejecutada']
+            
+            if cant > 0:
+                if "Concreto" in actividad or "plantilla" in actividad:
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Cemento (Bultos 50kg)', 'Factor Unitario': '7.00', 'Total Requerido': cant * 7})
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Arena (m³)', 'Factor Unitario': '0.56', 'Total Requerido': cant * 0.56})
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Triturado (m³)', 'Factor Unitario': '0.84', 'Total Requerido': cant * 0.84})
+                elif "Pintura" in actividad:
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Pintura Vinílica (Galones)', 'Factor Unitario': '0.15', 'Total Requerido': cant * 0.15})
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Estuco (Kg)', 'Factor Unitario': '1.20', 'Total Requerido': cant * 1.2})
+                elif "cerámico" in actividad:
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Pegacor (Bultos 25kg)', 'Factor Unitario': '0.25', 'Total Requerido': cant * 0.25})
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Cerámica (Cajas)', 'Factor Unitario': '1.05', 'Total Requerido': cant * 1.05})
+                elif "puertas" in actividad or "sanitarios" in actividad:
+                    materiales_data.append({'Actividad': actividad, 'Material': 'Silicona / Sellante (Tubos)', 'Factor Unitario': '0.50', 'Total Requerido': cant * 0.5})
+
+        if materiales_data:
+            df_materiales = pd.DataFrame(materiales_data)
+            # Redondeamos a 2 decimales para que se vea limpio
+            df_materiales['Total Requerido'] = df_materiales['Total Requerido'].round(2)
+            st.dataframe(df_materiales, use_container_width=True, hide_index=True)
+            
+            # Métrica resumen
+            st.divider()
+            bultos_cemento = df_materiales[df_materiales['Material'] == 'Cemento (Bultos 50kg)']['Total Requerido'].sum()
+            if bultos_cemento > 0:
+                st.metric("Total Bultos de Cemento Consumidos", f"{math.ceil(bultos_cemento)} bultos")
+        else:
+            st.info("💡 Aún no hay avance físico registrado para calcular explosión de insumos.")
         
     with tab_registros:
         st.markdown("### 📡 Datos recibidos en tiempo real desde campo")
