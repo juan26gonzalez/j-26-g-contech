@@ -1,20 +1,13 @@
 import streamlit as st
 import pandas as pd
-import io
-import math
-from supabase import create_client, Client
+import requests
 
 # ==============================================================================
-# 1. CONFIGURACIÓN DE CONEXIÓN A SUPABASE
+# 1. CONFIGURACIÓN DE CONEXIÓN A SUPABASE (API REST DIRECTA)
 # ==============================================================================
 SUPABASE_URL = "https://ktxbonxgrnpzearsgvtc.supabase.co"
-SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eGJvbnhncm5wemVhcnNndnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyOTI4MDQsImV4cCI6MjEwODg2ODgwNH0.R_lmgkFXALpkmmqbz4rz5XvzqE6VdakUharpVsv-reY"
-
-@st.cache_resource
-def iniciar_conexion():
-    return create_client(SUPABASE_URL, SUPABASE_KEY)
-
-supabase = iniciar_conexion()
+# Puedes usar la llave corta (publishable) o la larga (anon), este método acepta ambas
+SUPABASE_KEY = "sb_publishable_VUiAXSbX0Snwe-jvO4yEgA_8WLCK0Do"
 
 # ==============================================================================
 # 2. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS VISUALES
@@ -31,29 +24,21 @@ st.markdown("""
         border-left: 5px solid #10b981;
         box-shadow: 0 2px 4px rgba(0,0,0,0.04);
     }
-    div.stDownloadButton > button {
-        background-color: #1a365d;
-        color: white;
-        border-radius: 8px;
-        width: 100%;
-    }
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 3. BARRA LATERAL (Identidad y Conexión)
+# 3. BARRA LATERAL
 # ==============================================================================
 with st.sidebar:
     st.markdown("## 🏗️ **JG ConTech**")
     st.caption("Plataforma BIM 5D Cloud")
     st.divider()
-    
     st.markdown("### 🏢 1. Presupuesto Base (BIM)")
     archivo_bim = st.file_uploader("Sube Cantidades de Revit (CSV)", type=["csv"], key="bim")
-    
     st.divider()
     st.markdown("### ☁️ 2. Datos de Campo")
-    st.success("🟢 Conectado en tiempo real a Supabase (PostgreSQL)")
+    st.success("🟢 Conectado en tiempo real a Supabase (API REST)")
     if st.button("🔄 Refrescar datos de la nube", type="primary", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
@@ -61,13 +46,25 @@ with st.sidebar:
 st.title("📊 Centro de Mando Financiero y Almacén (BIM 5D Cloud)")
 
 # ==============================================================================
-# 4. EXTRACCIÓN DE DATOS DE LA NUBE Y PROCESAMIENTO
+# 4. EXTRACCIÓN DE DATOS DE LA NUBE (MÉTODO BLINDADO REST)
 # ==============================================================================
-# Extraemos la bitácora directamente desde Supabase
-@st.cache_data(ttl=60) # Refresca los datos automáticamente cada 60 segundos
+@st.cache_data(ttl=60)
 def obtener_datos_nube():
-    respuesta = supabase.table("bitacora_obra").select("*").execute()
-    return pd.DataFrame(respuesta.data)
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}"
+    }
+    url = f"{SUPABASE_URL}/rest/v1/bitacora_obra?select=*"
+    try:
+        respuesta = requests.get(url, headers=headers)
+        respuesta.raise_for_status()
+        datos = respuesta.json()
+        if datos:
+            return pd.DataFrame(datos)
+        return pd.DataFrame()
+    except Exception as e:
+        st.error(f"Error de conexión: {e}")
+        return pd.DataFrame()
 
 df_obra = obtener_datos_nube()
 
@@ -124,7 +121,6 @@ if not df_obra.empty:
 
     with tab_materiales:
         st.info("💡 Módulo de Explosión de Materiales operativo. Ingresa a la base BIM para ver requerimientos detallados.")
-        # Aquí se mantiene la lógica de cálculo de materiales que ya tenías...
         
     with tab_registros:
         st.markdown("### 📡 Datos recibidos en tiempo real desde campo")
