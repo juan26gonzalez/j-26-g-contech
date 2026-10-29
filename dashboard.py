@@ -154,7 +154,7 @@ if not df_obra.empty:
         else:
             st.info("💡 Aún no hay avance físico registrado para calcular explosión de insumos.")
             
-   with tab_registros:
+       with tab_registros:
         st.markdown("### 📡 Datos recibidos en tiempo real desde campo")
         
         # 1. Hacemos una copia para no alterar los datos crudos
@@ -168,5 +168,6 @@ if not df_obra.empty:
         
         # 4. Mostramos la tabla usando la nueva columna limpia
         st.dataframe(df_mostrar[['Hora de Registro', 'fecha', 'actividad', 'unidad', 'cantidad', 'desperdicio']].sort_values(by='Hora de Registro', ascending=False), use_container_width=True, hide_index=True)
-   else:
+   
+     else:
     st.info("📡 Conectado a la base de datos, pero aún no hay registros de obra subidos desde la aplicación web.")
