@@ -8,7 +8,7 @@ from supabase import create_client, Client
 # 1. CONFIGURACIÓN DE CONEXIÓN A SUPABASE
 # ==============================================================================
 SUPABASE_URL = "https://ktxbonxgrnpzearsgvtc.supabase.co"
-SUPABASE_KEY = "sb_publishable_VUiAXSbX0Snwe-jvO4yEgA_8WLCK0Do"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imt0eGJvbnhncm5wemVhcnNndnRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMyOTI4MDQsImV4cCI6MjEwODg2ODgwNH0.R_lmgkFXALpkmmqbz4rz5XvzqE6VdakUharpVsv-reY"
 
 @st.cache_resource
 def iniciar_conexion():
