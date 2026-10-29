@@ -154,9 +154,19 @@ if not df_obra.empty:
         else:
             st.info("💡 Aún no hay avance físico registrado para calcular explosión de insumos.")
             
-    with tab_registros:
+   with tab_registros:
         st.markdown("### 📡 Datos recibidos en tiempo real desde campo")
-        st.dataframe(df_obra[['created_at', 'fecha', 'actividad', 'unidad', 'cantidad', 'desperdicio']].sort_values(by='created_at', ascending=False), use_container_width=True, hide_index=True)
-
-else:
+        
+        # 1. Hacemos una copia para no alterar los datos crudos
+        df_mostrar = df_obra.copy()
+        
+        # 2. Convertimos el texto a fecha y lo pasamos a la zona horaria de Colombia
+        df_mostrar['created_at'] = pd.to_datetime(df_mostrar['created_at']).dt.tz_convert('America/Bogota')
+        
+        # 3. Creamos una columna nueva con un formato limpio de reloj de 12 horas
+        df_mostrar['Hora de Registro'] = df_mostrar['created_at'].dt.strftime('%d/%m/%Y %I:%M %p')
+        
+        # 4. Mostramos la tabla usando la nueva columna limpia
+        st.dataframe(df_mostrar[['Hora de Registro', 'fecha', 'actividad', 'unidad', 'cantidad', 'desperdicio']].sort_values(by='Hora de Registro', ascending=False), use_container_width=True, hide_index=True)
+   else:
     st.info("📡 Conectado a la base de datos, pero aún no hay registros de obra subidos desde la aplicación web.")
