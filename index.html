@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Obra | Captura en Campo JG ConTech</title>
+    
+    <!-- 1. IMPORTAMOS LA LIBRERÍA OFICIAL DE SUPABASE -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f1f5f9;
+            color: #1e293b;
+            max-width: 850px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+        .card {
+            background: #ffffff;
+            padding: 25px 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border-top: 6px solid #10b981; /* Cambiamos a verde para indicar conexión Cloud */
+        }
+        h1 { color: #1a365d; margin-top: 0; font-size: 24px; }
+        p.subtitle { color: #64748b; margin-bottom: 25px; font-size: 14px; }
+        .form-group { margin-bottom: 18px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; color: #334155; }
+        select, input {
+            width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1;
+            border-radius: 6px; font-size: 15px; box-sizing: border-box;
+        }
+        button {
+            width: 100%; padding: 14px; border: none; border-radius: 6px;
+            font-weight: bold; font-size: 16px; cursor: pointer;
+            background-color: #10b981; color: white; transition: background 0.2s;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #059669; }
+        button:disabled { background-color: #94a3b8; cursor: not-allowed; }
+        table { width: 100%; border-collapse: collapse; margin-top: 25px; font-size: 14px; }
+        th, td { border: 1px solid #e2e8f0; padding: 10px; text-align: left; }
+        th { background-color: #f8fafc; color: #1a365d; }
+        .status-badge {
+            display: inline-block; padding: 4px 8px; border-radius: 4px;
+            font-size: 12px; font-weight: bold; background: #dcfce7; color: #166534;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>☁️ Bitácora Cloud de Obra - JG ConTech</h1>
+    <div class="status-badge">Conectado a Base de Datos PostgreSQL (Supabase)</div>
+    <p class="subtitle">Registro de avance físico diario sincronizado en tiempo real</p>
+
+    <div class="form-group">
+        <label for="actividad">Actividad de Obra:</label>
+        <select id="actividad" required>
+            <option value="" disabled selected>Seleccione una actividad...</option>
+            <option value="Concreto en zapatas y cimentación">Concreto en zapatas y cimentación (m³)</option>
+            <option value="Concreto en columnas estructurales">Concreto en columnas estructurales (m³)</option>
+            <option value="Concreto en vigas de amarre y aéreas">Concreto en vigas de amarre y aéreas (m³)</option>
+            <option value="Construcción de plantilla de concreto">Construcción de plantilla de concreto (m³)</option>
+            <option value="Instalación de piso cerámico">Instalación de piso cerámico (m²)</option>
+            <option value="Pintura vinílica en muros">Pintura vinílica en muros (m²)</option>
+            <option value="Instalación de guardaescobas">Instalación de guardaescobas (ml)</option>
+            <option value="Instalación de puertas interiores y baño">Instalación de puertas interiores y baño (und)</option>
+            <option value="Instalación de aparatos sanitarios y lavaplatos">Instalación de aparatos sanitarios y lavaplatos (und)</option>
+            <option value="Red de tubería hidrosanitaria PVC">Red de tubería hidrosanitaria PVC (ml)</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label for="cantidad">Cantidad Ejecutada Hoy:</label>
+        <input type="number" id="cantidad" step="0.01" min="0.01" placeholder="Ej. 2.50" required>
+    </div>
+
+    <!-- BOTÓN ACTUALIZADO PARA ENVIAR A LA NUBE -->
+    <button type="button" id="btnGuardar" onclick="registrarAvanceCloud()">🚀 Enviar a Base de Datos</button>
+
+    <table id="tablaBitacora">
+        <thead>
+            <tr>
+                <th>Fecha</th>
+                <th>Actividad</th>
+                <th>Unidad</th>
+                <th>Cant. Ejecutada</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Aquí se muestran los registros enviados exitosamente -->
+        </tbody>
+    </table>
+</div>
+
+<script>
+    // =========================================================================
+    // 2. CONFIGURACIÓN DE TU SERVIDOR SUPABASE (¡PEGA TUS LLAVES AQUÍ!)
+    // =========================================================================
+    const _supabaseUrl = 'https://ktxbonxgrnpzearsgvtc.supabase.co';
+    const _supabaseAnonKey = 'sb_publishable_VUiAXSbX0Snwe-jvO4yEgA_8WLCK0Do';
+    
+    // Inicializamos el cliente de base de datos
+    const supabaseClient = supabase.createClient(_supabaseUrl, _supabaseAnonKey);
+
+    function obtenerUnidad(actividad) {
+        if (actividad.includes("Concreto") || actividad.includes("plantilla")) return "m³";
+        if (actividad.includes("cerámico") || actividad.includes("Pintura")) return "m²";
+        if (actividad.includes("puertas") || actividad.includes("sanitarios")) return "und";
+        return "ml";
+    }
+
+    // Función ASÍNCRONA que se comunica con el servidor en la nube
+    async function registrarAvanceCloud() {
+        const selectActividad = document.getElementById("actividad");
+        const inputCantidad = document.getElementById("cantidad");
+        const btnGuardar = document.getElementById("btnGuardar");
+
+        const actividad = selectActividad.value;
+        const cantidad = parseFloat(inputCantidad.value);
+
+        if (!actividad || isNaN(cantidad) || cantidad <= 0) {
+            alert("Por favor, seleccione una actividad e ingrese una cantidad válida.");
+            return;
+        }
+
+        // Cambiamos el botón para mostrar que está cargando
+        btnGuardar.disabled = true;
+        btnGuardar.innerText = "⏳ Sincronizando con el servidor...";
+
+        const unidad = obtenerUnidad(actividad);
+        const cantidadConDesperdicio = (cantidad * 1.05).toFixed(2);
+        const fechaHoy = new Date().toLocaleDateString('es-CO');
+
+        // 3. ENVIAMOS LOS DATOS A LA TABLA SQL "bitacora_obra"
+        const { data, error } = await supabaseClient
+            .from('bitacora_obra')
+            .insert([
+                { 
+                    fecha: fechaHoy, 
+                    actividad: actividad, 
+                    unidad: unidad, 
+                    cantidad: cantidad, 
+                    desperdicio: parseFloat(cantidadConDesperdicio)
+                }
+            ]);
+
+        // Manejo de errores
+        if (error) {
+            console.error("Error de Supabase:", error);
+            alert("❌ Hubo un error al enviar los datos a la nube: " + error.message);
+            btnGuardar.disabled = false;
+            btnGuardar.innerText = "🚀 Enviar a Base de Datos";
+            return;
+        }
+
+        // Si es exitoso, actualizamos la tabla visual y limpiamos el formulario
+        const tbody = document.querySelector("#tablaBitacora tbody");
+        const fila = `<tr>
+            <td>${fechaHoy}</td>
+            <td>${actividad}</td>
+            <td>${unidad}</td>
+            <td>${cantidad.toFixed(2)}</td>
+            <td style="color: green; font-weight: bold;">✅ Subido</td>
+        </tr>`;
+        tbody.innerHTML += fila;
+
+        inputCantidad.value = "";
+        btnGuardar.disabled = false;
+        btnGuardar.innerText = "🚀 Enviar a Base de Datos";
+    }
+</script>
+
+</body>
+</html>
