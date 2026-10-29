@@ -119,11 +119,10 @@ if not df_obra.empty:
         
         st.dataframe(informe_total[['Actividad', 'Cantidad_Contratada', 'Cantidad_Ejecutada', 'Presupuesto_Total', 'Costo_Ejecutado', 'Avance_Financiero_%']], use_container_width=True, hide_index=True)
 
-with tab_materiales:
+    with tab_materiales:
         st.markdown("### 🧱 Requerimientos de Almacén (Cantidades Ejecutadas)")
         
         materiales_data = []
-        # Ciclo para calcular materiales según la actividad ejecutada
         for index, row in informe_total.iterrows():
             actividad = row['Actividad']
             cant = row['Cantidad_Ejecutada']
@@ -144,18 +143,16 @@ with tab_materiales:
 
         if materiales_data:
             df_materiales = pd.DataFrame(materiales_data)
-            # Redondeamos a 2 decimales para que se vea limpio
             df_materiales['Total Requerido'] = df_materiales['Total Requerido'].round(2)
             st.dataframe(df_materiales, use_container_width=True, hide_index=True)
             
-            # Métrica resumen
             st.divider()
             bultos_cemento = df_materiales[df_materiales['Material'] == 'Cemento (Bultos 50kg)']['Total Requerido'].sum()
             if bultos_cemento > 0:
                 st.metric("Total Bultos de Cemento Consumidos", f"{math.ceil(bultos_cemento)} bultos")
         else:
             st.info("💡 Aún no hay avance físico registrado para calcular explosión de insumos.")
-        
+            
     with tab_registros:
         st.markdown("### 📡 Datos recibidos en tiempo real desde campo")
         st.dataframe(df_obra[['created_at', 'fecha', 'actividad', 'unidad', 'cantidad', 'desperdicio']].sort_values(by='created_at', ascending=False), use_container_width=True, hide_index=True)
