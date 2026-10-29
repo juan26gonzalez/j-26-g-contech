@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import requests
+import math
 
 # ==============================================================================
 # 1. CONFIGURACIÓN DE CONEXIÓN A SUPABASE (API REST DIRECTA)
