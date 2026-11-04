@@ -24,7 +24,7 @@ st.markdown("""
 /* Ocultar elementos por defecto de Streamlit para look de App nativa */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
+header {background: transparent;}
 
 /* --- SISTEMA BENTO GRID (Tarjetas Minimalistas) --- */
 .bento-grid {
