@@ -17,77 +17,151 @@ st.set_page_config(
     page_title="JGM ConTech | Centro de Mando Gerencial BIM 5D",
     page_icon="🏢",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
-# Inyección de estilos CSS corporativos (Navy / Slate / Blue / Emerald)
-# NOTA: Todo el CSS va sin sangría a la izquierda para evitar interpretación de bloques de código en Markdown
+# Inyección de estilos CSS corporativos de alto impacto (Vibrante, Moderno y Dinámico)
 css_styles = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
 }
 
 .stApp {
-    background-color: #f8fafc;
+    background: radial-gradient(circle at top right, #f1f5f9 0%, #f8fafc 100%);
 }
 
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }
 header { background: transparent; }
 
-/* Estilización de Métricas Nativas de Streamlit */
+/* CENTRADO DE LA BARRA DE NAVEGACIÓN SUPERIOR */
+div[data-testid="stSegmentedControl"] {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+    margin: 10px 0 24px 0 !important;
+}
+
+div[data-testid="stSegmentedControl"] > div {
+    background: #ffffff !important;
+    padding: 6px !important;
+    border-radius: 999px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06) !important;
+    gap: 4px !important;
+    display: flex !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+}
+
+div[data-testid="stSegmentedControl"] button {
+    border-radius: 999px !important;
+    font-size: 0.82rem !important;
+    font-weight: 700 !important;
+    padding: 6px 14px !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+div[data-testid="stSegmentedControl"] button[aria-selected="true"] {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 14px rgba(30, 58, 138, 0.35) !important;
+}
+
+div[data-testid="stSegmentedControl"] button[aria-selected="true"] * {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+}
+
+/* Fallback navegación horizontal */
+div[data-testid="stRadio"] > div[role="radiogroup"] {
+    display: flex !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    flex-wrap: wrap !important;
+    margin-bottom: 20px !important;
+}
+
+/* Tarjetas de Métricas Nativas Mejoradas */
 div[data-testid="stMetric"] {
-    background-color: #ffffff;
+    background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    padding: 16px 20px;
-    box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
-    border-left: 5px solid #2563eb;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border-radius: 16px;
+    padding: 18px 22px;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+    border-top: 4px solid #2563eb;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+div[data-testid="column"]:nth-of-type(1) div[data-testid="stMetric"] {
+    border-top: 4px solid #2563eb !important;
+}
+div[data-testid="column"]:nth-of-type(2) div[data-testid="stMetric"] {
+    border-top: 4px solid #10b981 !important;
+}
+div[data-testid="column"]:nth-of-type(3) div[data-testid="stMetric"] {
+    border-top: 4px solid #f59e0b !important;
+}
+div[data-testid="column"]:nth-of-type(4) div[data-testid="stMetric"] {
+    border-top: 4px solid #8b5cf6 !important;
 }
 
 div[data-testid="stMetric"]:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(15, 23, 42, 0.08);
+    transform: translateY(-3px);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.12);
+    border-color: #93c5fd;
 }
 
 div[data-testid="stMetric"] label {
-    font-size: 0.78rem !important;
-    font-weight: 700 !important;
+    font-size: 0.76rem !important;
+    font-weight: 800 !important;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: #64748b !important;
+    letter-spacing: 0.06em;
+    color: #475569 !important;
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-    font-size: 1.75rem !important;
+    font-size: 1.85rem !important;
     font-weight: 900 !important;
     color: #0f172a !important;
-    font-family: 'Inter', monospace !important;
+    font-family: 'Plus Jakarta Sans', monospace !important;
+    letter-spacing: -0.02em;
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
-    font-weight: 700 !important;
-    font-size: 0.8rem !important;
+    font-weight: 800 !important;
+    font-size: 0.82rem !important;
 }
 
-/* Botones de Descarga */
-div.stDownloadButton > button {
-    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%) !important;
+/* Botones de Acción Primarios */
+div.stDownloadButton > button, div.stButton > button {
+    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
     color: #ffffff !important;
-    border-radius: 10px !important;
-    padding: 10px 22px !important;
+    border-radius: 12px !important;
+    padding: 10px 20px !important;
     font-weight: 700 !important;
     border: none !important;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.15) !important;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15) !important;
+    transition: all 0.2s ease !important;
 }
 
-div.stDownloadButton > button:hover {
-    background: linear-gradient(135deg, #1e293b 0%, #334155 100%) !important;
-    color: #ffffff !important;
+div.stDownloadButton > button:hover, div.stButton > button:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.28) !important;
+}
+
+/* Dataframe Styling */
+div[data-testid="stDataFrame"] {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 8px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
 }
 </style>
 """
@@ -120,7 +194,6 @@ def cargar_datos_bitacora_cloud():
 # ==============================================================================
 # 3. PRESUPUESTO OFICIAL DE OBRA (BASE CONTRACTUAL DOLMEN S.A. / INGENDES S.A.S.)
 # ==============================================================================
-# Presupuesto contractual exacto del proyecto "Mezzanine 3 Niveles"
 PRESUPUESTO_OFICIAL_BASE = [
     # 1. PRELIMINARES
     {"Item": "1.1", "Capitulo": "1. PRELIMINARES", "Actividad": "Localización, trazado y replanteo", "Unidad": "m²", "Cantidad_Contratada": 180.0, "Precio_Unitario": 3500, "match_keys": ["localizacion", "trazado", "replanteo"]},
@@ -170,10 +243,7 @@ def normalizar_texto(texto):
 # 4. MOTOR MATEMÁTICO: CRUCE RELACIONAL BIM 5D & BITÁCORA
 # ==============================================================================
 def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
-    """
-    Cruza el presupuesto contractual con los registros reales de bitácora
-    utilizando normalización y reglas de coincidencia inteligente (hablan el mismo idioma).
-    """
+    """Cruza el presupuesto contractual con los registros reales de bitácora."""
     acumulados = {item["Item"]: 0.0 for item in df_ppto_base}
     desperdicios = {item["Item"]: [] for item in df_ppto_base}
     
@@ -190,32 +260,22 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
                 desp = 0.0
                 
             matched_item = None
-            
-            # Prioridad 1: Pañete / Revoco / Pintura
             if any(k in act_txt for k in ["panete", "revoco", "estuco", "pintura"]):
                 matched_item = "6.4"
-            # Prioridad 2: Zapatas
             elif any(k in act_txt for k in ["zapatas", "cimentacion"]) and "vigas" not in act_txt:
                 matched_item = "3.2"
-            # Prioridad 3: Vigas
             elif any(k in act_txt for k in ["vigas", "enlace", "amarre"]) and "cinta" not in act_txt:
                 matched_item = "3.3"
-            # Prioridad 4: Pedestales / Columnas
             elif any(k in act_txt for k in ["pedestales", "columnas"]):
                 matched_item = "3.4"
-            # Prioridad 5: Solado / Plantilla
             elif any(k in act_txt for k in ["solado", "plantilla de concreto"]):
                 matched_item = "3.1"
-            # Prioridad 6: Mampostería / Bloques
             elif any(k in act_txt for k in ["bloque", "mamposteria"]):
                 matched_item = "6.1"
-            # Prioridad 7: Cubierta / Estructura metálica
             elif any(k in act_txt for k in ["cubierta", "eternit", "perfileria", "hea", "ipe"]):
                 matched_item = "5.1"
-            # Prioridad 8: Demolición
             elif "demolicion" in act_txt:
                 matched_item = "1.3"
-            # Prioridad 9: Excavación
             elif "excavacion" in act_txt:
                 matched_item = "2.2"
             else:
@@ -229,7 +289,6 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
                 if desp > 0:
                     desperdicios[matched_item].append(desp)
 
-    # Construir DataFrame consolidado
     filas = []
     for item in df_ppto_base:
         it = item["Item"]
@@ -244,7 +303,10 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
         pct_avance = round((ejecutado / contratado * 100), 1) if contratado > 0 else 0.0
         desp_prom = round(np.mean(desperdicios[it]), 1) if desperdicios[it] else 0.0
         
-        # Estado de auditoría
+        # Mayor cantidad de obra (sobrecosto)
+        mayor_cantidad = max(0.0, round(ejecutado - contratado, 2))
+        sobrecosto_cop = round(mayor_cantidad * pu, 2)
+        
         if ejecutado == 0:
             estado = "⚪ Sin Iniciar"
         elif pct_avance >= 99.0 and pct_avance <= 100.0:
@@ -262,6 +324,8 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
             "Cantidad_Contratada": contratado,
             "Cantidad_Ejecutada": ejecutado,
             "Saldo_Cantidad": saldo_cantidad,
+            "Mayor_Cantidad": mayor_cantidad,
+            "Sobrecosto_COP": sobrecosto_cop,
             "Precio_Unitario": pu,
             "Presupuesto_Total": ppto_total,
             "Costo_Ejecutado": costo_ejecutado,
@@ -275,161 +339,147 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
     return df_consolidado
 
 # ==============================================================================
-# 5. GENERADOR PROFESIONAL DE REPORTES EXCEL (OPENPYXL)
+# 5. GENERADOR OFICIAL DE ACTAS DE CORTE Y FACTURACIÓN CONTRACTUAL (EXCEL)
 # ==============================================================================
-def generar_reporte_excel_ejecutivo(df_5d, df_bitacora):
-    """Genera un libro oficial de Excel corporativo con formato formal."""
+def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion):
+    """Genera el acta oficial de cobro contractual con desglose de AIU y firmas."""
     wb = openpyxl.Workbook()
-    wb.remove(wb.active)
+    ws = wb.active
+    ws.title = f"Acta de Corte {numero_acta}"
+    ws.views.sheetView[0].showGridLines = True
     
-    font_title = Font(name="Calibri", size=15, bold=True, color="FFFFFF")
-    font_header = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
-    font_bold = Font(name="Calibri", size=10, bold=True, color="0F172A")
-    font_normal = Font(name="Calibri", size=10, color="1E293B")
+    font_title = Font(name="Calibri", size=14, bold=True, color="FFFFFF")
+    font_header = Font(name="Calibri", size=9, bold=True, color="FFFFFF")
+    font_bold = Font(name="Calibri", size=9, bold=True, color="0F172A")
+    font_normal = Font(name="Calibri", size=9, color="1E293B")
     
     fill_navy = PatternFill(start_color="0F172A", end_color="0F172A", fill_type="solid")
     fill_blue = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
-    fill_subtotal = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+    fill_gray = PatternFill(start_color="F1F5F9", end_color="F1F5F9", fill_type="solid")
+    fill_highlight = PatternFill(start_color="ECFDF5", end_color="ECFDF5", fill_type="solid")
     
     border_thin = Border(
-        left=Side(style='thin', color='E2E8F0'),
-        right=Side(style='thin', color='E2E8F0'),
-        top=Side(style='thin', color='E2E8F0'),
-        bottom=Side(style='thin', color='E2E8F0')
+        left=Side(style='thin', color='CBD5E1'),
+        right=Side(style='thin', color='CBD5E1'),
+        top=Side(style='thin', color='CBD5E1'),
+        bottom=Side(style='thin', color='CBD5E1')
     )
     
-    # HOJA 1: RESUMEN Y CONTROL FINANCIERO 5D
-    ws1 = wb.create_sheet(title="Control Financiero 5D")
-    ws1.views.sheetView[0].showGridLines = True
+    # Encabezado Institucional
+    ws.merge_cells("A1:H1")
+    t = ws["A1"]
+    t.value = f"JGM CONTECH • ACTA DE CORTE DE OBRA Y FACTURACIÓN NO. {numero_acta}"
+    t.font = font_title
+    t.fill = fill_navy
+    t.alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 35
     
-    ws1.merge_cells("A1:K1")
-    cell_t = ws1["A1"]
-    cell_t.value = "JGM CONTECH • CENTRO DE CONTROL FINANCIERO Y AVANCE BIM 5D"
-    cell_t.font = font_title
-    cell_t.fill = fill_navy
-    cell_t.alignment = Alignment(horizontal="center", vertical="center")
-    ws1.row_dimensions[1].height = 40
+    ws["A2"] = "CONTRATO: CONSTRUCCIÓN MEZZANINE 3 NIVELES - SEDE ADMINISTRATIVA BARRANQUILLA"
+    ws["A2"].font = font_bold
+    ws["A3"] = "CONTRATANTE: DOLMEN S.A. E.S.P. • CONTRATISTA: INGENDES S.A.S."
+    ws["A3"].font = font_normal
+    ws["A4"] = f"FECHA DE CORTE: {datetime.now().strftime('%d/%m/%Y')} • ESTADO: APROBADO PARA FACTURACIÓN"
+    ws["A4"].font = font_normal
     
-    ws1["A2"] = "PROYECTO: MEZZANINE 3 NIVELES (SEDE ADMINISTRATIVA DOLMEN S.A. E.S.P.)"
-    ws1["A2"].font = font_bold
-    ws1["A3"] = f"CONTRATISTA: INGENDES S.A.S. • FECHA DE EMISIÓN: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-    ws1["A3"].font = font_normal
-    ws1.row_dimensions[2].height = 18
-    ws1.row_dimensions[3].height = 18
-    
-    headers_5d = [
-        "Ítem", "Capítulo", "Actividad Constructiva", "Und", 
-        "Cant. Contratada", "Cant. Ejecutada", "Saldo Cant.", 
-        "Precio Unitario", "Presupuesto Total", "Costo Ejecutado", "Avance (%)"
-    ]
-    
-    start_row = 5
-    for col_idx, header in enumerate(headers_5d, start=1):
-        cell = ws1.cell(row=start_row, column=col_idx, value=header)
+    # Tabla de Ítems Ejecutados
+    headers = ["Ítem", "Capítulo", "Actividad Constructiva", "Und", "Cant. Periodo", "P. Unitario", "Valor Ejecutado", "% Avance"]
+    for col_idx, h in enumerate(headers, start=1):
+        cell = ws.cell(row=6, column=col_idx, value=h)
         cell.font = font_header
         cell.fill = fill_blue
-        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.alignment = Alignment(horizontal="center", vertical="center")
         cell.border = border_thin
-    ws1.row_dimensions[start_row].height = 26
+    ws.row_dimensions[6].height = 24
     
-    current_row = 6
-    for _, row in df_5d.iterrows():
-        ws1.cell(row=current_row, column=1, value=row["Item"]).alignment = Alignment(horizontal="center")
-        ws1.cell(row=current_row, column=2, value=row["Capitulo"]).alignment = Alignment(horizontal="left")
-        ws1.cell(row=current_row, column=3, value=row["Actividad"]).alignment = Alignment(horizontal="left")
-        ws1.cell(row=current_row, column=4, value=row["Unidad"]).alignment = Alignment(horizontal="center")
+    r_idx = 7
+    # Solo ítems con ejecución
+    df_ejecutados = df_5d[df_5d["Cantidad_Ejecutada"] > 0]
+    for _, r in df_ejecutados.iterrows():
+        ws.cell(row=r_idx, column=1, value=r["Item"]).alignment = Alignment(horizontal="center")
+        ws.cell(row=r_idx, column=2, value=r["Capitulo"])
+        ws.cell(row=r_idx, column=3, value=r["Actividad"])
+        ws.cell(row=r_idx, column=4, value=r["Unidad"]).alignment = Alignment(horizontal="center")
         
-        c5 = ws1.cell(row=current_row, column=5, value=row["Cantidad_Contratada"])
+        c5 = ws.cell(row=r_idx, column=5, value=r["Cantidad_Ejecutada"])
         c5.number_format = '#,##0.00'
-        c6 = ws1.cell(row=current_row, column=6, value=row["Cantidad_Ejecutada"])
-        c6.number_format = '#,##0.00'
-        c7 = ws1.cell(row=current_row, column=7, value=row["Saldo_Cantidad"])
-        c7.number_format = '#,##0.00'
+        c6 = ws.cell(row=r_idx, column=6, value=r["Precio_Unitario"])
+        c6.number_format = '$#,##0'
+        c7 = ws.cell(row=r_idx, column=7, value=r["Costo_Ejecutado"])
+        c7.number_format = '$#,##0'
+        c8 = ws.cell(row=r_idx, column=8, value=r["Avance_%"] / 100.0)
+        c8.number_format = '0.0%'
         
-        c8 = ws1.cell(row=current_row, column=8, value=row["Precio_Unitario"])
-        c8.number_format = '$#,##0'
-        c9 = ws1.cell(row=current_row, column=9, value=row["Presupuesto_Total"])
-        c9.number_format = '$#,##0'
-        c10 = ws1.cell(row=current_row, column=10, value=row["Costo_Ejecutado"])
-        c10.number_format = '$#,##0'
+        for c in range(1, 9):
+            ws.cell(row=r_idx, column=c).border = border_thin
+            ws.cell(row=r_idx, column=c).font = font_normal
+        r_idx += 1
         
-        c11 = ws1.cell(row=current_row, column=11, value=row["Avance_%"] / 100.0)
-        c11.number_format = '0.0%'
-        
-        for c in range(1, 12):
-            ws1.cell(row=current_row, column=c).border = border_thin
-            ws1.cell(row=current_row, column=c).font = font_normal
-            
-        current_row += 1
-        
-    ws1.merge_cells(start_row=current_row, start_column=1, end_row=current_row, end_column=4)
-    tot_label = ws1.cell(row=current_row, column=1, value="TOTAL CONTRATO OFICIAL COP")
-    tot_label.font = font_bold
-    tot_label.alignment = Alignment(horizontal="right")
+    # Liquidación Económica
+    costo_directo = df_5d["Costo_Ejecutado"].sum()
+    pct_a = params_liquidacion["pct_a"] / 100.0
+    pct_i = params_liquidacion["pct_i"] / 100.0
+    pct_u = params_liquidacion["pct_u"] / 100.0
+    pct_anticipo = params_liquidacion["pct_anticipo"] / 100.0
+    pct_garantia = params_liquidacion["pct_garantia"] / 100.0
     
-    tot_ppto = ws1.cell(row=current_row, column=9, value=f"=SUM(I{start_row+1}:I{current_row-1})")
-    tot_ppto.font = font_bold
-    tot_ppto.number_format = '$#,##0'
+    val_a = costo_directo * pct_a
+    val_i = costo_directo * pct_i
+    val_u = costo_directo * pct_u
+    val_aiu = val_a + val_i + val_u
+    val_bruto = costo_directo + val_aiu
+    ded_anticipo = val_bruto * pct_anticipo
+    ded_garantia = val_bruto * pct_garantia
+    iva_utilidad = val_u * 0.19
+    neto_cobrar = val_bruto - ded_anticipo - ded_garantia + iva_utilidad
     
-    tot_cost = ws1.cell(row=current_row, column=10, value=f"=SUM(J{start_row+1}:J{current_row-1})")
-    tot_cost.font = font_bold
-    tot_cost.number_format = '$#,##0'
+    r_idx += 1
+    liquidacion_filas = [
+        ("SUBTOTAL COSTO DIRECTO EJECUTADO", costo_directo, False),
+        (f"(+) ADMINISTRACIÓN ({params_liquidacion['pct_a']}%)", val_a, False),
+        (f"(+) IMPREVISTOS ({params_liquidacion['pct_i']}%)", val_i, False),
+        (f"(+) UTILIDAD ({params_liquidacion['pct_u']}%)", val_u, False),
+        ("(=) VALOR BRUTO DEL ACTA DE OBRA", val_bruto, True),
+        (f"(-) AMORTIZACIÓN ANTICIPO ({params_liquidacion['pct_anticipo']}%)", -ded_anticipo, False),
+        (f"(-) RETENCIÓN DE GARANTÍA ({params_liquidacion['pct_garantia']}%)", -ded_garantia, False),
+        ("(+) IVA DEL 19% SOBRE LA UTILIDAD", iva_utilidad, False),
+        ("(=) VALOR NETO A CONSIGNAR / PAGAR", neto_cobrar, True),
+    ]
     
-    tot_pct = ws1.cell(row=current_row, column=11, value=f"=J{current_row}/I{current_row}")
-    tot_pct.font = font_bold
-    tot_pct.number_format = '0.0%'
-    
-    for c in range(1, 12):
-        cell_sub = ws1.cell(row=current_row, column=c)
-        cell_sub.fill = fill_subtotal
-        cell_sub.border = border_thin
+    for concepto, valor, es_total in liquidacion_filas:
+        ws.merge_cells(start_row=r_idx, start_column=1, end_row=r_idx, end_column=6)
+        c_lbl = ws.cell(row=r_idx, column=1, value=concepto)
+        c_lbl.font = font_bold if es_total else font_normal
+        c_lbl.alignment = Alignment(horizontal="right")
         
-    for col in ws1.columns:
-        max_len = max(len(str(cell.value or '')) for cell in col)
+        c_val = ws.cell(row=r_idx, column=7, value=valor)
+        c_val.number_format = '$#,##0'
+        c_val.font = font_bold if es_total else font_normal
+        
+        if es_total:
+            for c in range(1, 9):
+                ws.cell(row=r_idx, column=c).fill = fill_highlight if "NETO" in concepto else fill_gray
+                ws.cell(row=r_idx, column=c).border = border_thin
+        r_idx += 1
+
+    # Espacio de Firmas Oficiales
+    r_idx += 2
+    ws.merge_cells(start_row=r_idx, start_column=2, end_row=r_idx, end_column=4)
+    ws.cell(row=r_idx, column=2, value="___________________________________").alignment = Alignment(horizontal="center")
+    ws.merge_cells(start_row=r_idx, start_column=6, end_row=r_idx, end_column=8)
+    ws.cell(row=r_idx, column=6, value="___________________________________").alignment = Alignment(horizontal="center")
+    
+    r_idx += 1
+    ws.merge_cells(start_row=r_idx, start_column=2, end_row=r_idx, end_column=4)
+    ws.cell(row=r_idx, column=2, value="ING. JUAN GONZÁLEZ\nIngeniero Residente • INGENDES S.A.S.").alignment = Alignment(horizontal="center", wrap_text=True)
+    ws.merge_cells(start_row=r_idx, start_column=6, end_row=r_idx, end_column=8)
+    ws.cell(row=r_idx, column=6, value="INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P.").alignment = Alignment(horizontal="center", wrap_text=True)
+
+    # Anchos de columna
+    for col in ws.columns:
         col_letter = get_column_letter(col[0].column)
-        ws1.column_dimensions[col_letter].width = max(max_len + 3, 12)
-    ws1.column_dimensions["C"].width = 38
-    ws1.column_dimensions["B"].width = 22
-    
-    # HOJA 2: BITÁCORA CLOUD
-    if not df_bitacora.empty:
-        ws2 = wb.create_sheet(title="Bitácora Cloud")
-        ws2.views.sheetView[0].showGridLines = True
-        
-        ws2.merge_cells("A1:F1")
-        cell_t2 = ws2["A1"]
-        cell_t2.value = "HISTÓRICO DE REPORTES DE CAMPO RECIBIDOS (SUPABASE CLOUD)"
-        cell_t2.font = font_title
-        cell_t2.fill = fill_navy
-        cell_t2.alignment = Alignment(horizontal="center", vertical="center")
-        ws2.row_dimensions[1].height = 35
-        
-        headers_bit = ["ID", "Fecha Reporte", "Actividad Registrada", "Unidad", "Cantidad", "Desperdicio (%)"]
-        for col_idx, h in enumerate(headers_bit, start=1):
-            c = ws2.cell(row=3, column=col_idx, value=h)
-            c.font = font_header
-            c.fill = fill_blue
-            c.alignment = Alignment(horizontal="center")
-            c.border = border_thin
-            
-        r_idx = 4
-        for _, b_row in df_bitacora.iterrows():
-            ws2.cell(row=r_idx, column=1, value=b_row.get("id", "")).alignment = Alignment(horizontal="center")
-            ws2.cell(row=r_idx, column=2, value=str(b_row.get("fecha", ""))).alignment = Alignment(horizontal="center")
-            ws2.cell(row=r_idx, column=3, value=b_row.get("actividad", "")).alignment = Alignment(horizontal="left")
-            ws2.cell(row=r_idx, column=4, value=b_row.get("unidad", "")).alignment = Alignment(horizontal="center")
-            ws2.cell(row=r_idx, column=5, value=float(b_row.get("cantidad", 0) or 0)).number_format = '#,##0.00'
-            ws2.cell(row=r_idx, column=6, value=float(b_row.get("desperdicio", 0) or 0)).number_format = '0.0%'
-            for c in range(1, 7):
-                ws2.cell(row=r_idx, column=c).border = border_thin
-                ws2.cell(row=r_idx, column=c).font = font_normal
-            r_idx += 1
-            
-        for col in ws2.columns:
-            max_len = max(len(str(cell.value or '')) for cell in col)
-            col_letter = get_column_letter(col[0].column)
-            ws2.column_dimensions[col_letter].width = max(max_len + 3, 14)
-        ws2.column_dimensions["C"].width = 38
+        ws.column_dimensions[col_letter].width = 15
+    ws.column_dimensions["C"].width = 38
+    ws.column_dimensions["B"].width = 20
 
     buffer = io.BytesIO()
     wb.save(buffer)
@@ -437,38 +487,25 @@ def generar_reporte_excel_ejecutivo(df_5d, df_bitacora):
     return buffer
 
 # ==============================================================================
-# 6. SIDEBAR Y CONTROLES DE NAVEGACIÓN
+# 6. SIDEBAR COMPACTO: COMPAÑERO DE CONTROL Y PARÁMETROS
 # ==============================================================================
 with st.sidebar:
     st.markdown("## 🏢 **JGM ConTech**")
-    st.caption("Executive BIM 5D Management OS")
+    st.caption("Executive BIM 5D OS")
+    st.markdown("[📱 **Abrir Bitácora de Campo ↗**](https://jagm2000-jgmcontech-bitacora.vercel.app)")
     st.divider()
     
     # Ficha Técnica del Proyecto
     st.markdown("**Proyecto Activo:**")
     st.markdown("**Mezzanine 3 Niveles**")
     st.caption("DOLMEN S.A. E.S.P. • INGENDES S.A.S.")
-    
     st.markdown("🟢 **Estado:** En Ejecución")
-    st.divider()
-
-    st.markdown("### Módulos Gerenciales")
-    menu_seleccionado = st.radio(
-        "Navegación:",
-        [
-            "🏠 Panel Ejecutivo (Bento Grid)",
-            "💰 Presupuesto & Desglose 5D (APU)",
-            "📈 Curva S & Plazo 4D (EVM)",
-            "🧱 Insumos & Materiales BIM",
-            "📡 Auditoría Bitácora Cloud"
-        ],
-        label_visibility="collapsed"
-    )
+    
     st.divider()
     
+    # Conexión Nube
     df_cloud = cargar_datos_bitacora_cloud()
     total_reg_cloud = len(df_cloud)
-    
     st.caption(f"Sincronización Nube: {'🟢 Conectado' if total_reg_cloud > 0 else '🟡 Sin datos'} ({total_reg_cloud} reg)")
     if st.button("🔄 Sincronizar en Vivo", use_container_width=True):
         st.cache_data.clear()
@@ -476,18 +513,33 @@ with st.sidebar:
         
     st.divider()
     
-    with st.expander("⚙️ Importador Manual (Opcional)"):
-        st.caption("Sube un CSV si deseas simular otro presupuesto de Revit o archivo local de bitácora:")
+    # Parámetros Contractuales de Liquidación
+    st.markdown("### ⚙️ Parámetros Contractuales (AIU)")
+    param_a = st.slider("Administración (% A)", min_value=5.0, max_value=20.0, value=10.0, step=0.5)
+    param_i = st.slider("Imprevistos (% I)", min_value=1.0, max_value=8.0, value=3.0, step=0.5)
+    param_u = st.slider("Utilidad (% U)", min_value=2.0, max_value=15.0, value=5.0, step=0.5)
+    param_anticipo = st.slider("Amortización Anticipo (%)", min_value=0.0, max_value=30.0, value=20.0, step=1.0)
+    param_garantia = st.slider("Retención Garantía (%)", min_value=0.0, max_value=10.0, value=5.0, step=1.0)
+    
+    params_liquidacion = {
+        "pct_a": param_a,
+        "pct_i": param_i,
+        "pct_u": param_u,
+        "pct_anticipo": param_anticipo,
+        "pct_garantia": param_garantia
+    }
+    
+    st.divider()
+    with st.expander("📂 Importador CSV Opcional"):
         archivo_bim_custom = st.file_uploader("Presupuesto Revit (CSV)", type=["csv"], key="custom_bim")
         archivo_obra_custom = st.file_uploader("Bitácora Externa (CSV)", type=["csv"], key="custom_obra")
 
 # ------------------------------------------------------------------------------
-# DETERMINAR FUENTE DE DATOS ACTIVA
+# PROCESAMIENTO RELACIONAL DE DATOS
 # ------------------------------------------------------------------------------
 if archivo_bim_custom is not None:
     try:
-        df_base_custom = pd.read_csv(archivo_bim_custom)
-        lista_ppto_activa = df_base_custom.to_dict('records')
+        lista_ppto_activa = pd.read_csv(archivo_bim_custom).to_dict('records')
         st.sidebar.success("✅ Presupuesto personalizado cargado.")
     except:
         lista_ppto_activa = PRESUPUESTO_OFICIAL_BASE
@@ -497,7 +549,7 @@ else:
 if archivo_obra_custom is not None:
     try:
         df_obra_activa = pd.read_csv(archivo_obra_custom)
-        st.sidebar.success("✅ Archivo local de bitácora activo.")
+        st.sidebar.success("✅ Archivo local activo.")
     except:
         df_obra_activa = df_cloud
 else:
@@ -508,6 +560,7 @@ df_5d = consolidar_presupuesto_y_ejecucion(lista_ppto_activa, df_obra_activa)
 total_ppto_contratado = df_5d["Presupuesto_Total"].sum()
 total_costo_ejecutado = df_5d["Costo_Ejecutado"].sum()
 total_saldo_dinero = df_5d["Saldo_Dinero"].sum()
+total_sobrecosto_cop = df_5d["Sobrecosto_COP"].sum()
 avance_financiero_global = round((total_costo_ejecutado / total_ppto_contratado * 100), 2) if total_ppto_contratado > 0 else 0.0
 
 df_5d["Peso_Ponderado"] = df_5d["Presupuesto_Total"] / total_ppto_contratado if total_ppto_contratado > 0 else 0
@@ -515,18 +568,29 @@ df_5d["Avance_Ponderado"] = df_5d.apply(lambda r: min(r["Avance_%"], 100.0) * r[
 avance_fisico_ponderado = round(df_5d["Avance_Ponderado"].sum(), 2)
 
 # ==============================================================================
-# 7. ENCABEZADO SUPERIOR CORPORATIVO (SIN SANGRÍAS)
+# 7. ENCABEZADO VIBRANTE SUPERIOR (ALTO NIVEL EJECUTIVO)
 # ==============================================================================
 header_html = f"""
-<div style="background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%); border-radius: 16px; padding: 22px 28px; color: white; margin-bottom: 24px; box-shadow: 0 10px 25px rgba(15, 23, 42, 0.1);">
-<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 14px;">
+<div style="background: linear-gradient(135deg, #0a0f1d 0%, #0f172a 45%, #1e3a8a 100%); border-radius: 20px; padding: 24px 32px; color: white; margin-bottom: 18px; box-shadow: 0 12px 30px rgba(30, 58, 138, 0.22); border: 1px solid rgba(255, 255, 255, 0.1);">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
 <div>
-<h1 style="font-size: 1.5rem; font-weight: 800; margin: 0; color: #ffffff;">🏢 JGM ConTech • Plataforma Gerencial BIM 5D</h1>
-<p style="font-size: 0.85rem; color: #94a3b8; margin: 4px 0 0 0;">Sede Administrativa Dolmen S.A. E.S.P. • Contratista INGENDES S.A.S. • Barranquilla, Atlántico</p>
+<div style="display: flex; align-items: center; gap: 10px;">
+<span style="background: #2563eb; color: #ffffff; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em;">ENTERPRISE BIM 5D</span>
+<span style="color: #38bdf8; font-size: 0.78rem; font-weight: 700;">● CONEXIÓN SUPABASE EN VIVO</span>
+<a href="https://jagm2000-jgmcontech-bitacora.vercel.app" target="_blank" style="background: rgba(255, 255, 255, 0.12); color: #ffffff; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-decoration: none; border: 1px solid rgba(255, 255, 255, 0.2);">📱 Bitácora de Campo ↗</a>
 </div>
+<h1 style="font-size: 1.65rem; font-weight: 900; margin: 6px 0 0 0; color: #ffffff; letter-spacing: -0.02em;">🏢 JGM ConTech • Centro de Mando Gerencial</h1>
+<p style="font-size: 0.85rem; color: #94a3b8; margin: 4px 0 0 0;">Proyecto: <strong>Mezzanine 3 Niveles</strong> • DOLMEN S.A. E.S.P. • INGENDES S.A.S. • Barranquilla, Atlántico</p>
+</div>
+<div style="display: flex; align-items: center; gap: 20px; background: rgba(15, 23, 42, 0.6); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.08);">
 <div style="text-align: right;">
-<span style="font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; font-weight: 700; display: block;">Avance Físico Causado</span>
-<span style="font-size: 1.5rem; font-weight: 900; color: #38bdf8; font-family: monospace;">{avance_fisico_ponderado}%</span>
+<span style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; display: block;">Avance Físico Ponderado</span>
+<span style="font-size: 1.6rem; font-weight: 900; color: #38bdf8; font-family: monospace;">{avance_fisico_ponderado}%</span>
+</div>
+<div style="text-align: right; border-left: 1px solid rgba(255, 255, 255, 0.15); padding-left: 16px;">
+<span style="font-size: 0.7rem; color: #94a3b8; text-transform: uppercase; font-weight: 800; letter-spacing: 0.05em; display: block;">Costo Causado</span>
+<span style="font-size: 1.6rem; font-weight: 900; color: #10b981; font-family: monospace;">${(total_costo_ejecutado/1e6):,.1f}M</span>
+</div>
 </div>
 </div>
 </div>
@@ -534,15 +598,48 @@ header_html = f"""
 st.markdown(textwrap.dedent(header_html).strip(), unsafe_allow_html=True)
 
 # ==============================================================================
-# 8. MÓDULOS DE GESTIÓN Y VISTAS
+# 8. NAVEGACIÓN SUPERIOR CENTRAL (PILL TABS DE PRIMER NIVEL)
+# ==============================================================================
+opciones_menu = [
+    "🏠 Panel Ejecutivo",
+    "💰 Presupuesto 5D (APU)",
+    "📑 Actas de Corte & Cobro",
+    "⚠️ Mayores Cantidades & Adicionales",
+    "👥 Rendimiento & Cuadrillas",
+    "📈 Curva S & Plazo 4D",
+    "🧱 Insumos BIM",
+    "📡 Bitácora Cloud"
+]
+
+if "active_nav_tab" not in st.session_state:
+    st.session_state["active_nav_tab"] = "🏠 Panel Ejecutivo"
+
+if hasattr(st, "segmented_control"):
+    sel = st.segmented_control(
+        "Navegación:",
+        opciones_menu,
+        default=st.session_state["active_nav_tab"],
+        label_visibility="collapsed"
+    )
+    if sel:
+        st.session_state["active_nav_tab"] = sel
+    menu_seleccionado = st.session_state["active_nav_tab"]
+else:
+    menu_seleccionado = st.radio(
+        "Navegación:",
+        opciones_menu,
+        horizontal=True,
+        label_visibility="collapsed"
+    )
+
+# ==============================================================================
+# 9. RENDERIZADO DE MÓDULOS GERENCIALES
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# VISTA 1: PANEL EJECUTIVO (BENTO GRID)
+# VISTA 1: PANEL EJECUTIVO (BENTO GRID VIBRANTE)
 # ------------------------------------------------------------------------------
-if menu_seleccionado == "🏠 Panel Ejecutivo (Bento Grid)":
-    
-    # 4 Métricas Nativas e Inmunes a Código Filtrado
+if menu_seleccionado == "🏠 Panel Ejecutivo":
     col1, col2, col3, col4 = st.columns(4)
     
     col1.metric(
@@ -551,41 +648,33 @@ if menu_seleccionado == "🏠 Panel Ejecutivo (Bento Grid)":
         delta=f"${total_ppto_contratado:,.0f} COP",
         delta_color="off"
     )
-    
     col2.metric(
         label="🔨 Costo Físico Ejecutado",
         value=f"${(total_costo_ejecutado/1_000_000):,.2f}M",
         delta=f"{avance_financiero_global}% causado",
         delta_color="normal"
     )
-    
     col3.metric(
         label="⏳ Saldo Contractual",
         value=f"${(total_saldo_dinero/1_000_000):,.1f}M",
         delta=f"-{round(100 - avance_financiero_global, 1)}% por facturar",
         delta_color="off"
     )
-    
     col4.metric(
         label="📊 Salud de Ejecución",
         value=f"{avance_fisico_ponderado}%",
-        delta="🟢 En Rango Contractual",
+        delta="🟢 En Plazo Contractual",
         delta_color="normal"
     )
     
     st.write("")
-    
-    # Barra de Progreso Global
     st.progress(
         min(avance_fisico_ponderado / 100.0, 1.0), 
-        text=f"Avance Físico Global Ponderado: {avance_fisico_ponderado}% (Hito de Replanteo a Entrega Final)"
+        text=f"Avance Físico Global Ponderado: {avance_fisico_ponderado}% (Línea Base Contractual 100%)"
     )
-
     st.write("")
     
-    # Gráfico y Resumen por Capítulos
     col_cap1, col_cap2 = st.columns([1.2, 0.8])
-    
     df_caps = df_5d.groupby("Capitulo").agg({
         "Presupuesto_Total": "sum",
         "Costo_Ejecutado": "sum",
@@ -594,10 +683,10 @@ if menu_seleccionado == "🏠 Panel Ejecutivo (Bento Grid)":
     df_caps["Avance_%"] = (df_caps["Costo_Ejecutado"] / df_caps["Presupuesto_Total"] * 100).round(1)
     
     with col_cap1:
-        st.markdown("### 📊 Presupuesto Contratado vs. Costo Ejecutado por Capítulo")
+        st.markdown("### 📊 Desglose Presupuesto Contratado vs. Ejecutado por Capítulo")
         chart_data = df_caps.set_index("Capitulo")[["Presupuesto_Total", "Costo_Ejecutado"]]
         chart_data.columns = ["Presupuesto Base ($)", "Costo Ejecutado ($)"]
-        st.bar_chart(chart_data, color=["#94a3b8", "#2563eb"])
+        st.bar_chart(chart_data, color=["#cbd5e1", "#2563eb"])
         
     with col_cap2:
         st.markdown("### 📋 Resumen por Capítulos")
@@ -609,35 +698,17 @@ if menu_seleccionado == "🏠 Panel Ejecutivo (Bento Grid)":
                 "Capitulo": st.column_config.TextColumn("Capítulo"),
                 "Presupuesto_Total": st.column_config.NumberColumn("Presupuesto", format="$%,.0f"),
                 "Costo_Ejecutado": st.column_config.NumberColumn("Ejecutado", format="$%,.0f"),
-                "Avance_%": st.column_config.ProgressColumn(
-                    "Avance",
-                    format="%.1f%%",
-                    min_value=0,
-                    max_value=100
-                ),
+                "Avance_%": st.column_config.ProgressColumn("Avance", format="%.1f%%", min_value=0, max_value=100)
             }
         )
 
 # ------------------------------------------------------------------------------
 # VISTA 2: PRESUPUESTO & DESGLOSE 5D (APU)
 # ------------------------------------------------------------------------------
-elif menu_seleccionado == "💰 Presupuesto & Desglose 5D (APU)":
+elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
+    st.markdown("### 💰 Matriz de Control Financiero 5D (APU)")
+    st.caption("Cruce automatizado entre el presupuesto contractual oficial y los registros de avance de bitácora.")
     
-    col_t1, col_t2 = st.columns([1.5, 1])
-    with col_t1:
-        st.markdown("### 💰 Matriz de Control Financiero 5D (APU)")
-        st.caption("Cruce automatizado entre el presupuesto contractual oficial y la bitácora de obra en la nube.")
-    with col_t2:
-        excel_buffer = generar_reporte_excel_ejecutivo(df_5d, df_obra_activa)
-        st.download_button(
-            label="📥 Descargar Informe Oficial en Excel (.xlsx)",
-            data=excel_buffer,
-            file_name=f"JGM_Control_Financiero_5D_{datetime.now().strftime('%Y%m%d')}.xlsx",
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
-
-    # Filtros Interactivos
     f_col1, f_col2, f_col3 = st.columns([1.2, 1, 1])
     with f_col1:
         filtro_txt = st.text_input("🔍 Buscar ítem o actividad:", placeholder="Ej. zapata, losa, hea, 3.2...")
@@ -659,7 +730,6 @@ elif menu_seleccionado == "💰 Presupuesto & Desglose 5D (APU)":
     if filtro_est != "Todos los Estados":
         df_filtrado = df_filtrado[df_filtrado["Estado"] == filtro_est]
 
-    # Tabla Interactiva Nativa de Streamlit (100% inmune a fugas de código HTML)
     columnas_gerenciales = [
         "Item", "Capitulo", "Actividad", "Unidad", 
         "Cantidad_Contratada", "Cantidad_Ejecutada", "Saldo_Cantidad",
@@ -684,20 +754,208 @@ elif menu_seleccionado == "💰 Presupuesto & Desglose 5D (APU)":
             "Presupuesto_Total": st.column_config.NumberColumn("Presupuesto Total", format="$%,.0f"),
             "Costo_Ejecutado": st.column_config.NumberColumn("Costo Ejecutado", format="$%,.0f"),
             "Saldo_Dinero": st.column_config.NumberColumn("Saldo COP", format="$%,.0f"),
-            "Avance_%": st.column_config.ProgressColumn(
-                "Avance (%)",
-                format="%.1f%%",
-                min_value=0,
-                max_value=100
-            ),
+            "Avance_%": st.column_config.ProgressColumn("Avance (%)", format="%.1f%%", min_value=0, max_value=100),
             "Estado": st.column_config.TextColumn("Auditoría", width="small")
         }
     )
 
 # ------------------------------------------------------------------------------
-# VISTA 3: CURVA S & PLAZO 4D (EVM)
+# VISTA 3: MEJORA 1 - GENERADOR DE ACTAS DE CORTE & FACTURACIÓN CONTRACTUAL
 # ------------------------------------------------------------------------------
-elif menu_seleccionado == "📈 Curva S & Plazo 4D (EVM)":
+elif menu_seleccionado == "📑 Actas de Corte & Cobro":
+    st.markdown("### 📑 Generador de Actas de Corte y Cobro Oficiales")
+    st.caption("Liquidación contractual automática con desglose de AIU, amortización de anticipo y retenciones de garantía para DOLMEN S.A.")
+    
+    col_acta1, col_acta2 = st.columns([1.2, 0.8])
+    with col_acta1:
+        num_acta = st.text_input("Número de Acta de Obra:", value="01")
+    with col_acta2:
+        st.write("")
+        st.write("")
+        excel_acta = generar_acta_corte_excel(df_5d, num_acta, params_liquidacion)
+        st.download_button(
+            label=f"📥 Descargar Acta de Corte No. {num_acta} (.xlsx)",
+            data=excel_acta,
+            file_name=f"Acta_Corte_{num_acta}_Mezzanine_Dolmen_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            use_container_width=True
+        )
+
+    # Cálculos Financieros del Acta
+    costo_directo = df_5d["Costo_Ejecutado"].sum()
+    val_a = costo_directo * (params_liquidacion["pct_a"] / 100.0)
+    val_i = costo_directo * (params_liquidacion["pct_i"] / 100.0)
+    val_u = costo_directo * (params_liquidacion["pct_u"] / 100.0)
+    total_aiu = val_a + val_i + val_u
+    subtotal_bruto = costo_directo + total_aiu
+    ded_anticipo = subtotal_bruto * (params_liquidacion["pct_anticipo"] / 100.0)
+    ded_garantia = subtotal_bruto * (params_liquidacion["pct_garantia"] / 100.0)
+    iva_utilidad = val_u * 0.19
+    neto_cobrar = subtotal_bruto - ded_anticipo - ded_garantia + iva_utilidad
+
+    # Bento Grid Financiero del Acta
+    c_liq1, c_liq2, c_liq3, c_liq4 = st.columns(4)
+    c_liq1.metric("💵 Costo Directo Ejecutado", f"${(costo_directo/1e6):,.2f}M COP", f"${costo_directo:,.0f}", delta_color="off")
+    c_liq2.metric(f"🏢 AIU ({param_a + param_i + param_u:.1f}%)", f"${(total_aiu/1e6):,.2f}M COP", f"A:{param_a}% I:{param_i}% U:{param_u}%", delta_color="off")
+    c_liq3.metric(f"📉 Deducciones (Ant + Gar)", f"-${((ded_anticipo + ded_garantia)/1e6):,.2f}M COP", f"-{param_anticipo + param_garantia:.1f}% del bruto", delta_color="inverse")
+    c_liq4.metric("✅ VALOR NETO A COBRAR", f"${(neto_cobrar/1e6):,.2f}M COP", "Líquido a Facturar", delta_color="normal")
+
+    st.write("")
+    st.markdown("#### 📋 Cuadro de Liquidación Económica del Periodo")
+    df_liquidacion_resumen = pd.DataFrame([
+        {"Concepto": "1. Subtotal Costo Directo Ejecutado en Obra", "Valor COP": f"${costo_directo:,.0f}"},
+        {"Concepto": f"2. (+) Administración ({param_a}%)", "Valor COP": f"${val_a:,.0f}"},
+        {"Concepto": f"3. (+) Imprevistos ({param_i}%)", "Valor COP": f"${val_i:,.0f}"},
+        {"Concepto": f"4. (+) Utilidad ({param_u}%)", "Valor COP": f"${val_u:,.0f}"},
+        {"Concepto": "5. (=) Subtotal Bruto de Obra (Directo + AIU)", "Valor COP": f"${subtotal_bruto:,.0f}"},
+        {"Concepto": f"6. (-) Amortización de Anticipo ({param_anticipo}%)", "Valor COP": f"-${ded_anticipo:,.0f}"},
+        {"Concepto": f"7. (-) Retención de Garantía de Ley ({param_garantia}%)", "Valor COP": f"-${ded_garantia:,.0f}"},
+        {"Concepto": "8. (+) IVA del 19% sobre la Utilidad", "Valor COP": f"${iva_utilidad:,.0f}"},
+        {"Concepto": "9. (=) TOTAL LÍQUIDO A FACTURAR / CONSIGNAR POR DOLMEN S.A.", "Valor COP": f"${neto_cobrar:,.0f}"}
+    ])
+    st.dataframe(df_liquidacion_resumen, use_container_width=True, hide_index=True)
+
+# ------------------------------------------------------------------------------
+# VISTA 4: MEJORA 2 - SIMULADOR DE MAYORES CANTIDADES & ADICIONALES (EAC)
+# ------------------------------------------------------------------------------
+elif menu_seleccionado == "⚠️ Mayores Cantidades & Adicionales":
+    st.markdown("### ⚠️ Simulador de Mayores Cantidades de Obra y Sobrecostos")
+    st.caption("Detección en tiempo real de actividades con volumen superior al contractual para tramitar actas modificatorias.")
+
+    df_mayores = df_5d[df_5d["Mayor_Cantidad"] > 0]
+    total_items_mayores = len(df_mayores)
+    
+    # Estimación de EAC (Estimate at Completion)
+    EAC = total_ppto_contratado + total_sobrecosto_cop
+    VAC = total_ppto_contratado - EAC
+
+    c_m1, c_m2, c_m3, c_m4 = st.columns(4)
+    c_m1.metric("⚠️ Ítems con Exceso", f"{total_items_mayores}", f"De {len(df_5d)} actividades", delta_color="inverse" if total_items_mayores > 0 else "normal")
+    c_m2.metric("💸 Sobrecosto Acumulado", f"${(total_sobrecosto_cop/1e6):,.2f}M COP", f"${total_sobrecosto_cop:,.0f}", delta_color="inverse" if total_sobrecosto_cop > 0 else "off")
+    c_m3.metric("🎯 Presupuesto Cierre (EAC)", f"${(EAC/1e6):,.2f}M COP", f"Ppto Base + Sobrecostos", delta_color="off")
+    c_m4.metric("📉 Variación al Cierre (VAC)", f"-${(abs(VAC)/1e6):,.2f}M COP", "Desviación Proyectada", delta_color="inverse" if VAC < 0 else "normal")
+
+    st.write("")
+    if total_items_mayores > 0:
+        st.markdown("#### 🚨 Actividades que Superan la Cantidad Contratada (>100%)")
+        cols_mayores = ["Item", "Capitulo", "Actividad", "Unidad", "Cantidad_Contratada", "Cantidad_Ejecutada", "Mayor_Cantidad", "Precio_Unitario", "Sobrecosto_COP", "Avance_%"]
+        st.dataframe(
+            df_mayores[cols_mayores],
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Item": st.column_config.TextColumn("Ítem", width="small"),
+                "Capitulo": st.column_config.TextColumn("Capítulo"),
+                "Actividad": st.column_config.TextColumn("Actividad con Mayor Cantidad", width="large"),
+                "Unidad": st.column_config.TextColumn("Und", width="small"),
+                "Cantidad_Contratada": st.column_config.NumberColumn("Cant. Contratada", format="%.2f"),
+                "Cantidad_Ejecutada": st.column_config.NumberColumn("Cant. Ejecutada", format="%.2f"),
+                "Mayor_Cantidad": st.column_config.NumberColumn("Exceso en Obra", format="%.2f"),
+                "Precio_Unitario": st.column_config.NumberColumn("P. Unitario", format="$%,.0f"),
+                "Sobrecosto_COP": st.column_config.NumberColumn("Impacto en COP", format="$%,.0f"),
+                "Avance_%": st.column_config.NumberColumn("% Avance", format="%.1f%%")
+            }
+        )
+        st.info("💡 **Recomendación Gerencial:** Tramitar Acta de Modificación No. 01 ante la Interventoría de DOLMEN S.A. E.S.P. para amparar legalmente el pago de los volúmenes excedentes.")
+    else:
+        st.success("✅ **Excelente control técnico:** No se detectan actividades con mayor cantidad de obra sobre el 100% contractual.")
+
+# ------------------------------------------------------------------------------
+# VISTA 5: MEJORA 3 - RENDIMIENTO & PRODUCTIVIDAD DE CUADRILLAS
+# ------------------------------------------------------------------------------
+elif menu_seleccionado == "👥 Rendimiento & Cuadrillas":
+    st.markdown("### 👥 Productividad de Mano de Obra y Desempeño de Cuadrillas")
+    st.caption("Cálculo de rendimientos diarios por oficial y cuadrilla frente a los estándares de APU contractuales.")
+
+    if not df_obra_activa.empty:
+        # Agrupación por actividad y cálculo de rendimiento
+        rendimientos = []
+        # Estándares APU teóricos
+        metas_apu = {
+            "concreto": {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
+            "zapatas": {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
+            "pedestales": {"meta_dia": 2.5, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
+            "vigas": {"meta_dia": 3.0, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
+            "mamposteria": {"meta_dia": 12.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
+            "bloque": {"meta_dia": 12.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
+            "panete": {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
+            "piso": {"meta_dia": 14.0, "und": "m²/día", "cuadrilla": "Cuadrilla Acabados: 1 Oficial"},
+            "cubierta": {"meta_dia": 25.0, "und": "m²/día", "cuadrilla": "Cuadrilla Metálica: 2 Montadores"},
+            "acero": {"meta_dia": 250.0, "und": "kg/día", "cuadrilla": "Cuadrilla Armadores: 2 Oficiales"}
+        }
+
+        # Agrupar reportes de bitácora
+        resumen_act = df_obra_activa.groupby("actividad").agg({
+            "cantidad": ["sum", "count", "mean"]
+        }).reset_index()
+        resumen_act.columns = ["Actividad", "Total_Producido", "Jornadas_Reportadas", "Promedio_Diario"]
+
+        for _, r in resumen_act.iterrows():
+            act_n = normalizar_texto(r["Actividad"])
+            meta_info = {"meta_dia": 10.0, "und": "unidades/día", "cuadrilla": "Cuadrilla Estándar"}
+            for k, v in metas_apu.items():
+                if k in act_n:
+                    meta_info = v
+                    break
+            
+            prom = round(r["Promedio_Diario"], 2)
+            meta = meta_info["meta_dia"]
+            eficiencia = round((prom / meta * 100), 1) if meta > 0 else 100.0
+            
+            if eficiencia >= 105.0:
+                desempeno = "🟢 Alto Rendimiento"
+            elif eficiencia >= 90.0:
+                desempeno = "🔵 En Rango APU"
+            else:
+                desempeno = "🔴 Rendimiento Bajo"
+
+            rendimientos.append({
+                "Actividad": r["Actividad"],
+                "Cuadrilla Asignada": meta_info["cuadrilla"],
+                "Total Producido": round(r["Total_Producido"], 2),
+                "Jornadas": int(r["Jornadas_Reportadas"]),
+                "Rendimiento Real": f"{prom} {meta_info['und']}",
+                "Meta APU Teórica": f"{meta} {meta_info['und']}",
+                "Eficiencia (%)": eficiencia,
+                "Evaluación": desempeno
+            })
+
+        df_rend = pd.DataFrame(rendimientos)
+
+        # KPIs de Mano de Obra
+        c_r1, c_r2, c_r3, c_r4 = st.columns(4)
+        c_r1.metric("👷 Total Jornadas", f"{len(df_obra_activa)} turnos", "En bitácora cloud", delta_color="off")
+        eficiencia_prom = round(df_rend["Eficiencia (%)"].mean(), 1)
+        c_r2.metric("⚡ Eficiencia Promedio", f"{eficiencia_prom}%", "Vs. Estándar APU", delta_color="normal" if eficiencia_prom>=95 else "inverse")
+        cuadrillas_activas = len(df_rend)
+        c_r3.metric("🔨 Frentes Evaluados", f"{cuadrillas_activas} actividades", "Con producción medida", delta_color="off")
+        bajo_rend = len(df_rend[df_rend["Evaluación"] == "🔴 Rendimiento Bajo"])
+        c_r4.metric("⚠️ Alertas de Retraso", f"{bajo_rend}", "Frentes bajo la meta", delta_color="inverse" if bajo_rend>0 else "normal")
+
+        st.write("")
+        st.markdown("#### 📊 Matriz de Eficiencia de Mano de Obra por Actividad")
+        st.dataframe(
+            df_rend,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "Actividad": st.column_config.TextColumn("Actividad en Campo", width="large"),
+                "Cuadrilla Asignada": st.column_config.TextColumn("Cuadrilla Típica"),
+                "Total Producido": st.column_config.NumberColumn("Volumen Total", format="%.2f"),
+                "Jornadas": st.column_config.NumberColumn("Jornadas"),
+                "Rendimiento Real": st.column_config.TextColumn("Rend. Real"),
+                "Meta APU Teórica": st.column_config.TextColumn("Meta APU"),
+                "Eficiencia (%)": st.column_config.ProgressColumn("Eficiencia", format="%.1f%%", min_value=0, max_value=150),
+                "Evaluación": st.column_config.TextColumn("Desempeño", width="small")
+            }
+        )
+    else:
+        st.info("Sin registros de campo para estimar rendimientos de cuadrilla.")
+
+# ------------------------------------------------------------------------------
+# VISTA 6: CURVA S & PLAZO 4D (EVM)
+# ------------------------------------------------------------------------------
+elif menu_seleccionado == "📈 Curva S & Plazo 4D":
     st.markdown("### 📈 Gestión del Valor Ganado (Earned Value Management - EVM)")
     st.caption("Seguimiento del desempeño de cronograma (SPI) y análisis de variaciones de costo en el horizonte del proyecto.")
     
@@ -722,7 +980,6 @@ elif menu_seleccionado == "📈 Curva S & Plazo 4D (EVM)":
         st.metric("💰 Índice de Costo (CPI)", f"{CPI:.2f}", estado_cpi, delta_color="normal" if CPI>=0.98 else "inverse")
         
     st.markdown("---")
-    
     st.markdown("#### Curva S: Avance Físico Planificado vs. Real Ejecutado (%)")
     fechas_curva = ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Sem 6", "Sem 7", "Sem 8"]
     plan_acumulado = [3.5, 8.5, 16.0, 28.5, 45.0, 68.0, 88.0, 100.0]
@@ -737,9 +994,9 @@ elif menu_seleccionado == "📈 Curva S & Plazo 4D (EVM)":
     st.line_chart(df_curva, color=["#94a3b8", "#2563eb"])
 
 # ------------------------------------------------------------------------------
-# VISTA 4: INSUMOS & MATERIALES BIM
+# VISTA 7: INSUMOS & MATERIALES BIM
 # ------------------------------------------------------------------------------
-elif menu_seleccionado == "🧱 Insumos & Materiales BIM":
+elif menu_seleccionado == "🧱 Insumos BIM":
     st.markdown("### 🧱 Explosión Paramétrica de Insumos & Materiales BIM")
     st.caption("Cálculo teórico de demanda de materiales basado en los volúmenes y áreas ejecutadas en campo.")
     
@@ -794,15 +1051,14 @@ elif menu_seleccionado == "🧱 Insumos & Materiales BIM":
         st.info("ℹ️ No hay actividades con volumen ejecutado reportado para estimar insumos.")
 
 # ------------------------------------------------------------------------------
-# VISTA 5: AUDITORÍA BITÁCORA CLOUD
+# VISTA 8: AUDITORÍA BITÁCORA CLOUD
 # ------------------------------------------------------------------------------
-elif menu_seleccionado == "📡 Auditoría Bitácora Cloud":
+elif menu_seleccionado == "📡 Bitácora Cloud":
     st.markdown("### 📡 Registros en Tiempo Real de la Bitácora de Campo")
     st.caption("Datos capturados por los ingenieros residentes en obra desde la aplicación móvil/web conectada a Supabase.")
     
     if not df_obra_activa.empty:
         df_mostrar = df_obra_activa.copy()
-        
         if 'created_at' in df_mostrar.columns:
             try:
                 df_mostrar['Fecha_Hora_Col'] = pd.to_datetime(df_mostrar['created_at'], utc=True).dt.tz_convert('America/Bogota').dt.strftime('%d/%m/%Y %I:%M %p')
@@ -828,7 +1084,6 @@ elif menu_seleccionado == "📡 Auditoría Bitácora Cloud":
                 "desperdicio": st.column_config.NumberColumn("Desperdicio (%)", format="%.1f%%")
             }
         )
-        
         st.caption(f"Mostrando {len(df_mostrar)} reportes registrados en la base de datos central.")
     else:
         st.warning("No hay registros en la nube actualmente.")
