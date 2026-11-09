@@ -233,6 +233,68 @@ PRESUPUESTO_OFICIAL_BASE = [
     {"Item": "7.1", "Capitulo": "7. LIMPIEZA", "Actividad": "Limpieza final de obra y entrega técnica", "Unidad": "gl", "Cantidad_Contratada": 1.0, "Precio_Unitario": 1500000, "match_keys": ["limpieza final", "entrega"]}
 ]
 
+# ==============================================================================
+# 3B. PRESUPUESTO OFICIAL: REMODELACIÓN CASA MENDOZA (SABANALARGA • REVIT 1.1)
+# ==============================================================================
+PRESUPUESTO_CASA_MENDOZA = [
+    # 1. MAMPOSTERÍA Y MUROS
+    {"Item": "1.1", "Capitulo": "1. MAMPOSTERIA", "Actividad": "Muros en mampostería de bloques de concreto No. 12", "Unidad": "und", "Cantidad_Contratada": 2500.0, "Precio_Unitario": 3800, "match_keys": ["mamposteria", "bloque", "bloques"]},
+    {"Item": "1.2", "Capitulo": "1. MAMPOSTERIA", "Actividad": "Pañete y mortero de revoco en muros 1:4", "Unidad": "m²", "Cantidad_Contratada": 400.0, "Precio_Unitario": 24000, "match_keys": ["panete", "revoco"]},
+
+    # 2. PISOS Y ENCHAPES
+    {"Item": "2.1", "Capitulo": "2. PISOS Y ENCHAPES", "Actividad": "Instalación de piso cerámico o enchape de baños y cocina", "Unidad": "m²", "Cantidad_Contratada": 220.0, "Precio_Unitario": 55000, "match_keys": ["piso ceramico", "enchape", "piso"]},
+    {"Item": "2.2", "Capitulo": "2. PISOS Y ENCHAPES", "Actividad": "Construcción de plantilla o losa de piso en concreto e=10cm", "Unidad": "m³", "Cantidad_Contratada": 10.0, "Precio_Unitario": 480000, "match_keys": ["plantilla", "losa de piso", "solado"]},
+    {"Item": "2.3", "Capitulo": "2. PISOS Y ENCHAPES", "Actividad": "Instalación de guardaescobas cerámico", "Unidad": "ml", "Cantidad_Contratada": 45.0, "Precio_Unitario": 12000, "match_keys": ["guardaescobas"]},
+
+    # 3. ACABADOS Y PINTURA
+    {"Item": "3.1", "Capitulo": "3. ACABADOS Y PINTURA", "Actividad": "Estuco plástico y pintura vinílica en muros", "Unidad": "m²", "Cantidad_Contratada": 400.0, "Precio_Unitario": 16500, "match_keys": ["estuco", "pintura", "vinilica"]},
+
+    # 4. CUBIERTA
+    {"Item": "4.1", "Capitulo": "4. CUBIERTA", "Actividad": "Montaje de cubierta en Eternit / Teja y accesorios", "Unidad": "m²", "Cantidad_Contratada": 160.0, "Precio_Unitario": 45000, "match_keys": ["cubierta", "eternit", "teja"]},
+
+    # 5. ESTRUCTURA DE CONFINAMIENTO
+    {"Item": "5.1", "Capitulo": "5. ESTRUCTURA", "Actividad": "Concreto para columnetas y vigas de corona", "Unidad": "m³", "Cantidad_Contratada": 3.5, "Precio_Unitario": 720000, "match_keys": ["columnetas", "columnas", "vigas", "corona"]},
+    {"Item": "5.2", "Capitulo": "5. ESTRUCTURA", "Actividad": "Acero de refuerzo figurado para confinamiento", "Unidad": "kg", "Cantidad_Contratada": 280.0, "Precio_Unitario": 5800, "match_keys": ["acero", "figurado", "refuerzo"]},
+
+    # 6. DEMOLICIONES Y PRELIMINARES
+    {"Item": "6.1", "Capitulo": "6. PRELIMINARES", "Actividad": "Demolición de muros, pisos existentes y desmonte", "Unidad": "m²", "Cantidad_Contratada": 85.0, "Precio_Unitario": 25000, "match_keys": ["demolicion", "desmonte", "retiro"]},
+    {"Item": "6.2", "Capitulo": "6. PRELIMINARES", "Actividad": "Limpieza general de obra y entrega técnica", "Unidad": "gl", "Cantidad_Contratada": 1.0, "Precio_Unitario": 800000, "match_keys": ["limpieza", "aseo", "entrega"]}
+]
+
+# Catálogo de Proyectos JGM ConTech
+PROYECTOS_DISPONIBLES = {
+    "🏢 Mezzanine 3 Niveles (DOLMEN S.A. • Barranquilla)": {
+        "id": "mezzanine",
+        "nombre": "Mezzanine 3 Niveles",
+        "subtitulo": "DOLMEN S.A. E.S.P. • INGENDES S.A.S. • Barranquilla, Atlántico",
+        "contratante": "DOLMEN S.A. E.S.P.",
+        "contratista": "INGENDES S.A.S.",
+        "ubicacion": "Barranquilla, Atlántico",
+        "badge": "ENTERPRISE BIM 5D",
+        "ppto_base": PRESUPUESTO_OFICIAL_BASE,
+        "a_def": 10.0, "i_def": 3.0, "u_def": 5.0, "ant_def": 20.0, "gar_def": 5.0,
+        "modelo_bim": "Revit 2027 • Estructura & Acero",
+        "logo": "🏢",
+        "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Residente • INGENDES S.A.S.",
+        "firma_interventor": "INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P."
+    },
+    "🏡 Remodelación Casa Mendoza (Sabanalarga, Atlántico • Revit 1.1)": {
+        "id": "casa_mendoza",
+        "nombre": "Remodelación Casa Mendoza",
+        "subtitulo": "Familia Mendoza • Sabanalarga, Atlántico • Modelo: Casa Mendoza 1.1.rvt",
+        "contratante": "Familia Mendoza",
+        "contratista": "Ing. Juan González (Director)",
+        "ubicacion": "Sabanalarga, Atlántico",
+        "badge": "REVIT 2027 BIM 5D",
+        "ppto_base": PRESUPUESTO_CASA_MENDOZA,
+        "a_def": 8.0, "i_def": 2.0, "u_def": 5.0, "ant_def": 15.0, "gar_def": 5.0,
+        "modelo_bim": "Casa Mendoza 1.1.rvt (Autodesk Revit 2027)",
+        "logo": "🏡",
+        "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Director de Obra",
+        "firma_interventor": "SUPERVISIÓN / PROPIETARIO\nRepresentante Familia Mendoza"
+    }
+}
+
 def normalizar_texto(texto):
     if not texto or not isinstance(texto, str):
         return ""
@@ -260,29 +322,12 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
                 desp = 0.0
                 
             matched_item = None
-            if any(k in act_txt for k in ["panete", "revoco", "estuco", "pintura"]):
-                matched_item = "6.4"
-            elif any(k in act_txt for k in ["zapatas", "cimentacion"]) and "vigas" not in act_txt:
-                matched_item = "3.2"
-            elif any(k in act_txt for k in ["vigas", "enlace", "amarre"]) and "cinta" not in act_txt:
-                matched_item = "3.3"
-            elif any(k in act_txt for k in ["pedestales", "columnas"]):
-                matched_item = "3.4"
-            elif any(k in act_txt for k in ["solado", "plantilla de concreto"]):
-                matched_item = "3.1"
-            elif any(k in act_txt for k in ["bloque", "mamposteria"]):
-                matched_item = "6.1"
-            elif any(k in act_txt for k in ["cubierta", "eternit", "perfileria", "hea", "ipe"]):
-                matched_item = "5.1"
-            elif "demolicion" in act_txt:
-                matched_item = "1.3"
-            elif "excavacion" in act_txt:
-                matched_item = "2.2"
-            else:
-                for item in df_ppto_base:
-                    if any(k in act_txt for k in item.get("match_keys", [])):
-                        matched_item = item["Item"]
-                        break
+            # Matching universal basado en las claves del proyecto activo
+            for item in df_ppto_base:
+                keys = item.get("match_keys", [])
+                if any(k in act_txt for k in keys):
+                    matched_item = item["Item"]
+                    break
                         
             if matched_item and matched_item in acumulados:
                 acumulados[matched_item] += cant
@@ -341,8 +386,17 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
 # ==============================================================================
 # 5. GENERADOR OFICIAL DE ACTAS DE CORTE Y FACTURACIÓN CONTRACTUAL (EXCEL)
 # ==============================================================================
-def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion):
+def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion, info_proyecto=None):
     """Genera el acta oficial de cobro contractual con desglose de AIU y firmas."""
+    if info_proyecto is None:
+        info_proyecto = {
+            "nombre": "Mezzanine 3 Niveles",
+            "ubicacion": "Barranquilla, Atlántico",
+            "contratante": "DOLMEN S.A. E.S.P.",
+            "contratista": "INGENDES S.A.S.",
+            "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Residente • INGENDES S.A.S.",
+            "firma_interventor": "INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P."
+        }
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = f"Acta de Corte {numero_acta}"
@@ -374,9 +428,9 @@ def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion):
     t.alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 35
     
-    ws["A2"] = "CONTRATO: CONSTRUCCIÓN MEZZANINE 3 NIVELES - SEDE ADMINISTRATIVA BARRANQUILLA"
+    ws["A2"] = f"CONTRATO: {info_proyecto['nombre'].upper()} - {info_proyecto['ubicacion'].upper()}"
     ws["A2"].font = font_bold
-    ws["A3"] = "CONTRATANTE: DOLMEN S.A. E.S.P. • CONTRATISTA: INGENDES S.A.S."
+    ws["A3"] = f"CONTRATANTE: {info_proyecto['contratante'].upper()} • CONTRATISTA: {info_proyecto['contratista'].upper()}"
     ws["A3"].font = font_normal
     ws["A4"] = f"FECHA DE CORTE: {datetime.now().strftime('%d/%m/%Y')} • ESTADO: APROBADO PARA FACTURACIÓN"
     ws["A4"].font = font_normal
@@ -470,9 +524,9 @@ def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion):
     
     r_idx += 1
     ws.merge_cells(start_row=r_idx, start_column=2, end_row=r_idx, end_column=4)
-    ws.cell(row=r_idx, column=2, value="ING. JUAN GONZÁLEZ\nIngeniero Residente • INGENDES S.A.S.").alignment = Alignment(horizontal="center", wrap_text=True)
+    ws.cell(row=r_idx, column=2, value=info_proyecto.get('firma_residente', 'ING. JUAN GONZÁLEZ')).alignment = Alignment(horizontal="center", wrap_text=True)
     ws.merge_cells(start_row=r_idx, start_column=6, end_row=r_idx, end_column=8)
-    ws.cell(row=r_idx, column=6, value="INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P.").alignment = Alignment(horizontal="center", wrap_text=True)
+    ws.cell(row=r_idx, column=6, value=info_proyecto.get('firma_interventor', 'INTERVENTOR / SUPERVISOR')).alignment = Alignment(horizontal="center", wrap_text=True)
 
     # Anchos de columna
     for col in ws.columns:
@@ -495,19 +549,27 @@ with st.sidebar:
     st.markdown("[📱 **Abrir Bitácora de Campo ↗**](https://jagm2000-jgmcontech-bitacora.vercel.app)")
     st.divider()
     
-    # Ficha Técnica del Proyecto
-    st.markdown("**Proyecto Activo:**")
-    st.markdown("**Mezzanine 3 Niveles**")
-    st.caption("DOLMEN S.A. E.S.P. • INGENDES S.A.S.")
-    st.markdown("🟢 **Estado:** En Ejecución")
+    # Selector de Proyecto Activo (Multi-Proyecto)
+    st.markdown("### 🔀 **Proyecto Activo:**")
+    proyecto_sel_key = st.selectbox(
+        "Seleccionar Proyecto:",
+        options=list(PROYECTOS_DISPONIBLES.keys()),
+        index=0,
+        label_visibility="collapsed"
+    )
+    proyecto_actual = PROYECTOS_DISPONIBLES[proyecto_sel_key]
+    
+    st.markdown(f"**{proyecto_actual['logo']} {proyecto_actual['nombre']}**")
+    st.caption(f"{proyecto_actual['contratante']} • {proyecto_actual['ubicacion']}")
+    st.markdown(f"🟢 **BIM:** `{proyecto_actual['modelo_bim']}`")
     
     st.divider()
     
-    # Conexión Nube
+    # Conexión Nube Supabase
     df_cloud = cargar_datos_bitacora_cloud()
     total_reg_cloud = len(df_cloud)
     st.caption(f"Sincronización Nube: {'🟢 Conectado' if total_reg_cloud > 0 else '🟡 Sin datos'} ({total_reg_cloud} reg)")
-    if st.button("🔄 Sincronizar en Vivo", use_container_width=True):
+    if st.button("🔄 Sincronizar en Vivo (Supabase)", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
         
@@ -515,11 +577,11 @@ with st.sidebar:
     
     # Parámetros Contractuales de Liquidación
     st.markdown("### ⚙️ Parámetros Contractuales (AIU)")
-    param_a = st.slider("Administración (% A)", min_value=5.0, max_value=20.0, value=10.0, step=0.5)
-    param_i = st.slider("Imprevistos (% I)", min_value=1.0, max_value=8.0, value=3.0, step=0.5)
-    param_u = st.slider("Utilidad (% U)", min_value=2.0, max_value=15.0, value=5.0, step=0.5)
-    param_anticipo = st.slider("Amortización Anticipo (%)", min_value=0.0, max_value=30.0, value=20.0, step=1.0)
-    param_garantia = st.slider("Retención Garantía (%)", min_value=0.0, max_value=10.0, value=5.0, step=1.0)
+    param_a = st.slider("Administración (% A)", min_value=3.0, max_value=20.0, value=float(proyecto_actual["a_def"]), step=0.5)
+    param_i = st.slider("Imprevistos (% I)", min_value=1.0, max_value=8.0, value=float(proyecto_actual["i_def"]), step=0.5)
+    param_u = st.slider("Utilidad (% U)", min_value=2.0, max_value=15.0, value=float(proyecto_actual["u_def"]), step=0.5)
+    param_anticipo = st.slider("Amortización Anticipo (%)", min_value=0.0, max_value=30.0, value=float(proyecto_actual["ant_def"]), step=1.0)
+    param_garantia = st.slider("Retención Garantía (%)", min_value=0.0, max_value=10.0, value=float(proyecto_actual["gar_def"]), step=1.0)
     
     params_liquidacion = {
         "pct_a": param_a,
@@ -528,32 +590,12 @@ with st.sidebar:
         "pct_anticipo": param_anticipo,
         "pct_garantia": param_garantia
     }
-    
-    st.divider()
-    with st.expander("📂 Importador CSV Opcional"):
-        archivo_bim_custom = st.file_uploader("Presupuesto Revit (CSV)", type=["csv"], key="custom_bim")
-        archivo_obra_custom = st.file_uploader("Bitácora Externa (CSV)", type=["csv"], key="custom_obra")
 
 # ------------------------------------------------------------------------------
-# PROCESAMIENTO RELACIONAL DE DATOS
+# PROCESAMIENTO RELACIONAL DE DATOS (100% SUPABASE EN TIEMPO REAL)
 # ------------------------------------------------------------------------------
-if archivo_bim_custom is not None:
-    try:
-        lista_ppto_activa = pd.read_csv(archivo_bim_custom).to_dict('records')
-        st.sidebar.success("✅ Presupuesto personalizado cargado.")
-    except:
-        lista_ppto_activa = PRESUPUESTO_OFICIAL_BASE
-else:
-    lista_ppto_activa = PRESUPUESTO_OFICIAL_BASE
-
-if archivo_obra_custom is not None:
-    try:
-        df_obra_activa = pd.read_csv(archivo_obra_custom)
-        st.sidebar.success("✅ Archivo local activo.")
-    except:
-        df_obra_activa = df_cloud
-else:
-    df_obra_activa = df_cloud
+lista_ppto_activa = proyecto_actual["ppto_base"]
+df_obra_activa = df_cloud
 
 df_5d = consolidar_presupuesto_y_ejecucion(lista_ppto_activa, df_obra_activa)
 
@@ -575,12 +617,12 @@ header_html = f"""
 <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
 <div>
 <div style="display: flex; align-items: center; gap: 10px;">
-<span style="background: #2563eb; color: #ffffff; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em;">ENTERPRISE BIM 5D</span>
+<span style="background: #2563eb; color: #ffffff; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em;">{proyecto_actual['badge']}</span>
 <span style="color: #38bdf8; font-size: 0.78rem; font-weight: 700;">● CONEXIÓN SUPABASE EN VIVO</span>
 <a href="https://jagm2000-jgmcontech-bitacora.vercel.app" target="_blank" style="background: rgba(255, 255, 255, 0.12); color: #ffffff; padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; text-decoration: none; border: 1px solid rgba(255, 255, 255, 0.2);">📱 Bitácora de Campo ↗</a>
 </div>
-<h1 style="font-size: 1.65rem; font-weight: 900; margin: 6px 0 0 0; color: #ffffff; letter-spacing: -0.02em;">🏢 JGM ConTech • Centro de Mando Gerencial</h1>
-<p style="font-size: 0.85rem; color: #94a3b8; margin: 4px 0 0 0;">Proyecto: <strong>Mezzanine 3 Niveles</strong> • DOLMEN S.A. E.S.P. • INGENDES S.A.S. • Barranquilla, Atlántico</p>
+<h1 style="font-size: 1.65rem; font-weight: 900; margin: 6px 0 0 0; color: #ffffff; letter-spacing: -0.02em;">{proyecto_actual['logo']} JGM ConTech • {proyecto_actual['nombre']}</h1>
+<p style="font-size: 0.85rem; color: #94a3b8; margin: 4px 0 0 0;">{proyecto_actual['subtitulo']} • BIM: <strong>{proyecto_actual['modelo_bim']}</strong></p>
 </div>
 <div style="display: flex; align-items: center; gap: 20px; background: rgba(15, 23, 42, 0.6); padding: 10px 18px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, 0.08);">
 <div style="text-align: right;">
@@ -764,7 +806,7 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "📑 Actas de Corte & Cobro":
     st.markdown("### 📑 Generador de Actas de Corte y Cobro Oficiales")
-    st.caption("Liquidación contractual automática con desglose de AIU, amortización de anticipo y retenciones de garantía para DOLMEN S.A.")
+    st.caption(f"Liquidación contractual automática con AIU, amortización y retenciones para {proyecto_actual['contratante']}.")
     
     col_acta1, col_acta2 = st.columns([1.2, 0.8])
     with col_acta1:
@@ -772,11 +814,11 @@ elif menu_seleccionado == "📑 Actas de Corte & Cobro":
     with col_acta2:
         st.write("")
         st.write("")
-        excel_acta = generar_acta_corte_excel(df_5d, num_acta, params_liquidacion)
+        excel_acta = generar_acta_corte_excel(df_5d, num_acta, params_liquidacion, proyecto_actual)
         st.download_button(
             label=f"📥 Descargar Acta de Corte No. {num_acta} (.xlsx)",
             data=excel_acta,
-            file_name=f"Acta_Corte_{num_acta}_Mezzanine_Dolmen_{datetime.now().strftime('%Y%m%d')}.xlsx",
+            file_name=f"Acta_Corte_{num_acta}_{proyecto_actual['id']}_{datetime.now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
@@ -1006,30 +1048,41 @@ elif menu_seleccionado == "🧱 Insumos BIM":
         c_ejec = r["Cantidad_Ejecutada"]
         
         if c_ejec > 0:
-            if it in ["3.2", "3.3", "3.4", "3.7"]:
+            act_n = normalizar_texto(r["Actividad"])
+            if "bloque" in act_n or "mamposteria" in act_n or it == "6.1":
+                cant_b = c_ejec if r["Unidad"] == "und" else c_ejec * 12.5
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Bloque de Concreto No. 12", "Consumo_Unitario": 1.0, "Unidad": "Und", "Total_Teorico": cant_b})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Pega (Sacos 50kg)", "Consumo_Unitario": 0.015, "Unidad": "Sacos", "Total_Teorico": cant_b * 0.015})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Fina para Mortero", "Consumo_Unitario": 0.002, "Unidad": "m³", "Total_Teorico": cant_b * 0.002})
+            elif "panete" in act_n or "revoco" in act_n or it == "6.4":
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Pañete", "Consumo_Unitario": 0.22, "Unidad": "Sacos", "Total_Teorico": c_ejec * 0.22})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada Pañete", "Consumo_Unitario": 0.028, "Unidad": "m³", "Total_Teorico": c_ejec * 0.028})
+            elif "estuco" in act_n or "pintura" in act_n:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Estuco Plástico Listo (Cuñetes)", "Consumo_Unitario": 0.08, "Unidad": "Cuñetes", "Total_Teorico": c_ejec * 0.08})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pintura Vinilo Tipo 1 (Galones)", "Consumo_Unitario": 0.12, "Unidad": "Gal", "Total_Teorico": c_ejec * 0.12})
+            elif "piso" in act_n or "ceramico" in act_n or "enchape" in act_n:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Piso Cerámico / Enchape", "Consumo_Unitario": 1.05, "Unidad": "m²", "Total_Teorico": c_ejec * 1.05})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pegacor Cerámico (Bultos 25kg)", "Consumo_Unitario": 0.25, "Unidad": "Bultos", "Total_Teorico": c_ejec * 0.25})
+            elif "cubierta" in act_n or "eternit" in act_n or "teja" in act_n:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Teja Ondulada / Termoacústica", "Consumo_Unitario": 1.10, "Unidad": "m²", "Total_Teorico": c_ejec * 1.10})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ganchos y Tornillos Fijación", "Consumo_Unitario": 3.0, "Unidad": "Und", "Total_Teorico": c_ejec * 3.0})
+            elif any(k in act_n for k in ["concreto", "zapatas", "vigas", "pedestales", "foso", "plantilla", "columnetas"]):
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Tipo UG (Sacos 50kg)", "Consumo_Unitario": 7.0, "Unidad": "Sacos", "Total_Teorico": c_ejec * 7.0})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada de Río", "Consumo_Unitario": 0.55, "Unidad": "m³", "Total_Teorico": c_ejec * 0.55})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Gravilla Triturada 3/4 pulg", "Consumo_Unitario": 0.85, "Unidad": "m³", "Total_Teorico": c_ejec * 0.85})
-            elif it == "3.1":
+            elif "solado" in act_n or it == "3.1":
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Limpieza", "Consumo_Unitario": 0.35, "Unidad": "Sacos", "Total_Teorico": c_ejec * 0.35})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena de Peña", "Consumo_Unitario": 0.05, "Unidad": "m³", "Total_Teorico": c_ejec * 0.05})
-            elif it == "4.1":
+            elif "acero" in act_n or it == "4.1":
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Acero Corrugado 60 KSI (Figurado)", "Consumo_Unitario": 1.05, "Unidad": "kg", "Total_Teorico": c_ejec * 1.05})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Alambre Negro #18 para Amarre", "Consumo_Unitario": 0.03, "Unidad": "kg", "Total_Teorico": c_ejec * 0.03})
-            elif it == "6.1":
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Bloque de Concreto No. 12", "Consumo_Unitario": 12.5, "Unidad": "Und", "Total_Teorico": c_ejec * 12.5})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Pega", "Consumo_Unitario": 0.20, "Unidad": "Sacos", "Total_Teorico": c_ejec * 0.20})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Fina para Mortero", "Consumo_Unitario": 0.025, "Unidad": "m³", "Total_Teorico": c_ejec * 0.025})
-            elif it == "3.6":
+            elif "metaldeck" in act_n or it == "3.6":
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Lámina Metaldeck Calibre 22", "Consumo_Unitario": 1.05, "Unidad": "m²", "Total_Teorico": c_ejec * 1.05})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Malla Electrosoldada XX-158", "Consumo_Unitario": 1.10, "Unidad": "m²", "Total_Teorico": c_ejec * 1.10})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Concreto 3000 PSI e=11cm", "Consumo_Unitario": 0.11, "Unidad": "m³", "Total_Teorico": c_ejec * 0.11})
-            elif it == "5.1":
+            elif "perfileria" in act_n or it == "5.1":
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Perfilería HEA 320 / IPE 300 (Acero ASTM A572)", "Consumo_Unitario": 1.0, "Unidad": "kg", "Total_Teorico": c_ejec * 1.0})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pintura Anticorrosiva Epóxica", "Consumo_Unitario": 0.02, "Unidad": "Gal", "Total_Teorico": c_ejec * 0.02})
-            elif it == "6.4":
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Pañete", "Consumo_Unitario": 0.22, "Unidad": "Sacos", "Total_Teorico": c_ejec * 0.22})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada Pañete", "Consumo_Unitario": 0.028, "Unidad": "m³", "Total_Teorico": c_ejec * 0.028})
                 
     if insumos_calc:
         df_insumos = pd.DataFrame(insumos_calc)
