@@ -687,13 +687,13 @@ PROYECTOS_DISPONIBLES = {
     "🏡 Remodelación Casa Mendoza (Sabanalarga, Atlántico • Revit 1.1)": {
         "id": "casa_mendoza",
         "nombre": "Remodelación Casa Mendoza",
-        "subtitulo": "Familia Mendoza • Sabanalarga, Atlántico • Modelo: Casa Mendoza 1.1.rvt",
+        "subtitulo": "Familia Mendoza • Calle 20D # 1 - 19. Sabanalarga, Atlántico • Modelo: Casa Mendoza 1.1.rvt",
         "contratante": "Familia Mendoza",
         "cedula_cliente": "",
         "contratista": "Ing. Juan González Mendoza",
         "cedula_contratista": "C.C. 1001867834 • M.P. 021037-0828864 ATL",
         "cargo_contratista": "Ingeniero Residente de Obra",
-        "ubicacion": "Sabanalarga, Atlántico",
+        "ubicacion": "Calle 20D # 1 - 19. Sabanalarga, Atlántico",
         "badge": "REVIT 2027 BIM 5D",
         "ppto_base": PRESUPUESTO_CASA_MENDOZA,
         "a_def": 8.0, "i_def": 2.0, "u_def": 5.0, "ant_def": 15.0, "gar_def": 5.0,
@@ -1122,10 +1122,9 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
         'DocSub',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=8.5,
-        leading=11,
-        textColor=colors.HexColor('#2563eb'),
-        textTransform='uppercase'
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#2563eb')
     )
     sec_heading = ParagraphStyle(
         'SecHead',
@@ -1218,6 +1217,10 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     contratista_nom = proyecto_actual.get('contratista', 'Ing. Juan González Mendoza')
     cedula_contratista = proyecto_actual.get('cedula_contratista', 'C.C. 1001867834 • M.P. 021037-0828864 ATL').strip()
     cargo_contratista = proyecto_actual.get('cargo_contratista', 'Ingeniero Residente de Obra')
+    
+    ubicacion_actual = proyecto_actual.get('ubicacion', '').strip()
+    if not ubicacion_actual or ubicacion_actual in ['Sabanalarga, Atlántico', 'Colombia']:
+        ubicacion_actual = 'Calle 20D # 1 - 19. Sabanalarga, Atlántico'
 
     txt_cliente = f"<b>{contratante_nom}</b>"
     if cedula_cliente:
@@ -1238,24 +1241,11 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
         ],
         [
             Paragraph("<b>UBICACIÓN DE LA OBRA:</b>", cell_text_bold),
-            Paragraph(f"{proyecto_actual.get('ubicacion', 'Colombia')}", cell_text),
+            Paragraph(f"{ubicacion_actual}", cell_text),
             Paragraph("<b>MODELO / ESPECIFICACIÓN:</b>", cell_text_bold),
             Paragraph(f"{proyecto_actual.get('modelo_bim', 'Presupuesto Base APU')}", cell_text)
         ]
     ]
-    meta_table = Table(meta_data, colWidths=[120, 150, 130, 140])
-    meta_table.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
-        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
-        ('TOPPADDING', (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-    ]))
-    story.append(meta_table)
-    story.append(Spacer(1, 8))
     meta_table = Table(meta_data, colWidths=[120, 150, 130, 140])
     meta_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
@@ -1410,13 +1400,12 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     
     firma_img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "firma_juan_gonzalez.png")
     if os.path.exists(firma_img_path):
-        firma_flowable = RLImage(firma_img_path, width=150, height=49.4)
+        firma_flowable = RLImage(firma_img_path, width=160, height=48)
     else:
-        firma_flowable = Spacer(1, 49.4)
+        firma_flowable = Spacer(1, 48)
         
     sig_contratista_html = (
         f"<b>{contratista_nom.upper()}</b><br/>"
-        f"{cedula_contratista}<br/>"
         f"<b>{cargo_contratista}</b>"
     )
     
@@ -1427,7 +1416,7 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     )
     
     tabla_firmas = Table([
-        [firma_flowable, Spacer(1, 52.5)],
+        [firma_flowable, Spacer(1, 48)],
         [
             Paragraph("____________________________________________<br/><b>DIRECCIÓN TÉCNICA / CONTRATISTA</b><br/>" + sig_contratista_html, ParagraphStyle('SigL', parent=cell_text, alignment=1, leading=10)),
             Paragraph("____________________________________________<br/><b>SUPERVISIÓN / CLIENTE CONTRATANTE</b><br/>" + sig_cliente_html, ParagraphStyle('SigR', parent=cell_text, alignment=1, leading=10))
@@ -2043,6 +2032,7 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
                 st.markdown("**👤 Entidad Contratante / Cliente:**")
                 edit_cli_nom = st.text_input("Nombre del Cliente / Entidad:", value=proyecto_actual.get("contratante", "Cliente Privado"), key="edit_meta_cli_nom")
                 edit_cli_ced = st.text_input("Cédula / NIT del Cliente:", value=proyecto_actual.get("cedula_cliente", ""), placeholder="Ej: C.C. 1045678901 ó NIT 900...", key="edit_meta_cli_ced")
+                edit_ubi = st.text_input("📍 Ubicación / Dirección de la Obra:", value=proyecto_actual.get("ubicacion", "Calle 20D # 1 - 19. Sabanalarga, Atlántico"), key="edit_meta_ubi")
             with col_meta_con:
                 st.markdown("**👷 Dirección Técnica / Contratista:**")
                 edit_con_nom = st.text_input("Nombre del Contratista:", value=proyecto_actual.get("contratista", "Ing. Juan González Mendoza"), key="edit_meta_con_nom")
@@ -2054,6 +2044,7 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
                 if st.button("💾 Guardar Datos y Cédulas", type="primary", use_container_width=True, key="btn_save_meta_contrato"):
                     proyecto_actual["contratante"] = edit_cli_nom.strip()
                     proyecto_actual["cedula_cliente"] = edit_cli_ced.strip()
+                    proyecto_actual["ubicacion"] = edit_ubi.strip()
                     proyecto_actual["contratista"] = edit_con_nom.strip()
                     proyecto_actual["cedula_contratista"] = edit_con_ced.strip()
                     proyecto_actual["cargo_contratista"] = edit_con_car.strip()
