@@ -10,6 +10,19 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
+def render_html(html_str: str):
+    """
+    Renderiza fragmentos HTML en Streamlit de forma completamente segura,
+    eliminando comentarios y normalizando espacios para evitar que el
+    parser CommonMark active bloques de código (<pre><code>) por indentación.
+    """
+    clean_lines = [
+        line.strip() 
+        for line in html_str.splitlines() 
+        if line.strip() and not line.strip().startswith("<!--")
+    ]
+    st.markdown(" ".join(clean_lines), unsafe_allow_html=True)
+
 # ==============================================================================
 # 1. CONFIGURACIÓN DE PÁGINA Y METADATOS CORPORATIVOS
 # ==============================================================================
@@ -352,21 +365,6 @@ PRESUPUESTO_CASA_MENDOZA = [
 
 # Catálogo de Proyectos JGM ConTech
 PROYECTOS_DISPONIBLES = {
-    "🏢 Mezzanine 3 Niveles (DOLMEN S.A. • Barranquilla)": {
-        "id": "mezzanine",
-        "nombre": "Mezzanine 3 Niveles",
-        "subtitulo": "DOLMEN S.A. E.S.P. • INGENDES S.A.S. • Barranquilla, Atlántico",
-        "contratante": "DOLMEN S.A. E.S.P.",
-        "contratista": "INGENDES S.A.S.",
-        "ubicacion": "Barranquilla, Atlántico",
-        "badge": "ENTERPRISE BIM 5D",
-        "ppto_base": PRESUPUESTO_OFICIAL_BASE,
-        "a_def": 10.0, "i_def": 3.0, "u_def": 5.0, "ant_def": 20.0, "gar_def": 5.0,
-        "modelo_bim": "Revit 2027 • Estructura & Acero",
-        "logo": "🏢",
-        "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Residente • INGENDES S.A.S.",
-        "firma_interventor": "INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P."
-    },
     "🏡 Remodelación Casa Mendoza (Sabanalarga, Atlántico • Revit 1.1)": {
         "id": "casa_mendoza",
         "nombre": "Remodelación Casa Mendoza",
@@ -381,6 +379,21 @@ PROYECTOS_DISPONIBLES = {
         "logo": "🏡",
         "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Director de Obra",
         "firma_interventor": "SUPERVISIÓN / PROPIETARIO\nRepresentante Familia Mendoza"
+    },
+    "🏢 Mezzanine 3 Niveles (DOLMEN S.A. • Barranquilla)": {
+        "id": "mezzanine",
+        "nombre": "Mezzanine 3 Niveles",
+        "subtitulo": "DOLMEN S.A. E.S.P. • INGENDES S.A.S. • Barranquilla, Atlántico",
+        "contratante": "DOLMEN S.A. E.S.P.",
+        "contratista": "INGENDES S.A.S.",
+        "ubicacion": "Barranquilla, Atlántico",
+        "badge": "ENTERPRISE BIM 5D",
+        "ppto_base": PRESUPUESTO_OFICIAL_BASE,
+        "a_def": 10.0, "i_def": 3.0, "u_def": 5.0, "ant_def": 20.0, "gar_def": 5.0,
+        "modelo_bim": "Revit 2027 • Estructura & Acero",
+        "logo": "🏢",
+        "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Residente • INGENDES S.A.S.",
+        "firma_interventor": "INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P."
     }
 }
 
@@ -756,7 +769,7 @@ header_html = f"""
 </div>
 </div>
 """
-st.markdown(textwrap.dedent(header_html).strip(), unsafe_allow_html=True)
+render_html(header_html)
 
 # ==============================================================================
 # 8. NAVEGACIÓN SUPERIOR CENTRAL (PILL TABS DE PRIMER NIVEL)
@@ -801,10 +814,9 @@ else:
 # VISTA 1: PANEL EJECUTIVO (BENTO GRID TAILWIND ULTRA-MODERNO)
 # ------------------------------------------------------------------------------
 if menu_seleccionado == "🏠 Panel Ejecutivo":
-    # Grid Bento de 4 Tarjetas de Alto Rendimiento con Tailwind
+    # Grid Bento de 4 Tarjetas de Alto Rendimiento
     bento_kpi_html = f"""
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 20px;">
-        <!-- Card 1: Presupuesto Contratado -->
         <div class="bento-card" style="border-top: 4px solid #2563eb;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">💼 Presupuesto Contratado</span>
@@ -814,7 +826,6 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
             <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">${total_ppto_contratado:,.0f} COP</div>
         </div>
 
-        <!-- Card 2: Costo Físico Ejecutado -->
         <div class="bento-card" style="border-top: 4px solid #10b981;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">🔨 Costo Físico Ejecutado</span>
@@ -824,7 +835,6 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
             <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">${total_costo_ejecutado:,.0f} COP</div>
         </div>
 
-        <!-- Card 3: Saldo Contractual -->
         <div class="bento-card" style="border-top: 4px solid #f59e0b;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">⏳ Saldo por Ejecutar</span>
@@ -834,7 +844,6 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
             <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">${total_saldo_dinero:,.0f} COP</div>
         </div>
 
-        <!-- Card 4: Salud de Ejecución -->
         <div class="bento-card" style="border-top: 4px solid #8b5cf6;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">📊 Salud de Ejecución</span>
@@ -844,8 +853,11 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
             <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">Físico Ponderado BIM</div>
         </div>
     </div>
+    """
+    render_html(bento_kpi_html)
 
-    <!-- Barra de Avance Ponderado con Degradado Esmeralda-Cian -->
+    # Barra de Avance Ponderado con Degradado Esmeralda-Cian
+    progress_html = f"""
     <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 18px 22px; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03); margin-bottom: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <div style="display: flex; align-items: center; gap: 8px;">
@@ -859,7 +871,7 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
         </div>
     </div>
     """
-    st.markdown(textwrap.dedent(bento_kpi_html), unsafe_allow_html=True)
+    render_html(progress_html)
     
     col_cap1, col_cap2 = st.columns([1.25, 0.75])
     df_caps = df_5d.groupby("Capitulo").agg({
@@ -870,38 +882,36 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
     df_caps["Avance_%"] = (df_caps["Costo_Ejecutado"] / df_caps["Presupuesto_Total"] * 100).round(1)
     
     with col_cap1:
-        st.markdown("""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; box-shadow: 0 4px 20px rgba(15,23,42,0.03); margin-bottom: 12px;">
+        with st.container(border=True):
+            render_html("""
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">📊 Desglose de Presupuesto vs. Costo Ejecutado</h3>
                 <span style="font-size: 0.72rem; font-weight: 800; background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 6px;">Por Capítulo APU</span>
             </div>
-        """, unsafe_allow_html=True)
-        chart_data = df_caps.set_index("Capitulo")[["Presupuesto_Total", "Costo_Ejecutado"]]
-        chart_data.columns = ["Presupuesto Base ($)", "Costo Ejecutado ($)"]
-        st.bar_chart(chart_data, color=["#cbd5e1", "#2563eb"])
-        st.markdown("</div>", unsafe_allow_html=True)
+            """)
+            chart_data = df_caps.set_index("Capitulo")[["Presupuesto_Total", "Costo_Ejecutado"]]
+            chart_data.columns = ["Presupuesto Base ($)", "Costo Ejecutado ($)"]
+            st.bar_chart(chart_data, color=["#cbd5e1", "#2563eb"])
         
     with col_cap2:
-        st.markdown("""
-        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; box-shadow: 0 4px 20px rgba(15,23,42,0.03); margin-bottom: 12px;">
+        with st.container(border=True):
+            render_html("""
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">📋 Resumen por Capítulos</h3>
                 <span style="font-size: 0.72rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 6px;">Tabla 5D</span>
             </div>
-        """, unsafe_allow_html=True)
-        st.dataframe(
-            df_caps,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "Capitulo": st.column_config.TextColumn("Capítulo"),
-                "Presupuesto_Total": st.column_config.NumberColumn("Presupuesto", format="$%,.0f"),
-                "Costo_Ejecutado": st.column_config.NumberColumn("Ejecutado", format="$%,.0f"),
-                "Avance_%": st.column_config.ProgressColumn("Avance", format="%.1f%%", min_value=0, max_value=100)
-            }
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
+            """)
+            st.dataframe(
+                df_caps,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Capitulo": st.column_config.TextColumn("Capítulo"),
+                    "Presupuesto_Total": st.column_config.NumberColumn("Presupuesto", format="$%,.0f"),
+                    "Costo_Ejecutado": st.column_config.NumberColumn("Ejecutado", format="$%,.0f"),
+                    "Avance_%": st.column_config.ProgressColumn("Avance", format="%.1f%%", min_value=0, max_value=100)
+                }
+            )
 
 # ------------------------------------------------------------------------------
 # VISTA 2: PRESUPUESTO & DESGLOSE 5D (APU)
@@ -1235,7 +1245,7 @@ elif menu_seleccionado == "🧱 Insumos BIM":
             </div>
         </div>
         """
-        st.markdown(textwrap.dedent(card_mamposteria_html), unsafe_allow_html=True)
+        render_html(card_mamposteria_html)
 
     c_sel1, c_sel2 = st.columns([1.5, 1])
     with c_sel1:
