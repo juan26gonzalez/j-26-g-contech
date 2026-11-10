@@ -3,6 +3,8 @@ import pandas as pd
 import numpy as np
 import requests
 import io
+import os
+import json
 import textwrap
 import unicodedata
 from datetime import datetime, timezone, timedelta
@@ -11,6 +13,129 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import plotly.graph_objects as go
 import plotly.express as px
+
+def normalizar_texto(texto):
+    if not texto or not isinstance(texto, str):
+        return ""
+    texto = unicodedata.normalize('NFD', texto).encode('ascii', 'ignore').decode('utf-8')
+    return texto.lower().strip()
+
+PROYECTOS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "proyectos_guardados.json")
+
+def cargar_proyectos_guardados():
+    if os.path.exists(PROYECTOS_FILE):
+        try:
+            with open(PROYECTOS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def guardar_proyecto_en_disco(id_key, datos_proyecto):
+    proyectos = cargar_proyectos_guardados()
+    proyectos[id_key] = datos_proyecto
+    try:
+        with open(PROYECTOS_FILE, "w", encoding="utf-8") as f:
+            json.dump(proyectos, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+def procesar_archivo_presupuesto(file_obj):
+    try:
+        name = file_obj.name.lower()
+        if name.endswith('.csv'):
+            try:
+                df = pd.read_csv(file_obj, sep=None, engine='python', encoding='utf-8')
+            except:
+                file_obj.seek(0)
+                df = pd.read_csv(file_obj, sep=';', encoding='latin-1')
+        else:
+            df = pd.read_excel(file_obj)
+            
+        col_map = {}
+        for c in df.columns:
+            cn = normalizar_texto(str(c))
+            if any(k in cn for k in ['item', 'nro', 'codigo', 'num', 'pos']):
+                col_map['item'] = c
+            elif any(k in cn for k in ['capitulo', 'cap', 'etapa', 'categoria', 'rubro']):
+                col_map['capitulo'] = c
+            elif any(k in cn for k in ['actividad', 'descripcion', 'concepto', 'detalle', 'nombre']):
+                col_map['actividad'] = c
+            elif any(k in cn for k in ['unidad', 'und', 'unid', 'medida', 'u.m']):
+                col_map['unidad'] = c
+            elif any(k in cn for k in ['cantidad', 'cant', 'volumen', 'metrado']):
+                col_map['cantidad'] = c
+            elif any(k in cn for k in ['precio', 'vr_unitario', 'valor_unitario', 'unitario', 'p.u', 'vr. unit', 'costo']):
+                col_map['precio'] = c
+                
+        if 'actividad' not in col_map or 'precio' not in col_map:
+            return None, "El archivo debe contener columnas de 'Actividad' (o Descripción) y 'Precio Unitario' (o Valor)."
+            
+        items = []
+        for idx, row in df.iterrows():
+            act = str(row[col_map['actividad']]).strip()
+            if not act or act.lower() in ['nan', 'none', '']:
+                continue
+                
+            it_val = str(row[col_map['item']]).strip() if 'item' in col_map and not pd.isna(row[col_map['item']]) else f"{idx+1}"
+            cap_val = str(row[col_map['capitulo']]).strip() if 'capitulo' in col_map and not pd.isna(row[col_map['capitulo']]) else "1. ACTIVIDADES GENERALES"
+            und_val = str(row[col_map['unidad']]).strip() if 'unidad' in col_map and not pd.isna(row[col_map['unidad']]) else "und"
+            
+            try:
+                cant_val = float(row[col_map['cantidad']]) if 'cantidad' in col_map and not pd.isna(row[col_map['cantidad']]) else 1.0
+            except:
+                cant_val = 1.0
+                
+            try:
+                pu_raw = str(row[col_map['precio']]).replace('$', '').replace(' ', '').replace(',', '')
+                pu_val = float(pu_raw) if not pd.isna(row[col_map['precio']]) else 0.0
+            except:
+                pu_val = 0.0
+                
+            match_keys = [w for w in normalizar_texto(act).split() if len(w) > 3]
+            items.append({
+                "Item": it_val,
+                "Capitulo": cap_val,
+                "Actividad": act,
+                "Unidad": und_val,
+                "Cantidad_Contratada": cant_val,
+                "Precio_Unitario": pu_val,
+                "match_keys": match_keys
+            })
+            
+        if not items:
+            return None, "No se encontraron filas con datos de actividades válidas."
+            
+        return items, None
+    except Exception as e:
+        return None, f"Error al procesar el archivo: {str(e)}"
+
+def generar_plantilla_excel_presupuesto():
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Presupuesto_Base"
+    headers = ["Item", "Capitulo", "Actividad", "Unidad", "Cantidad", "Precio_Unitario"]
+    ws.append(headers)
+    sample_data = [
+        ["1.1", "1. PRELIMINARES", "Campamento y cerramiento provisional en polisombra", "gl", 1.0, 2500000],
+        ["1.2", "1. PRELIMINARES", "Demolición de muros existentes e=0.15", "m2", 45.0, 32000],
+        ["2.1", "2. MAMPOSTERIA", "Levante de muro en bloque cemento No. 12", "m2", 120.0, 48000],
+        ["2.2", "2. MAMPOSTERIA", "Pañete y revoque interior relación 1:4", "m2", 240.0, 25000],
+        ["3.1", "3. PISOS Y ENCHAPES", "Plantilla de concreto simple e=7cm", "m2", 85.0, 34000],
+        ["3.2", "3. PISOS Y ENCHAPES", "Instalación de piso porcelanato 60x60", "m2", 85.0, 58000],
+        ["4.1", "4. PINTURA", "Estuco plástico y pintura vinílica dos manos", "m2", 240.0, 18000]
+    ]
+    for row in sample_data:
+        ws.append(row)
+    for col_idx in range(1, 7):
+        cell = ws.cell(row=1, column=col_idx)
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = PatternFill(start_color="1E3A8A", end_color="1E3A8A", fill_type="solid")
+        cell.alignment = Alignment(horizontal="center")
+    buf = io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    return buf
 
 def render_html(html_str: str):
     """
@@ -154,29 +279,85 @@ section[data-testid="stSidebar"] hr {
     margin: 16px 0 !important;
 }
 
-section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
-    background: rgba(15, 23, 42, 0.9) !important;
-    border: 1px solid rgba(56, 189, 248, 0.35) !important;
+/* FIX TOTAL DE CONTRASTE DEL SELECTBOX DE PROYECTO */
+div[data-testid="stSelectbox"] {
+    margin-bottom: 8px !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] {
     border-radius: 12px !important;
+    background-color: #0b1329 !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] > div {
+    background-color: #0b1329 !important;
+    border: 2px solid #38bdf8 !important;
+    border-radius: 12px !important;
+    min-height: 44px !important;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] div {
+    background-color: #0b1329 !important;
+}
+
+div[data-testid="stSelectbox"] div[data-baseweb="select"] span,
+div[data-testid="stSelectbox"] div[data-baseweb="select"] p,
+div[data-testid="stSelectbox"] div[data-baseweb="select"] div[aria-selected="true"] {
     color: #ffffff !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+    font-weight: 800 !important;
+    font-size: 0.88rem !important;
+    background-color: transparent !important;
 }
 
-section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+div[data-testid="stSelectbox"] div[data-baseweb="select"] svg {
+    fill: #38bdf8 !important;
+    width: 20px !important;
+    height: 20px !important;
+}
+
+/* POPOVER DESPLEGABLE EN EL BODY (PORTAL REACT) */
+div[data-baseweb="popover"] {
+    z-index: 9999999 !important;
+}
+
+div[data-baseweb="popover"] ul,
+div[data-baseweb="popover"] [role="listbox"] {
+    background-color: #090d16 !important;
+    border: 2px solid #38bdf8 !important;
+    border-radius: 14px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.75) !important;
+    padding: 8px !important;
+}
+
+div[data-baseweb="popover"] li,
+div[data-baseweb="popover"] [role="option"] {
+    background-color: transparent !important;
+    border-radius: 8px !important;
+    padding: 10px 14px !important;
+    margin-bottom: 4px !important;
+    transition: all 0.15s ease !important;
+}
+
+div[data-baseweb="popover"] li *,
+div[data-baseweb="popover"] [role="option"] * {
+    color: #f1f5f9 !important;
+    font-weight: 700 !important;
+    font-size: 0.88rem !important;
+}
+
+div[data-baseweb="popover"] li:hover,
+div[data-baseweb="popover"] li[aria-selected="true"],
+div[data-baseweb="popover"] [role="option"]:hover,
+div[data-baseweb="popover"] [role="option"][aria-selected="true"] {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+}
+
+div[data-baseweb="popover"] li:hover *,
+div[data-baseweb="popover"] li[aria-selected="true"] *,
+div[data-baseweb="popover"] [role="option"]:hover *,
+div[data-baseweb="popover"] [role="option"][aria-selected="true"] * {
     color: #ffffff !important;
-}
-
-section[data-testid="stSidebar"] div[data-baseweb="popover"] ul {
-    background: #0f172a !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
-}
-
-section[data-testid="stSidebar"] div[data-baseweb="popover"] li {
-    color: #ffffff !important;
-}
-
-section[data-testid="stSidebar"] div[data-baseweb="popover"] li:hover {
-    background: #1e3a8a !important;
 }
 
 /* Sidebar Expander */
@@ -521,11 +702,10 @@ PROYECTOS_DISPONIBLES = {
     }
 }
 
-def normalizar_texto(texto):
-    if not texto or not isinstance(texto, str):
-        return ""
-    texto = unicodedata.normalize('NFD', texto).encode('ascii', 'ignore').decode('utf-8')
-    return texto.lower().strip()
+# Cargar proyectos personalizados guardados en disco
+proyectos_personalizados = cargar_proyectos_guardados()
+for pk, pv in proyectos_personalizados.items():
+    PROYECTOS_DISPONIBLES[pk] = pv
 
 # ==============================================================================
 # 4. MOTOR MATEMÁTICO: CRUCE RELACIONAL BIM 5D & BITÁCORA
@@ -819,27 +999,58 @@ with st.sidebar:
     </a>
     """)
 
-    render_html("""
-    <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
-        <span>🔀</span><span>Proyecto Activo:</span>
-    </div>
-    """)
+    lista_proyectos_keys = list(PROYECTOS_DISPONIBLES.keys())
+    
+    # Manejar selección activa persistente en session_state
+    if "proyecto_activo_seleccionado" not in st.session_state or st.session_state["proyecto_activo_seleccionado"] not in lista_proyectos_keys:
+        st.session_state["proyecto_activo_seleccionado"] = lista_proyectos_keys[0]
+        
+    idx_actual = lista_proyectos_keys.index(st.session_state["proyecto_activo_seleccionado"])
+
+    col_act_hdr1, col_act_hdr2 = st.columns([0.62, 0.38])
+    with col_act_hdr1:
+        render_html("""
+        <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; display: flex; align-items: center; gap: 6px; padding-top: 6px;">
+            <span>🔀</span><span>Proyecto Activo:</span>
+        </div>
+        """)
+    with col_act_hdr2:
+        if st.button("➕ Nuevo", key="btn_toggle_crear_proyecto", use_container_width=True, help="Crear o importar un nuevo proyecto (Solo Presupuesto o BIM 5D)"):
+            st.session_state["mostrar_crear_proyecto"] = not st.session_state.get("mostrar_crear_proyecto", False)
+            st.rerun()
+
     proyecto_sel_key = st.selectbox(
         "Seleccionar Proyecto:",
-        options=list(PROYECTOS_DISPONIBLES.keys()),
-        index=0,
-        label_visibility="collapsed"
+        options=lista_proyectos_keys,
+        index=idx_actual,
+        label_visibility="collapsed",
+        key="sb_selector_proyecto_main"
     )
-    proyecto_actual = PROYECTOS_DISPONIBLES[proyecto_sel_key]
+    if proyecto_sel_key != st.session_state["proyecto_activo_seleccionado"]:
+        st.session_state["proyecto_activo_seleccionado"] = proyecto_sel_key
+        st.rerun()
+        
+    proyecto_actual = PROYECTOS_DISPONIBLES[st.session_state["proyecto_activo_seleccionado"]]
+
+    es_solo_ppto_actual = proyecto_actual.get("tipo") == "presupuesto" or "PRESUPUESTO" in proyecto_actual.get("badge", "").upper()
+    badge_bg = "rgba(245, 158, 11, 0.2)" if es_solo_ppto_actual else "rgba(37, 99, 235, 0.25)"
+    badge_color = "#fbbf24" if es_solo_ppto_actual else "#38bdf8"
+    badge_border = "rgba(245, 158, 11, 0.45)" if es_solo_ppto_actual else "rgba(56, 189, 248, 0.45)"
+    badge_txt = "📊 SOLO PRESUPUESTO" if es_solo_ppto_actual else "🏗️ BIM 5D REVIT"
+    sub_tag_icon = "📊" if es_solo_ppto_actual else "📐"
+    sub_tag_label = "PRESUPUESTO CONTRACTUAL" if es_solo_ppto_actual else f"BIM: {proyecto_actual['modelo_bim']}"
 
     render_html(f"""
-    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 14px; margin-top: 8px; margin-bottom: 16px;">
-        <div style="font-size: 0.95rem; font-weight: 900; color: #ffffff;">{proyecto_actual['logo']} {proyecto_actual['nombre']}</div>
-        <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 3px;">📍 {proyecto_actual['ubicacion']}</div>
-        <div style="font-size: 0.72rem; color: #cbd5e1; margin-top: 2px;">👤 {proyecto_actual['contratante']}</div>
-        <div style="display: flex; align-items: center; gap: 6px; background: rgba(37, 99, 235, 0.25); border: 1px solid rgba(56, 189, 248, 0.4); padding: 5px 10px; border-radius: 8px; margin-top: 10px;">
-            <span style="font-size: 0.85rem;">📐</span>
-            <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 800; font-family: monospace;">BIM: {proyecto_actual['modelo_bim']}</span>
+    <div style="background: rgba(15, 23, 42, 0.88); border: 2px solid #38bdf8; border-radius: 14px; padding: 14px; margin-top: 8px; margin-bottom: 16px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);">
+        <div style="display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 8px;">
+            <div style="font-size: 1.05rem; font-weight: 900; color: #38bdf8; text-shadow: 0 0 12px rgba(56,189,248,0.4); line-height: 1.25;">{proyecto_actual['logo']} {proyecto_actual['nombre']}</div>
+            <span style="font-size: 0.62rem; font-weight: 800; background: {badge_bg}; color: {badge_color}; padding: 3px 8px; border-radius: 6px; border: 1px solid {badge_border}; white-space: nowrap;">{badge_txt}</span>
+        </div>
+        <div style="font-size: 0.78rem; color: #f1f5f9; font-weight: 600; margin-top: 4px;">📍 {proyecto_actual['ubicacion']}</div>
+        <div style="font-size: 0.74rem; color: #cbd5e1; margin-top: 3px;">👤 Cliente: <strong style="color: #ffffff;">{proyecto_actual['contratante']}</strong></div>
+        <div style="display: flex; align-items: center; gap: 6px; background: rgba(30, 58, 138, 0.4); border: 1px solid rgba(56, 189, 248, 0.4); padding: 6px 10px; border-radius: 8px; margin-top: 10px;">
+            <span style="font-size: 0.85rem;">{sub_tag_icon}</span>
+            <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 800; font-family: monospace;">{sub_tag_label}</span>
         </div>
     </div>
     """)
@@ -926,6 +1137,190 @@ header_html = f"""
 </div>
 """
 render_html(header_html)
+
+# ==============================================================================
+# 7B. CENTRO DE CREACIÓN & IMPORTACIÓN DE PROYECTOS (SOLO PRESUPUESTO O BIM 5D)
+# ==============================================================================
+if st.session_state.get("mostrar_crear_proyecto", False):
+    render_html("""
+    <div style="background: linear-gradient(135deg, #090e1c 0%, #0d1b38 50%, #172554 100%); border: 2px solid #38bdf8; border-radius: 20px; padding: 22px 28px; margin-bottom: 22px; box-shadow: 0 16px 40px rgba(0,0,0,0.5);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(56, 189, 248, 0.25); padding-bottom: 12px; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <span style="font-size: 2rem;">🚀</span>
+                <div>
+                    <h3 style="margin: 0; font-size: 1.35rem; font-weight: 900; color: #ffffff; letter-spacing: -0.02em;">Centro de Creación & Carga de Proyectos</h3>
+                    <p style="margin: 2px 0 0 0; font-size: 0.82rem; color: #94a3b8;">Cree un nuevo proyecto o importe un presupuesto histórico en Excel/CSV (con o sin modelo 3D BIM).</p>
+                </div>
+            </div>
+            <span style="background: rgba(56, 189, 248, 0.2); color: #38bdf8; border: 1px solid #38bdf8; padding: 5px 14px; border-radius: 999px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.05em;">ASISTENTE CONTECH</span>
+        </div>
+    </div>
+    """)
+    
+    with st.container():
+        # Paso 1: Tipo de Proyecto
+        tipo_proy = st.radio(
+            "📌 Tipo de Proyecto a Crear:",
+            [
+                "📊 Solo Presupuesto (Contractual APU - Sin Modelo 3D Revit)",
+                "🏗️ Proyecto BIM 5D Integrado (Con Modelo 3D Autodesk Revit)"
+            ],
+            index=0,
+            horizontal=True,
+            help="Seleccione 'Solo Presupuesto' para cargar presupuestos pasados en Excel/CSV o proyectos que no requieren modelo 3D."
+        )
+        es_solo_ppto = "Solo Presupuesto" in tipo_proy
+        
+        # Paso 2: Metadatos
+        col_m1, col_m2, col_m3 = st.columns([1.5, 1.2, 0.9])
+        with col_m1:
+            nuevo_nombre = st.text_input("🏷️ Nombre del Proyecto:", placeholder="Ej: Remodelación Oficinas Norte", key="np_nombre")
+            nuevo_cliente = st.text_input("👤 Entidad Contratante / Cliente:", placeholder="Ej: Inversiones del Caribe S.A.S.", key="np_cliente")
+        with col_m2:
+            nueva_ubicacion = st.text_input("📍 Ubicación / Ciudad:", placeholder="Ej: Barranquilla, Atlántico", key="np_ubicacion")
+            nuevo_contratista = st.text_input("👷 Contratista / Director de Obra:", value="Ing. Juan González (Director)", key="np_contratista")
+        with col_m3:
+            nuevo_icono = st.selectbox("🎨 Ícono:", ["📊", "🏡", "🏢", "🏗️", "🛣️", "🏬", "🏥", "🏭", "🏠"], index=0 if es_solo_ppto else 3, key="np_icono")
+            modelo_bim_text = "Presupuesto Contractual Base (Sin Modelo 3D)" if es_solo_ppto else st.text_input("📐 Archivo Revit .rvt:", value="Modelo_Proyecto.rvt", key="np_rvt")
+
+        st.markdown("---")
+        
+        # Paso 3: Carga del Presupuesto
+        st.markdown("#### 📑 Carga del Presupuesto Contractual (Ítems, Cantidades y Precios Unitarios)")
+        
+        c_up1, c_up2 = st.columns([1.4, 0.6])
+        with c_up1:
+            archivo_subido = st.file_uploader(
+                "Subir Presupuesto en Excel (.xlsx, .xls) o CSV:",
+                type=["xlsx", "xls", "csv"],
+                key="np_uploader",
+                help="El archivo debe tener columnas: Item, Capitulo, Actividad, Unidad, Cantidad, Precio_Unitario."
+            )
+        with c_up2:
+            st.markdown("<div style='padding-top: 24px;'></div>", unsafe_allow_html=True)
+            plantilla_buf = generar_plantilla_excel_presupuesto()
+            st.download_button(
+                label="📥 Descargar Plantilla Excel (.xlsx)",
+                data=plantilla_buf,
+                file_name="Plantilla_Presupuesto_JGM_ConTech.xlsx",
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True,
+                help="Descarga un formato de Excel con columnas estandarizadas y datos de ejemplo listos."
+            )
+            
+        items_procesados = None
+        if archivo_subido is not None:
+            items_procesados, err_msg = procesar_archivo_presupuesto(archivo_subido)
+            if err_msg:
+                st.error(f"❌ {err_msg}")
+            else:
+                st.success(f"✅ Se cargaron exitosamente {len(items_procesados)} actividades constructivas del archivo '{archivo_subido.name}'.")
+                df_prev = pd.DataFrame(items_procesados)[["Item", "Capitulo", "Actividad", "Unidad", "Cantidad_Contratada", "Precio_Unitario"]]
+                df_prev["Subtotal ($)"] = df_prev["Cantidad_Contratada"] * df_prev["Precio_Unitario"]
+                st.dataframe(
+                    df_prev.style.format({"Precio_Unitario": "${:,.0f}", "Subtotal ($)": "${:,.0f}", "Cantidad_Contratada": "{:,.2f}"}),
+                    use_container_width=True,
+                    height=200
+                )
+                total_prev = df_prev["Subtotal ($)"].sum()
+                st.info(f"💰 **Costo Directo Total Detectado:** ${total_prev:,.2f} COP en {df_prev['Capitulo'].nunique()} capítulos.")
+        
+        # Opción manual si no subió archivo
+        usar_manual = st.checkbox("✍️ O crear / pegar presupuesto en tabla interactiva manual", value=(archivo_subido is None), key="np_chk_manual")
+        items_manuales = None
+        if usar_manual and items_procesados is None:
+            st.caption("Puedes agregar filas o pegar directamente desde Excel (Ctrl+V) sobre esta tabla:")
+            df_init = pd.DataFrame([
+                {"Item": "1.1", "Capitulo": "1. PRELIMINARES", "Actividad": "Campamento y cerramiento provisional en polisombra", "Unidad": "gl", "Cantidad": 1.0, "Precio_Unitario": 2500000.0},
+                {"Item": "2.1", "Capitulo": "2. MAMPOSTERIA", "Actividad": "Muro en bloque de concreto No. 12", "Unidad": "m²", "Cantidad": 100.0, "Precio_Unitario": 48000.0},
+                {"Item": "3.1", "Capitulo": "3. PISOS Y ENCHAPES", "Actividad": "Plantilla de concreto simple e=7cm", "Unidad": "m²", "Cantidad": 80.0, "Precio_Unitario": 34000.0},
+            ])
+            edited_df = st.data_editor(
+                df_init,
+                num_rows="dynamic",
+                use_container_width=True,
+                key="np_editor",
+                column_config={
+                    "Precio_Unitario": st.column_config.NumberColumn("Precio Unitario ($)", format="$%d"),
+                    "Cantidad": st.column_config.NumberColumn("Cantidad", format="%.2f")
+                }
+            )
+            items_manuales = []
+            for idx, r in edited_df.iterrows():
+                act = str(r.get("Actividad", "")).strip()
+                if act and act.lower() not in ["nan", "none"]:
+                    items_manuales.append({
+                        "Item": str(r.get("Item", f"{idx+1}")),
+                        "Capitulo": str(r.get("Capitulo", "1. ACTIVIDADES GENERALES")),
+                        "Actividad": act,
+                        "Unidad": str(r.get("Unidad", "und")),
+                        "Cantidad_Contratada": float(r.get("Cantidad", 1.0) or 1.0),
+                        "Precio_Unitario": float(r.get("Precio_Unitario", 0.0) or 0.0),
+                        "match_keys": [w for w in normalizar_texto(act).split() if len(w) > 3]
+                    })
+
+        # Paso 4: Parámetros Contractuales
+        st.markdown("#### ⚙️ Parámetros Contractuales por Defecto (AIU y Liquidación)")
+        c_p1, c_p2, c_p3, c_p4, c_p5 = st.columns(5)
+        with c_p1:
+            np_a = st.number_input("% Admin (A):", value=8.0, step=0.5, key="np_a")
+        with c_p2:
+            np_i = st.number_input("% Imprevistos (I):", value=2.0, step=0.5, key="np_i")
+        with c_p3:
+            np_u = st.number_input("% Utilidad (U):", value=5.0, step=0.5, key="np_u")
+        with c_p4:
+            np_ant = st.number_input("% Anticipo:", value=15.0, step=1.0, key="np_ant")
+        with c_p5:
+            np_gar = st.number_input("% Ret. Garantía:", value=5.0, step=1.0, key="np_gar")
+
+        # Botones finales
+        c_b1, c_b2, c_b3 = st.columns([1, 1, 2])
+        with c_b1:
+            if st.button("🚀 Guardar y Activar Proyecto", type="primary", use_container_width=True, key="btn_guardar_nuevo_proy"):
+                items_finales = items_procesados if items_procesados else items_manuales
+                if not nuevo_nombre.strip():
+                    st.error("⚠️ Ingrese un nombre para el proyecto.")
+                elif not items_finales or len(items_finales) == 0:
+                    st.error("⚠️ Debe cargar un archivo de presupuesto o ingresar actividades en la tabla manual.")
+                else:
+                    nuevo_id = f"proy_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                    tipo_clave = "presupuesto" if es_solo_ppto else "bim"
+                    tipo_tag = "Solo Presupuesto" if es_solo_ppto else "BIM 5D"
+                    display_key = f"{nuevo_icono} {nuevo_nombre.strip()} ({nueva_ubicacion.strip() or 'Colombia'} • {tipo_tag})"
+                    
+                    datos_nuevo = {
+                        "id": nuevo_id,
+                        "tipo": tipo_clave,
+                        "nombre": nuevo_nombre.strip(),
+                        "subtitulo": f"{nuevo_cliente.strip() or 'Cliente Privado'} • {nueva_ubicacion.strip() or 'Colombia'} • {'Presupuesto Contractual Base' if es_solo_ppto else 'BIM 5D'}",
+                        "contratante": nuevo_cliente.strip() or "Cliente Privado",
+                        "contratista": nuevo_contratista.strip() or "Ing. Juan González",
+                        "ubicacion": nueva_ubicacion.strip() or "Colombia",
+                        "badge": "SOLO PRESUPUESTO" if es_solo_ppto else "REVIT 2027 BIM 5D",
+                        "ppto_base": items_finales,
+                        "a_def": float(np_a),
+                        "i_def": float(np_i),
+                        "u_def": float(np_u),
+                        "ant_def": float(np_ant),
+                        "gar_def": float(np_gar),
+                        "modelo_bim": modelo_bim_text,
+                        "logo": nuevo_icono,
+                        "firma_residente": f"{nuevo_contratista.strip()}\nIngeniero Director de Obra",
+                        "firma_interventor": f"SUPERVISIÓN / CLIENTE\nRepresentante {nuevo_cliente.strip() or 'Cliente Privado'}"
+                    }
+                    guardar_proyecto_en_disco(display_key, datos_nuevo)
+                    PROYECTOS_DISPONIBLES[display_key] = datos_nuevo
+                    st.session_state["proyecto_activo_seleccionado"] = display_key
+                    st.session_state["mostrar_crear_proyecto"] = False
+                    st.success(f"🎉 ¡Proyecto '{nuevo_nombre}' creado y activado exitosamente!")
+                    st.rerun()
+                    
+        with c_b2:
+            if st.button("✖ Cancelar", use_container_width=True, key="btn_cancelar_nuevo_proy"):
+                st.session_state["mostrar_crear_proyecto"] = False
+                st.rerun()
+
+    st.markdown("<hr style='margin: 24px 0; border: 0; border-top: 1px solid rgba(56, 189, 248, 0.3);'>", unsafe_allow_html=True)
 
 # ==============================================================================
 # 8. NAVEGACIÓN SUPERIOR CENTRAL (PILL TABS DE PRIMER NIVEL)
