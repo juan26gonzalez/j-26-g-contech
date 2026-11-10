@@ -20,17 +20,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Inyección de estilos CSS corporativos de alto impacto (Vibrante, Moderno y Dinámico)
+# Inyección de estilos CSS corporativos de alto impacto (Tailwind CSS, Glassmorphism, Tipografía Premium)
 css_styles = """
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap');
 
 html, body, [class*="css"] {
-    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif !important;
 }
 
 .stApp {
-    background: radial-gradient(circle at top right, #f1f5f9 0%, #f8fafc 100%);
+    background: radial-gradient(circle at top right, #f8fafc 0%, #f1f5f9 100%) !important;
 }
 
 #MainMenu { visibility: hidden; }
@@ -42,7 +43,7 @@ div[data-testid="stSegmentedControl"] {
     display: flex !important;
     justify-content: center !important;
     width: 100% !important;
-    margin: 10px 0 24px 0 !important;
+    margin: 8px 0 24px 0 !important;
 }
 
 div[data-testid="stSegmentedControl"] > div {
@@ -50,7 +51,7 @@ div[data-testid="stSegmentedControl"] > div {
     padding: 6px !important;
     border-radius: 999px !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06) !important;
+    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
     gap: 4px !important;
     display: flex !important;
     flex-wrap: wrap !important;
@@ -61,14 +62,20 @@ div[data-testid="stSegmentedControl"] button {
     border-radius: 999px !important;
     font-size: 0.82rem !important;
     font-weight: 700 !important;
-    padding: 6px 14px !important;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    padding: 7px 16px !important;
+    color: #475569 !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+div[data-testid="stSegmentedControl"] button:hover {
+    color: #0f172a !important;
+    background: #f8fafc !important;
 }
 
 div[data-testid="stSegmentedControl"] button[aria-selected="true"] {
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+    background: linear-gradient(135deg, #0a0f1d 0%, #1e3a8a 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 14px rgba(30, 58, 138, 0.35) !important;
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.35) !important;
 }
 
 div[data-testid="stSegmentedControl"] button[aria-selected="true"] * {
@@ -85,11 +92,29 @@ div[data-testid="stRadio"] > div[role="radiogroup"] {
     margin-bottom: 20px !important;
 }
 
-/* Tarjetas de Métricas Nativas Mejoradas */
+/* Bento Cards Universales */
+.bento-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 20px;
+    padding: 22px;
+    box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.04);
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.bento-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.08);
+    border-color: #cbd5e1;
+}
+
+/* Tarjetas de Métricas Nativas */
 div[data-testid="stMetric"] {
     background: #ffffff;
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 18px 22px;
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
     border-top: 4px solid #2563eb;
@@ -98,68 +123,61 @@ div[data-testid="stMetric"] {
     overflow: hidden;
 }
 
-div[data-testid="column"]:nth-of-type(1) div[data-testid="stMetric"] {
-    border-top: 4px solid #2563eb !important;
-}
-div[data-testid="column"]:nth-of-type(2) div[data-testid="stMetric"] {
-    border-top: 4px solid #10b981 !important;
-}
-div[data-testid="column"]:nth-of-type(3) div[data-testid="stMetric"] {
-    border-top: 4px solid #f59e0b !important;
-}
-div[data-testid="column"]:nth-of-type(4) div[data-testid="stMetric"] {
-    border-top: 4px solid #8b5cf6 !important;
-}
+div[data-testid="column"]:nth-of-type(1) div[data-testid="stMetric"] { border-top: 4px solid #2563eb !important; }
+div[data-testid="column"]:nth-of-type(2) div[data-testid="stMetric"] { border-top: 4px solid #10b981 !important; }
+div[data-testid="column"]:nth-of-type(3) div[data-testid="stMetric"] { border-top: 4px solid #f59e0b !important; }
+div[data-testid="column"]:nth-of-type(4) div[data-testid="stMetric"] { border-top: 4px solid #8b5cf6 !important; }
 
 div[data-testid="stMetric"]:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.12);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.1);
     border-color: #93c5fd;
 }
 
 div[data-testid="stMetric"] label {
-    font-size: 0.76rem !important;
+    font-size: 0.74rem !important;
     font-weight: 800 !important;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #475569 !important;
+    color: #64748b !important;
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricValue"] {
     font-size: 1.85rem !important;
     font-weight: 900 !important;
     color: #0f172a !important;
-    font-family: 'Plus Jakarta Sans', monospace !important;
+    font-family: 'JetBrains Mono', monospace !important;
     letter-spacing: -0.02em;
 }
 
 div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
     font-weight: 800 !important;
-    font-size: 0.82rem !important;
+    font-size: 0.8rem !important;
 }
 
 /* Botones de Acción Primarios */
 div.stDownloadButton > button, div.stButton > button {
-    background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important;
+    background: linear-gradient(135deg, #0a0f1d 0%, #1e3a8a 100%) !important;
     color: #ffffff !important;
-    border-radius: 12px !important;
-    padding: 10px 20px !important;
-    font-weight: 700 !important;
+    border-radius: 14px !important;
+    padding: 12px 24px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.01em !important;
     border: none !important;
-    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.15) !important;
-    transition: all 0.2s ease !important;
+    box-shadow: 0 4px 16px rgba(15, 23, 42, 0.15) !important;
+    transition: all 0.25s ease !important;
 }
 
 div.stDownloadButton > button:hover, div.stButton > button:hover {
     transform: translateY(-1px) !important;
-    box-shadow: 0 6px 20px rgba(30, 58, 138, 0.28) !important;
+    box-shadow: 0 8px 24px rgba(30, 58, 138, 0.3) !important;
 }
 
 /* Dataframe Styling */
 div[data-testid="stDataFrame"] {
     background: #ffffff;
-    border-radius: 16px;
-    padding: 8px;
+    border-radius: 18px;
+    padding: 10px;
     border: 1px solid #e2e8f0;
     box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03);
 }
@@ -235,47 +253,56 @@ PRESUPUESTO_OFICIAL_BASE = [
 
 # ==============================================================================
 # 3B. PRESUPUESTO OFICIAL: CASA MENDOZA 1.1 (REVIT 2027 • SABANALARGA)
-# Integración paramétrica completa con las tablas de planificación de Revit
+# Mampostería en m² y Suelos discriminados (Plantilla vs Porcelanato)
 # ==============================================================================
 PRESUPUESTO_CASA_MENDOZA = [
-    # 1. MAMPOSTERÍA
+    # 1. MAMPOSTERÍA (CANTIDAD Y PRECIO UNITARIO EN M²)
     {
         "Item": "1.1", 
         "Capitulo": "1. MAMPOSTERIA", 
-        "Actividad": "Muros en mampostería de bloques de concreto", 
-        "Unidad": "und", 
-        "Cantidad_Contratada": 2848.63, 
-        "Precio_Unitario": 3800, 
-        "match_keys": ["mamposteria", "bloque", "bloques"]
+        "Actividad": "Muros en mampostería de bloques de concreto No. 12", 
+        "Unidad": "m²", 
+        "Cantidad_Contratada": 227.89, 
+        "Precio_Unitario": 47500, 
+        "match_keys": ["mamposteria", "bloque", "bloques", "muro"]
     },
     {
         "Item": "1.2", 
         "Capitulo": "1. MAMPOSTERIA", 
-        "Actividad": "Pañete y mortero de revoco en muros", 
+        "Actividad": "Pañete y mortero de revoco en muros (dos caras)", 
         "Unidad": "m²", 
         "Cantidad_Contratada": 455.78, 
         "Precio_Unitario": 24000, 
         "match_keys": ["panete", "revoco"]
     },
 
-    # 2. PISOS Y ENCHAPES
+    # 2. PISOS Y ENCHAPES (SEPARADOS: PLANTILLA DE CONCRETO Y ENCHAPE)
     {
         "Item": "2.1", 
         "Capitulo": "2. PISOS Y ENCHAPES", 
-        "Actividad": "Instalación de piso cerámico o enchape", 
+        "Actividad": "Plantilla de concreto e=7cm (base y solado de piso)", 
         "Unidad": "m²", 
-        "Cantidad_Contratada": 213.34, 
-        "Precio_Unitario": 55000, 
-        "match_keys": ["piso ceramico", "enchape", "piso", "suelo", "assembly"]
+        "Cantidad_Contratada": 106.24, 
+        "Precio_Unitario": 34000, 
+        "match_keys": ["plantilla", "solado", "base de piso"]
+    },
+    {
+        "Item": "2.2", 
+        "Capitulo": "2. PISOS Y ENCHAPES", 
+        "Actividad": "Instalación de piso en porcelanato 51x51 cm y enchape", 
+        "Unidad": "m²", 
+        "Cantidad_Contratada": 107.10, 
+        "Precio_Unitario": 58000, 
+        "match_keys": ["porcelanato", "piso ceramico", "enchape", "ceramica", "piso"]
     },
 
     # 3. CIELOS RASOS (Ceiling Quantities)
     {
         "Item": "3.1", 
         "Capitulo": "3. CIELOS RASOS", 
-        "Actividad": "Instalación de cielorraso", 
+        "Actividad": "Instalación de cielo raso suspendido e=5.3cm", 
         "Unidad": "m²", 
-        "Cantidad_Contratada": 185.00, 
+        "Cantidad_Contratada": 86.65, 
         "Precio_Unitario": 38000, 
         "match_keys": ["cielorraso", "cielo raso", "ceiling"]
     },
@@ -284,7 +311,7 @@ PRESUPUESTO_CASA_MENDOZA = [
     {
         "Item": "4.1", 
         "Capitulo": "4. ACABADOS Y PINTURA", 
-        "Actividad": "Estuco y pintura vinílica en muros", 
+        "Actividad": "Estuco plástico y pintura vinílica en muros", 
         "Unidad": "m²", 
         "Cantidad_Contratada": 455.78, 
         "Precio_Unitario": 16500, 
@@ -295,18 +322,18 @@ PRESUPUESTO_CASA_MENDOZA = [
     {
         "Item": "5.1", 
         "Capitulo": "5. CARPINTERIA", 
-        "Actividad": "Suministro e instalación de puertas interiores y acceso", 
+        "Actividad": "Suministro e instalación de puertas interiores y acceso (7 und)", 
         "Unidad": "und", 
-        "Cantidad_Contratada": 8.0, 
-        "Precio_Unitario": 350000, 
+        "Cantidad_Contratada": 7.0, 
+        "Precio_Unitario": 390000, 
         "match_keys": ["puertas", "puerta", "door"]
     },
     {
         "Item": "5.2", 
         "Capitulo": "5. CARPINTERIA", 
-        "Actividad": "Suministro e instalación de ventanería en aluminio y vidrio", 
+        "Actividad": "Suministro e instalación de ventanería en aluminio y vidrio (8 und)", 
         "Unidad": "und", 
-        "Cantidad_Contratada": 6.0, 
+        "Cantidad_Contratada": 8.0, 
         "Precio_Unitario": 280000, 
         "match_keys": ["ventanas", "ventana", "window", "ventaneria"]
     },
@@ -315,22 +342,11 @@ PRESUPUESTO_CASA_MENDOZA = [
     {
         "Item": "6.1", 
         "Capitulo": "6. CUBIERTA", 
-        "Actividad": "Montaje de cubierta en Eternit", 
+        "Actividad": "Montaje de cubierta en teja ondulada Eternit y caballetes", 
         "Unidad": "m²", 
         "Cantidad_Contratada": 132.05, 
         "Precio_Unitario": 45000, 
-        "match_keys": ["cubierta", "eternit", "techo"]
-    },
-
-    # 7. APARATOS SANITARIOS
-    {
-        "Item": "7.1", 
-        "Capitulo": "7. APARATOS SANITARIOS", 
-        "Actividad": "Suministro e instalación de aparatos sanitarios y griferías", 
-        "Unidad": "und", 
-        "Cantidad_Contratada": 5.0, 
-        "Precio_Unitario": 420000, 
-        "match_keys": ["sanitarios", "aparatos sanitarios", "griferia", "plumbing"]
+        "match_keys": ["cubierta", "eternit", "techo", "teja"]
     }
 ]
 
@@ -782,44 +798,70 @@ else:
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# VISTA 1: PANEL EJECUTIVO (BENTO GRID VIBRANTE)
+# VISTA 1: PANEL EJECUTIVO (BENTO GRID TAILWIND ULTRA-MODERNO)
 # ------------------------------------------------------------------------------
 if menu_seleccionado == "🏠 Panel Ejecutivo":
-    col1, col2, col3, col4 = st.columns(4)
+    # Grid Bento de 4 Tarjetas de Alto Rendimiento con Tailwind
+    bento_kpi_html = f"""
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 20px;">
+        <!-- Card 1: Presupuesto Contratado -->
+        <div class="bento-card" style="border-top: 4px solid #2563eb;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">💼 Presupuesto Contratado</span>
+                <span style="font-size: 0.7rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 6px;">Línea Base 100%</span>
+            </div>
+            <div style="font-size: 1.95rem; font-weight: 900; color: #0f172a; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.03em;">${(total_ppto_contratado/1_000_000):,.1f}M</div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">${total_ppto_contratado:,.0f} COP</div>
+        </div>
+
+        <!-- Card 2: Costo Físico Ejecutado -->
+        <div class="bento-card" style="border-top: 4px solid #10b981;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">🔨 Costo Físico Ejecutado</span>
+                <span style="font-size: 0.7rem; font-weight: 800; background: #ecfdf5; color: #047857; padding: 3px 8px; border-radius: 6px;">{avance_financiero_global}% causado</span>
+            </div>
+            <div style="font-size: 1.95rem; font-weight: 900; color: #0f172a; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.03em;">${(total_costo_ejecutado/1_000_000):,.2f}M</div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">${total_costo_ejecutado:,.0f} COP</div>
+        </div>
+
+        <!-- Card 3: Saldo Contractual -->
+        <div class="bento-card" style="border-top: 4px solid #f59e0b;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">⏳ Saldo por Ejecutar</span>
+                <span style="font-size: 0.7rem; font-weight: 800; background: #fffbeb; color: #b45309; padding: 3px 8px; border-radius: 6px;">{round(100 - avance_financiero_global, 1)}% por facturar</span>
+            </div>
+            <div style="font-size: 1.95rem; font-weight: 900; color: #0f172a; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.03em;">${(total_saldo_dinero/1_000_000):,.1f}M</div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">${total_saldo_dinero:,.0f} COP</div>
+        </div>
+
+        <!-- Card 4: Salud de Ejecución -->
+        <div class="bento-card" style="border-top: 4px solid #8b5cf6;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #64748b;">📊 Salud de Ejecución</span>
+                <span style="font-size: 0.7rem; font-weight: 800; background: #f5f3ff; color: #6d28d9; padding: 3px 8px; border-radius: 6px;">{'🟢 En Plazo' if avance_fisico_ponderado == 0 or avance_fisico_ponderado >= 10 else '⚪ Planeación'}</span>
+            </div>
+            <div style="font-size: 1.95rem; font-weight: 900; color: #0f172a; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.03em;">{avance_fisico_ponderado}%</div>
+            <div style="font-size: 0.8rem; font-weight: 600; color: #64748b; margin-top: 4px;">Físico Ponderado BIM</div>
+        </div>
+    </div>
+
+    <!-- Barra de Avance Ponderado con Degradado Esmeralda-Cian -->
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 18px 22px; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03); margin-bottom: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: {'#10b981' if avance_fisico_ponderado > 0 else '#94a3b8'};"></span>
+                <span style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; color: #1e293b;">Curva de Avance Contractual Ponderado</span>
+            </div>
+            <span style="font-size: 0.88rem; font-weight: 900; color: #2563eb; font-family: monospace;">{avance_fisico_ponderado}% / 100.0%</span>
+        </div>
+        <div style="background: #f1f5f9; border-radius: 999px; height: 12px; overflow: hidden; padding: 1.5px; border: 1px solid #e2e8f0;">
+            <div style="background: linear-gradient(90deg, #2563eb 0%, #06b6d4 50%, #10b981 100%); height: 100%; border-radius: 999px; width: {max(1.5, min(avance_fisico_ponderado, 100.0))}%; transition: width 0.6s ease;"></div>
+        </div>
+    </div>
+    """
+    st.markdown(textwrap.dedent(bento_kpi_html), unsafe_allow_html=True)
     
-    col1.metric(
-        label="💼 Presupuesto Contratado",
-        value=f"${(total_ppto_contratado/1_000_000):,.1f}M",
-        delta=f"${total_ppto_contratado:,.0f} COP",
-        delta_color="off"
-    )
-    col2.metric(
-        label="🔨 Costo Físico Ejecutado",
-        value=f"${(total_costo_ejecutado/1_000_000):,.2f}M",
-        delta=f"{avance_financiero_global}% causado",
-        delta_color="normal"
-    )
-    col3.metric(
-        label="⏳ Saldo Contractual",
-        value=f"${(total_saldo_dinero/1_000_000):,.1f}M",
-        delta=f"-{round(100 - avance_financiero_global, 1)}% por facturar",
-        delta_color="off"
-    )
-    col4.metric(
-        label="📊 Salud de Ejecución",
-        value=f"{avance_fisico_ponderado}%",
-        delta="🟢 En Plazo Contractual",
-        delta_color="normal"
-    )
-    
-    st.write("")
-    st.progress(
-        min(avance_fisico_ponderado / 100.0, 1.0), 
-        text=f"Avance Físico Global Ponderado: {avance_fisico_ponderado}% (Línea Base Contractual 100%)"
-    )
-    st.write("")
-    
-    col_cap1, col_cap2 = st.columns([1.2, 0.8])
+    col_cap1, col_cap2 = st.columns([1.25, 0.75])
     df_caps = df_5d.groupby("Capitulo").agg({
         "Presupuesto_Total": "sum",
         "Costo_Ejecutado": "sum",
@@ -828,13 +870,26 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
     df_caps["Avance_%"] = (df_caps["Costo_Ejecutado"] / df_caps["Presupuesto_Total"] * 100).round(1)
     
     with col_cap1:
-        st.markdown("### 📊 Desglose Presupuesto Contratado vs. Ejecutado por Capítulo")
+        st.markdown("""
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; box-shadow: 0 4px 20px rgba(15,23,42,0.03); margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">📊 Desglose de Presupuesto vs. Costo Ejecutado</h3>
+                <span style="font-size: 0.72rem; font-weight: 800; background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 6px;">Por Capítulo APU</span>
+            </div>
+        """, unsafe_allow_html=True)
         chart_data = df_caps.set_index("Capitulo")[["Presupuesto_Total", "Costo_Ejecutado"]]
         chart_data.columns = ["Presupuesto Base ($)", "Costo Ejecutado ($)"]
         st.bar_chart(chart_data, color=["#cbd5e1", "#2563eb"])
+        st.markdown("</div>", unsafe_allow_html=True)
         
     with col_cap2:
-        st.markdown("### 📋 Resumen por Capítulos")
+        st.markdown("""
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; box-shadow: 0 4px 20px rgba(15,23,42,0.03); margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                <h3 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">📋 Resumen por Capítulos</h3>
+                <span style="font-size: 0.72rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 6px;">Tabla 5D</span>
+            </div>
+        """, unsafe_allow_html=True)
         st.dataframe(
             df_caps,
             use_container_width=True,
@@ -846,6 +901,7 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
                 "Avance_%": st.column_config.ProgressColumn("Avance", format="%.1f%%", min_value=0, max_value=100)
             }
         )
+        st.markdown("</div>", unsafe_allow_html=True)
 
 # ------------------------------------------------------------------------------
 # VISTA 2: PRESUPUESTO & DESGLOSE 5D (APU)
@@ -1139,60 +1195,107 @@ elif menu_seleccionado == "📈 Curva S & Plazo 4D":
     st.line_chart(df_curva, color=["#94a3b8", "#2563eb"])
 
 # ------------------------------------------------------------------------------
-# VISTA 7: INSUMOS & MATERIALES BIM
+# VISTA 7: INSUMOS & MATERIALES BIM (EXPLOSIÓN PARAMÉTRICA DE REQUISICIONES)
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "🧱 Insumos BIM":
     st.markdown("### 🧱 Explosión Paramétrica de Insumos & Materiales BIM")
-    st.caption("Cálculo teórico de demanda de materiales basado en los volúmenes y áreas ejecutadas en campo.")
+    st.caption("Cálculo cuantitativo de insumos para compras y almacén basado en los cómputos métricos de diseño y avance de obra.")
+
+    if proyecto_actual["id"] == "casa_mendoza":
+        card_mamposteria_html = """
+        <div style="background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); border: 1px solid #bfdbfe; border-radius: 18px; padding: 22px; box-shadow: 0 4px 20px rgba(37, 99, 235, 0.06); margin-bottom: 24px;">
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 14px;">
+                <span style="font-size: 1.8rem;">🧱</span>
+                <div>
+                    <h4 style="font-size: 1.05rem; font-weight: 900; color: #0f172a; margin: 0;">Conversión APU Paramétrica: Mampostería en m² ➔ Demanda de Bloques</h4>
+                    <p style="font-size: 0.82rem; color: #64748b; margin: 2px 0 0 0;">Contratación en <strong>m² de muro</strong> (Ítem 1.1) y explosión técnica en <strong>unidades de bloque</strong> para logística de compras y almacén.</p>
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
+                <div style="background: #ffffff; padding: 14px 18px; border-radius: 14px; border: 1px solid #dbeafe;">
+                    <span style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #2563eb; display: block;">Área de Muros (Revit 1.1)</span>
+                    <span style="font-size: 1.55rem; font-weight: 900; color: #0f172a; font-family: monospace;">227.89 m²</span>
+                    <span style="font-size: 0.72rem; color: #64748b; display: block; margin-top: 2px;">Pañete 2 caras: 455.78 m²</span>
+                </div>
+                <div style="background: #ffffff; padding: 14px 18px; border-radius: 14px; border: 1px solid #dbeafe;">
+                    <span style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #4f46e5; display: block;">Factor de Rendimiento APU</span>
+                    <span style="font-size: 1.55rem; font-weight: 900; color: #4f46e5; font-family: monospace;">12.5 und/m²</span>
+                    <span style="font-size: 0.72rem; color: #64748b; display: block; margin-top: 2px;">Bloque concreto No. 12 + 5% desp.</span>
+                </div>
+                <div style="background: #ffffff; padding: 14px 18px; border-radius: 14px; border: 1px solid #bbf7d0;">
+                    <span style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #16a34a; display: block;">Demanda Total en Almacén</span>
+                    <span style="font-size: 1.55rem; font-weight: 900; color: #16a34a; font-family: monospace;">2,848.6 Und</span>
+                    <span style="font-size: 0.72rem; color: #64748b; display: block; margin-top: 2px;">+ 42.7 sacos cemento para pega</span>
+                </div>
+                <div style="background: #ffffff; padding: 14px 18px; border-radius: 14px; border: 1px solid #fed7aa;">
+                    <span style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; color: #ea580c; display: block;">Pisos Discriminados</span>
+                    <span style="font-size: 1.35rem; font-weight: 900; color: #ea580c; font-family: monospace;">106.2 / 107.1 m²</span>
+                    <span style="font-size: 0.72rem; color: #64748b; display: block; margin-top: 2px;">Plantilla: 106.2 m² • Enchape: 107.1 m²</span>
+                </div>
+            </div>
+        </div>
+        """
+        st.markdown(textwrap.dedent(card_mamposteria_html), unsafe_allow_html=True)
+
+    c_sel1, c_sel2 = st.columns([1.5, 1])
+    with c_sel1:
+        modo_insumos = st.radio(
+            "Fuente de Explosión de Insumos:",
+            ["📦 Demanda Total del Presupuesto Base (Requisición & Compras)", "🔨 Consumo Real Causado (Obra Ejecutada a la Fecha)"],
+            horizontal=True
+        )
+
+    campo_cant = "Cantidad_Contratada" if "Demanda Total" in modo_insumos else "Cantidad_Ejecutada"
     
     insumos_calc = []
     for _, r in df_5d.iterrows():
         it = r["Item"]
-        c_ejec = r["Cantidad_Ejecutada"]
+        c_calc = r[campo_cant]
         
-        if c_ejec > 0:
+        if c_calc > 0:
             act_n = normalizar_texto(r["Actividad"])
-            if "bloque" in act_n or "mamposteria" in act_n or it == "6.1":
-                cant_b = c_ejec if r["Unidad"] == "und" else c_ejec * 12.5
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Bloque de Concreto No. 12", "Consumo_Unitario": 1.0, "Unidad": "Und", "Total_Teorico": cant_b})
+            if "bloque" in act_n or "mamposteria" in act_n or it in ["1.1", "6.1"]:
+                cant_b = c_calc if r["Unidad"] == "und" else c_calc * 12.5
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Bloque de Concreto No. 12 (40x20x10/12)", "Consumo_Unitario": 1.0, "Unidad": "Und", "Total_Teorico": cant_b})
                 insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Pega (Sacos 50kg)", "Consumo_Unitario": 0.015, "Unidad": "Sacos", "Total_Teorico": cant_b * 0.015})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Fina para Mortero", "Consumo_Unitario": 0.002, "Unidad": "m³", "Total_Teorico": cant_b * 0.002})
-            elif "panete" in act_n or "revoco" in act_n or it == "6.4":
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Pañete", "Consumo_Unitario": 0.22, "Unidad": "Sacos", "Total_Teorico": c_ejec * 0.22})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada Pañete", "Consumo_Unitario": 0.028, "Unidad": "m³", "Total_Teorico": c_ejec * 0.028})
-            elif "estuco" in act_n or "pintura" in act_n:
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Estuco Plástico Listo (Cuñetes)", "Consumo_Unitario": 0.08, "Unidad": "Cuñetes", "Total_Teorico": c_ejec * 0.08})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pintura Vinilo Tipo 1 (Galones)", "Consumo_Unitario": 0.12, "Unidad": "Gal", "Total_Teorico": c_ejec * 0.12})
-            elif "piso" in act_n or "ceramico" in act_n or "enchape" in act_n:
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Piso Cerámico / Enchape", "Consumo_Unitario": 1.05, "Unidad": "m²", "Total_Teorico": c_ejec * 1.05})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pegacor Cerámico (Bultos 25kg)", "Consumo_Unitario": 0.25, "Unidad": "Bultos", "Total_Teorico": c_ejec * 0.25})
-            elif "cubierta" in act_n or "eternit" in act_n or "teja" in act_n:
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Teja Ondulada / Termoacústica", "Consumo_Unitario": 1.10, "Unidad": "m²", "Total_Teorico": c_ejec * 1.10})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ganchos y Tornillos Fijación", "Consumo_Unitario": 3.0, "Unidad": "Und", "Total_Teorico": c_ejec * 3.0})
-            elif any(k in act_n for k in ["concreto", "zapatas", "vigas", "pedestales", "foso", "plantilla", "columnetas"]):
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Tipo UG (Sacos 50kg)", "Consumo_Unitario": 7.0, "Unidad": "Sacos", "Total_Teorico": c_ejec * 7.0})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada de Río", "Consumo_Unitario": 0.55, "Unidad": "m³", "Total_Teorico": c_ejec * 0.55})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Gravilla Triturada 3/4 pulg", "Consumo_Unitario": 0.85, "Unidad": "m³", "Total_Teorico": c_ejec * 0.85})
-            elif "solado" in act_n or it == "3.1":
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Limpieza", "Consumo_Unitario": 0.35, "Unidad": "Sacos", "Total_Teorico": c_ejec * 0.35})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena de Peña", "Consumo_Unitario": 0.05, "Unidad": "m³", "Total_Teorico": c_ejec * 0.05})
-            elif "acero" in act_n or it == "4.1":
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Acero Corrugado 60 KSI (Figurado)", "Consumo_Unitario": 1.05, "Unidad": "kg", "Total_Teorico": c_ejec * 1.05})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Alambre Negro #18 para Amarre", "Consumo_Unitario": 0.03, "Unidad": "kg", "Total_Teorico": c_ejec * 0.03})
-            elif "metaldeck" in act_n or it == "3.6":
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Lámina Metaldeck Calibre 22", "Consumo_Unitario": 1.05, "Unidad": "m²", "Total_Teorico": c_ejec * 1.05})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Malla Electrosoldada XX-158", "Consumo_Unitario": 1.10, "Unidad": "m²", "Total_Teorico": c_ejec * 1.10})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Concreto 3000 PSI e=11cm", "Consumo_Unitario": 0.11, "Unidad": "m³", "Total_Teorico": c_ejec * 0.11})
-            elif "perfileria" in act_n or it == "5.1":
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Perfilería HEA 320 / IPE 300 (Acero ASTM A572)", "Consumo_Unitario": 1.0, "Unidad": "kg", "Total_Teorico": c_ejec * 1.0})
-                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pintura Anticorrosiva Epóxica", "Consumo_Unitario": 0.02, "Unidad": "Gal", "Total_Teorico": c_ejec * 0.02})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Fina para Mortero de Pega", "Consumo_Unitario": 0.002, "Unidad": "m³", "Total_Teorico": cant_b * 0.002})
+            elif "panete" in act_n or "revoco" in act_n or it in ["1.2", "6.4"]:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Pañete (Sacos 50kg)", "Consumo_Unitario": 0.22, "Unidad": "Sacos", "Total_Teorico": c_calc * 0.22})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada para Pañete", "Consumo_Unitario": 0.028, "Unidad": "m³", "Total_Teorico": c_calc * 0.028})
+            elif "plantilla" in act_n or "solado" in act_n or it in ["2.1", "3.1"]:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Concreto Simple f'c=14 MPa (Plantilla)", "Consumo_Unitario": 0.07, "Unidad": "m³", "Total_Teorico": c_calc * 0.07})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Plantilla (Sacos)", "Consumo_Unitario": 0.45, "Unidad": "Sacos", "Total_Teorico": c_calc * 0.45})
+            elif "porcelanato" in act_n or "ceramico" in act_n or "enchape" in act_n or it == "2.2":
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Porcelanato / Cerámica 51x51 cm (5% desp.)", "Consumo_Unitario": 1.05, "Unidad": "m²", "Total_Teorico": c_calc * 1.05})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pegacor Cerámico (Bultos 25kg)", "Consumo_Unitario": 0.25, "Unidad": "Bultos", "Total_Teorico": c_calc * 0.25})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Boquilla para Junta", "Consumo_Unitario": 0.35, "Unidad": "kg", "Total_Teorico": c_calc * 0.35})
+            elif "cielorraso" in act_n or "cielo raso" in act_n or it == "3.1":
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Panel de Cielorraso Suspendido", "Consumo_Unitario": 1.05, "Unidad": "m²", "Total_Teorico": c_calc * 1.05})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Perfilería Angular y Perfiles Omega", "Consumo_Unitario": 1.8, "Unidad": "ml", "Total_Teorico": c_calc * 1.8})
+            elif "estuco" in act_n or "pintura" in act_n or it == "4.1":
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Estuco Plástico Listo (Cuñetes)", "Consumo_Unitario": 0.08, "Unidad": "Cuñetes", "Total_Teorico": c_calc * 0.08})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pintura Vinilo Tipo 1 (Galones)", "Consumo_Unitario": 0.12, "Unidad": "Gal", "Total_Teorico": c_calc * 0.12})
+            elif "cubierta" in act_n or "eternit" in act_n or "teja" in act_n or it == "6.1":
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Teja Ondulada Eternit No. 6/8", "Consumo_Unitario": 1.10, "Unidad": "m²", "Total_Teorico": c_calc * 1.10})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ganchos de Fijación con Golilla", "Consumo_Unitario": 3.0, "Unidad": "Und", "Total_Teorico": c_calc * 3.0})
+            elif "puertas" in act_n or it == "5.1":
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Puertas Entamboradas con Marco y Cerradura", "Consumo_Unitario": 1.0, "Unidad": "Und", "Total_Teorico": c_calc})
+            elif "ventanas" in act_n or it == "5.2":
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ventanas de Aluminio y Vidrio", "Consumo_Unitario": 1.0, "Unidad": "Und", "Total_Teorico": c_calc})
+            elif any(k in act_n for k in ["concreto", "zapatas", "vigas", "pedestales", "foso"]):
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Tipo UG (Sacos 50kg)", "Consumo_Unitario": 7.0, "Unidad": "Sacos", "Total_Teorico": c_calc * 7.0})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada de Río", "Consumo_Unitario": 0.55, "Unidad": "m³", "Total_Teorico": c_calc * 0.55})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Gravilla Triturada 3/4 pulg", "Consumo_Unitario": 0.85, "Unidad": "m³", "Total_Teorico": c_calc * 0.85})
+            elif "acero" in act_n or it in ["4.1", "5.2"]:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Acero Corrugado 60 KSI (Figurado)", "Consumo_Unitario": 1.05, "Unidad": "kg", "Total_Teorico": c_calc * 1.05})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Alambre Negro #18 para Amarre", "Consumo_Unitario": 0.03, "Unidad": "kg", "Total_Teorico": c_calc * 0.03})
                 
     if insumos_calc:
         df_insumos = pd.DataFrame(insumos_calc)
         resumen_insumos = df_insumos.groupby(["Insumo", "Unidad"])["Total_Teorico"].sum().reset_index()
         resumen_insumos = resumen_insumos.sort_values(by="Total_Teorico", ascending=False)
         
-        st.markdown("#### 📦 Balance Consolidado de Insumos Teóricos")
+        st.markdown(f"#### 📦 Balance Consolidado de Insumos ({'Requisición Total' if 'Demanda Total' in modo_insumos else 'Consumo Causado'})")
         st.dataframe(
             resumen_insumos,
             use_container_width=True,
@@ -1200,11 +1303,11 @@ elif menu_seleccionado == "🧱 Insumos BIM":
             column_config={
                 "Insumo": st.column_config.TextColumn("Insumo Crítico", width="large"),
                 "Unidad": st.column_config.TextColumn("Unidad", width="small"),
-                "Total_Teorico": st.column_config.NumberColumn("Total Consumo Teórico", format="%.2f")
+                "Total_Teorico": st.column_config.NumberColumn("Total Estimado", format="%.2f")
             }
         )
     else:
-        st.info("ℹ️ No hay actividades con volumen ejecutado reportado para estimar insumos.")
+        st.info("ℹ️ No hay actividades con volumen para estimar insumos.")
 
 # ------------------------------------------------------------------------------
 # VISTA 8: AUDITORÍA BITÁCORA CLOUD
