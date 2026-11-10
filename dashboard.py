@@ -23,13 +23,17 @@ def normalizar_texto(texto):
 PROYECTOS_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "proyectos_guardados.json")
 
 def cargar_proyectos_guardados():
+    proyectos = {}
     if os.path.exists(PROYECTOS_FILE):
         try:
             with open(PROYECTOS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                proyectos = json.load(f)
         except Exception:
-            return {}
-    return {}
+            proyectos = {}
+    if "proyectos_guardados_session" in st.session_state:
+        for k, v in st.session_state["proyectos_guardados_session"].items():
+            proyectos[k] = v
+    return proyectos
 
 def guardar_proyecto_en_disco(id_key, datos_proyecto):
     proyectos = cargar_proyectos_guardados()
@@ -39,6 +43,9 @@ def guardar_proyecto_en_disco(id_key, datos_proyecto):
             json.dump(proyectos, f, ensure_ascii=False, indent=2)
     except Exception:
         pass
+    if "proyectos_guardados_session" not in st.session_state:
+        st.session_state["proyectos_guardados_session"] = {}
+    st.session_state["proyectos_guardados_session"][id_key] = datos_proyecto
 
 def procesar_archivo_presupuesto(file_obj):
     try:
@@ -710,7 +717,66 @@ for pk, pv in proyectos_personalizados.items():
 # ==============================================================================
 # 4. MOTOR MATEMÁTICO: CRUCE RELACIONAL BIM 5D & BITÁCORA
 # ==============================================================================
-def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="mezzanine"):
+def filtrar_bitacora_por_proyecto(df_bitacora, proyecto_actual):
+    """
+    Filtra de manera estricta los registros de bitácora para garantizar aislamiento
+    total entre proyectos y que NINGUNA información se cruce entre ellos.
+    """
+    if df_bitacora is None or df_bitacora.empty:
+        return pd.DataFrame()
+        
+    proy_id = str(proyecto_actual.get("id", "")).lower()
+    proy_nombre = normalizar_texto(proyecto_actual.get("nombre", ""))
+    es_solo_ppto = proyecto_actual.get("tipo") == "presupuesto" or "PRESUPUESTO" in proyecto_actual.get("badge", "").upper()
+    
+    indices_validos = []
+    
+    for idx, row in df_bitacora.iterrows():
+        act_raw = str(row.get("actividad", ""))
+        act_txt = normalizar_texto(act_raw)
+        
+        # 1. Metrados BIM ([BIM_TAKEOFF]):
+        # Solo aplican a Casa Mendoza si es Casa Mendoza, NUNCA a otros proyectos ni a Solo Presupuesto
+        if "bim_takeoff" in act_txt or "takeoff" in act_txt:
+            if proy_id == "casa_mendoza" and not es_solo_ppto:
+                indices_validos.append(idx)
+            continue
+            
+        # 2. Registros con etiqueta explícita de proyecto (ej: "[proy_id]" o "[Nombre Proyecto]"):
+        tag_id = f"[{proy_id}]".replace(" ", "")
+        tag_nom = f"[{proy_nombre}]" if len(proy_nombre) > 4 else "___nom_invalido___"
+        
+        if tag_id in act_txt.replace(" ", "") or tag_nom in act_txt:
+            indices_validos.append(idx)
+            continue
+            
+        # 3. Mapeo para proyectos base del sistema:
+        if proy_id == "casa_mendoza":
+            # Casa Mendoza solo toma registros donde se mencione explícitamente mendoza o sabanalarga
+            if "mendoza" in act_txt or "sabanalarga" in act_txt:
+                indices_validos.append(idx)
+        elif proy_id == "mezzanine":
+            # Mezzanine es el proyecto histórico donde se registraron las pruebas iniciales (IDs <= 50)
+            # Siempre que no pertenezcan a Casa Mendoza ni tengan etiqueta entre corchetes [proy_...]
+            try:
+                row_id = int(row.get("id", 0))
+            except:
+                row_id = 0
+            if row_id <= 50 and "mendoza" not in act_txt and "sabanalarga" not in act_txt and not act_raw.strip().startswith("["):
+                indices_validos.append(idx)
+            elif "mezzanine" in act_txt or "dolmen" in act_txt or "ingendes" in act_txt:
+                indices_validos.append(idx)
+        else:
+            # Para proyectos creados dinámicamente por el usuario (Solo Presupuesto o nuevos BIM):
+            # Solo se asocian si contienen el proy_id o el nombre del proyecto
+            if proy_id in act_txt or (len(proy_nombre) > 4 and proy_nombre in act_txt):
+                indices_validos.append(idx)
+                
+    if indices_validos:
+        return df_bitacora.loc[indices_validos].copy()
+    return pd.DataFrame(columns=df_bitacora.columns)
+
+def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="mezzanine", tipo_proyecto="bim"):
     """Cruza el presupuesto contractual con los registros reales de bitácora."""
     lista_ppto = [dict(item) for item in df_ppto_base]
     acumulados = {item["Item"]: 0.0 for item in lista_ppto}
@@ -718,19 +784,21 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="m
     
     if not df_bitacora.empty and 'actividad' in df_bitacora.columns and 'cantidad' in df_bitacora.columns:
         # 1. Si existen registros de metrado BIM ([BIM_TAKEOFF]) en Supabase, sincronizamos Cantidad_Contratada
-        for _, row in df_bitacora.iterrows():
-            act_txt = normalizar_texto(row.get('actividad', ''))
-            if 'bim_takeoff' in act_txt or 'takeoff' in act_txt:
-                try:
-                    cant_bim = float(row.get('cantidad', 0) or 0)
-                except:
-                    cant_bim = 0.0
-                if cant_bim > 0:
-                    for item in lista_ppto:
-                        keys = item.get("match_keys", [])
-                        if any(k in act_txt for k in keys):
-                            item["Cantidad_Contratada"] = cant_bim
-                            break
+        # NOTA: Los metrados BIM SOLO aplican a Casa Mendoza y NUNCA sobrescriben un proyecto 'Solo Presupuesto' ni otro proyecto
+        if tipo_proyecto != "presupuesto" and proyecto_id == "casa_mendoza":
+            for _, row in df_bitacora.iterrows():
+                act_txt = normalizar_texto(row.get('actividad', ''))
+                if 'bim_takeoff' in act_txt or 'takeoff' in act_txt:
+                    try:
+                        cant_bim = float(row.get('cantidad', 0) or 0)
+                    except:
+                        cant_bim = 0.0
+                    if cant_bim > 0:
+                        for item in lista_ppto:
+                            keys = item.get("match_keys", [])
+                            if any(k in act_txt for k in keys):
+                                item["Cantidad_Contratada"] = cant_bim
+                                break
 
         # 2. Acumulación de Avance Real en Campo (Bitácora de Obra)
         # Nota: Los registros [BIM_TAKEOFF] son diseño/metrado base, NUNCA avance ejecutado.
@@ -750,13 +818,6 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="m
                 desp = float(row.get('desperdicio', 0) or 0)
             except:
                 desp = 0.0
-                
-            # Si el proyecto activo es Casa Mendoza, solo acumular si el registro pertenece a Casa Mendoza.
-            # Dado que en Sabanalarga la remodelación está en fase de diseño/presupuesto y aún no inicia obra física,
-            # evitamos que registros de prueba o del Mezzanine se asignen como obra ejecutada.
-            if proyecto_id == "casa_mendoza":
-                if "mendoza" not in act_txt and "sabanalarga" not in act_txt:
-                    continue
                     
             matched_item = None
             for item in lista_ppto:
@@ -1058,13 +1119,16 @@ with st.sidebar:
     # Conexión Nube Supabase
     df_cloud = cargar_datos_bitacora_cloud()
     total_reg_cloud = len(df_cloud)
+    df_obra_activa = filtrar_bitacora_por_proyecto(df_cloud, proyecto_actual)
+    total_reg_proy = len(df_obra_activa)
     render_html(f"""
     <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 14px; margin-bottom: 14px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
             <span style="font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8;">Base de Datos Cloud</span>
             <span style="font-size: 0.66rem; font-weight: 800; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 7px; border-radius: 6px;">🟢 LIVE REST</span>
         </div>
-        <div style="font-size: 0.82rem; color: #ffffff; font-weight: 800; font-family: monospace;">{total_reg_cloud} Registros Sincronizados</div>
+        <div style="font-size: 0.88rem; color: #38bdf8; font-weight: 900; font-family: monospace;">{total_reg_proy} Registros de este Proyecto</div>
+        <div style="font-size: 0.68rem; color: #94a3b8; margin-top: 3px;">(Total Central: {total_reg_cloud} en Supabase)</div>
     </div>
     """)
     if st.button("🔄 Sincronizar en Vivo (Supabase)", use_container_width=True):
@@ -1091,12 +1155,17 @@ with st.sidebar:
     }
 
 # ------------------------------------------------------------------------------
-# PROCESAMIENTO RELACIONAL DE DATOS (100% SUPABASE EN TIEMPO REAL)
+# PROCESAMIENTO RELACIONAL DE DATOS (100% AISLADO POR PROYECTO)
 # ------------------------------------------------------------------------------
 lista_ppto_activa = proyecto_actual["ppto_base"]
-df_obra_activa = df_cloud
+df_obra_activa = filtrar_bitacora_por_proyecto(df_cloud, proyecto_actual)
 
-df_5d = consolidar_presupuesto_y_ejecucion(lista_ppto_activa, df_obra_activa, proyecto_actual["id"])
+df_5d = consolidar_presupuesto_y_ejecucion(
+    lista_ppto_activa, 
+    df_obra_activa, 
+    proyecto_id=proyecto_actual["id"],
+    tipo_proyecto=proyecto_actual.get("tipo", "bim")
+)
 
 total_ppto_contratado = df_5d["Presupuesto_Total"].sum()
 total_costo_ejecutado = df_5d["Costo_Ejecutado"].sum()
@@ -1621,7 +1690,7 @@ elif menu_seleccionado == "📑 Actas de Corte & Cobro":
         {"Concepto": f"6. (-) Amortización de Anticipo ({param_anticipo}%)", "Valor COP": f"-${ded_anticipo:,.0f}"},
         {"Concepto": f"7. (-) Retención de Garantía de Ley ({param_garantia}%)", "Valor COP": f"-${ded_garantia:,.0f}"},
         {"Concepto": "8. (+) IVA del 19% sobre la Utilidad", "Valor COP": f"${iva_utilidad:,.0f}"},
-        {"Concepto": "9. (=) TOTAL LÍQUIDO A FACTURAR / CONSIGNAR POR DOLMEN S.A.", "Valor COP": f"${neto_cobrar:,.0f}"}
+        {"Concepto": f"9. (=) TOTAL LÍQUIDO A FACTURAR / CONSIGNAR POR {proyecto_actual.get('contratante', 'EL CLIENTE')}", "Valor COP": f"${neto_cobrar:,.0f}"}
     ])
     st.dataframe(df_liquidacion_resumen, use_container_width=True, hide_index=True)
 
@@ -1768,7 +1837,7 @@ elif menu_seleccionado == "👥 Rendimiento & Cuadrillas":
             }
         )
     else:
-        st.info("Sin registros de campo para estimar rendimientos de cuadrilla.")
+        st.info(f"ℹ️ No se registran reportes de campo en bitácora para '{proyecto_actual['nombre']}'. Los rendimientos de mano de obra se calcularán automáticamente cuando se sincronicen jornadas de obra para este proyecto.")
 
 # ------------------------------------------------------------------------------
 # VISTA 6: CURVA S & PLAZO 4D (EVM)
@@ -1832,7 +1901,12 @@ elif menu_seleccionado == "📈 Curva S & Plazo 4D":
         
         # Puntos reales: si el avance ponderado > 0 lo graficamos, si no mostramos el arranque en 0.0%
         val_real = avance_fisico_ponderado
-        real_acumulado = [val_real] + [np.nan] * (len(fechas_curva) - 1) if val_real == 0 else [3.2, 8.0, 15.5, val_real] + [np.nan] * (len(fechas_curva) - 4)
+        if proyecto_actual["id"] == "mezzanine" and val_real > 0:
+            real_acumulado = [3.2, 8.0, 15.5, val_real] + [np.nan] * (len(fechas_curva) - 4)
+        elif val_real > 0:
+            real_acumulado = [val_real] + [np.nan] * (len(fechas_curva) - 1)
+        else:
+            real_acumulado = [0.0] + [np.nan] * (len(fechas_curva) - 1)
         real_x = [f for f, r in zip(fechas_curva, real_acumulado) if not pd.isna(r)]
         real_y = [r for r in real_acumulado if not pd.isna(r)]
         
@@ -2004,10 +2078,68 @@ elif menu_seleccionado == "📡 Bitácora Cloud":
     render_section_banner(
         "📡",
         "Registros en Tiempo Real de Bitácora Cloud",
-        "Datos capturados por los ingenieros residentes en obra desde la aplicación móvil/web sincronizada con Supabase.",
+        f"Datos capturados en obra para {proyecto_actual['nombre']} y sincronizados en tiempo real con Supabase.",
         "REST API LIVE"
     )
     
+    # 1. Formulario para registrar avance de este proyecto directamente
+    with st.expander(f"📝 Registrar Reporte Diario de Bitácora para '{proyecto_actual['nombre']}'", expanded=False):
+        with st.form("form_reporte_bitacora_proyecto", clear_on_submit=True):
+            render_html(f"""
+            <div style="background: rgba(37, 99, 235, 0.08); border-left: 4px solid #2563eb; padding: 10px 14px; border-radius: 8px; margin-bottom: 14px;">
+                <span style="font-size: 0.82rem; color: #1e3a8a; font-weight: 700;">
+                    Proyecto Activo: <strong>{proyecto_actual['logo']} {proyecto_actual['nombre']}</strong> • Los reportes se asignarán exclusivamente a este proyecto con aislamiento total.
+                </span>
+            </div>
+            """)
+            c_rf1, c_rf2 = st.columns([1, 1.8])
+            with c_rf1:
+                fecha_rep = st.date_input("📅 Fecha de Ejecución:", value=datetime.now())
+            with c_rf2:
+                lista_acts_proy = [f"{it['Item']} - {it['Actividad']} ({it['Unidad']})" for it in proyecto_actual["ppto_base"]]
+                act_sel_rep = st.selectbox("🔨 Actividad Constructiva:", options=lista_acts_proy)
+            
+            c_rf3, c_rf4, c_rf5 = st.columns([1, 1, 1.2])
+            with c_rf3:
+                cant_rep = st.number_input("Cantidad Ejecutada Hoy:", min_value=0.01, value=1.0, step=0.5)
+            with c_rf4:
+                desp_rep = st.number_input("Desperdicio (%):", min_value=0.0, max_value=50.0, value=5.0, step=0.5)
+            with c_rf5:
+                st.markdown("<div style='padding-top: 28px;'></div>", unsafe_allow_html=True)
+                btn_submit_rep = st.form_submit_button("💾 Guardar en Supabase", type="primary", use_container_width=True)
+                
+            if btn_submit_rep:
+                act_pura = act_sel_rep.split(" - ", 1)[-1].rsplit(" (", 1)[0]
+                und_pura = act_sel_rep.rsplit(" (", 1)[-1].replace(")", "")
+                
+                # Tag de aislamiento total por proyecto
+                act_con_tag = f"[{proyecto_actual['id']}] {act_pura}"
+                payload = {
+                    "fecha": fecha_rep.strftime("%d/%m/%Y"),
+                    "actividad": act_con_tag,
+                    "unidad": und_pura,
+                    "cantidad": float(cant_rep),
+                    "desperdicio": float(desp_rep)
+                }
+                headers_sb = {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                try:
+                    url_sb = f"{SUPABASE_URL}/rest/v1/bitacora_obra"
+                    res_sb = requests.post(url_sb, headers=headers_sb, json=payload, timeout=8)
+                    if res_sb.status_code in [200, 201]:
+                        st.cache_data.clear()
+                        st.success(f"✅ ¡Registro de {cant_rep} {und_pura} guardado exitosamente para '{proyecto_actual['nombre']}'!")
+                        st.rerun()
+                    else:
+                        st.error(f"Error al guardar en Supabase (HTTP {res_sb.status_code}): {res_sb.text}")
+                except Exception as ex_sb:
+                    st.error(f"Error de conexión: {str(ex_sb)}")
+
+    # 2. Registros exclusivos de este proyecto
     if not df_obra_activa.empty:
         df_mostrar = df_obra_activa.copy()
         if 'created_at' in df_mostrar.columns:
@@ -2035,6 +2167,19 @@ elif menu_seleccionado == "📡 Bitácora Cloud":
                 "desperdicio": st.column_config.NumberColumn("Desperdicio (%)", format="%.1f%%")
             }
         )
-        st.caption(f"Mostrando {len(df_mostrar)} reportes registrados en la base de datos central.")
+        st.caption(f"Mostrando {len(df_mostrar)} reportes registrados exclusivamente para '{proyecto_actual['nombre']}'.")
     else:
-        st.warning("No hay registros en la nube actualmente.")
+        st.info(f"ℹ️ El proyecto '{proyecto_actual['nombre']}' aún no tiene registros de ejecución en la nube. Puede registrarlos usando el formulario superior o desde la Bitácora de Campo.")
+
+    # 3. Auditoría global opcional
+    ver_todo = st.checkbox("🔍 Ver todos los registros de la base de datos central (Auditoría Global Multi-Proyecto)", value=False)
+    if ver_todo and not df_cloud.empty:
+        st.markdown("##### 🌐 Todos los Registros Sincronizados en Supabase (Todos los Proyectos)")
+        df_all_mostrar = df_cloud.copy()
+        if 'created_at' in df_all_mostrar.columns:
+            try:
+                df_all_mostrar['Fecha_Hora_Col'] = pd.to_datetime(df_all_mostrar['created_at'], utc=True).dt.tz_convert('America/Bogota').dt.strftime('%d/%m/%Y %I:%M %p')
+            except:
+                df_all_mostrar['Fecha_Hora_Col'] = df_all_mostrar['created_at']
+        cols_all = [c for c in ['id', 'Fecha_Hora_Col', 'fecha', 'actividad', 'unidad', 'cantidad', 'desperdicio'] if c in df_all_mostrar.columns]
+        st.dataframe(df_all_mostrar[cols_all], use_container_width=True, hide_index=True)
