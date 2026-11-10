@@ -234,31 +234,62 @@ PRESUPUESTO_OFICIAL_BASE = [
 ]
 
 # ==============================================================================
-# 3B. PRESUPUESTO OFICIAL: REMODELACIÓN CASA MENDOZA (SABANALARGA • REVIT 1.1)
+# 3B. PRESUPUESTO OFICIAL: CASA MENDOZA 1.1 (REVIT 2027 • SABANALARGA)
+# Únicamente los ítems reales modelados y extraídos por pyRevit desde el archivo .rvt
 # ==============================================================================
 PRESUPUESTO_CASA_MENDOZA = [
-    # 1. MAMPOSTERÍA Y MUROS
-    {"Item": "1.1", "Capitulo": "1. MAMPOSTERIA", "Actividad": "Muros en mampostería de bloques de concreto No. 12", "Unidad": "und", "Cantidad_Contratada": 2500.0, "Precio_Unitario": 3800, "match_keys": ["mamposteria", "bloque", "bloques"]},
-    {"Item": "1.2", "Capitulo": "1. MAMPOSTERIA", "Actividad": "Pañete y mortero de revoco en muros 1:4", "Unidad": "m²", "Cantidad_Contratada": 400.0, "Precio_Unitario": 24000, "match_keys": ["panete", "revoco"]},
+    # 1. MAMPOSTERÍA
+    {
+        "Item": "1.1", 
+        "Capitulo": "1. MAMPOSTERIA", 
+        "Actividad": "Muros en mampostería de bloques de concreto", 
+        "Unidad": "und", 
+        "Cantidad_Contratada": 2848.63, 
+        "Precio_Unitario": 3800, 
+        "match_keys": ["mamposteria", "bloque", "bloques"]
+    },
+    {
+        "Item": "1.2", 
+        "Capitulo": "1. MAMPOSTERIA", 
+        "Actividad": "Pañete y mortero de revoco en muros", 
+        "Unidad": "m²", 
+        "Cantidad_Contratada": 455.78, 
+        "Precio_Unitario": 24000, 
+        "match_keys": ["panete", "revoco"]
+    },
 
     # 2. PISOS Y ENCHAPES
-    {"Item": "2.1", "Capitulo": "2. PISOS Y ENCHAPES", "Actividad": "Instalación de piso cerámico o enchape de baños y cocina", "Unidad": "m²", "Cantidad_Contratada": 220.0, "Precio_Unitario": 55000, "match_keys": ["piso ceramico", "enchape", "piso"]},
-    {"Item": "2.2", "Capitulo": "2. PISOS Y ENCHAPES", "Actividad": "Construcción de plantilla o losa de piso en concreto e=10cm", "Unidad": "m³", "Cantidad_Contratada": 10.0, "Precio_Unitario": 480000, "match_keys": ["plantilla", "losa de piso", "solado"]},
-    {"Item": "2.3", "Capitulo": "2. PISOS Y ENCHAPES", "Actividad": "Instalación de guardaescobas cerámico", "Unidad": "ml", "Cantidad_Contratada": 45.0, "Precio_Unitario": 12000, "match_keys": ["guardaescobas"]},
+    {
+        "Item": "2.1", 
+        "Capitulo": "2. PISOS Y ENCHAPES", 
+        "Actividad": "Instalación de piso cerámico o enchape", 
+        "Unidad": "m²", 
+        "Cantidad_Contratada": 213.34, 
+        "Precio_Unitario": 55000, 
+        "match_keys": ["piso ceramico", "enchape", "piso"]
+    },
 
     # 3. ACABADOS Y PINTURA
-    {"Item": "3.1", "Capitulo": "3. ACABADOS Y PINTURA", "Actividad": "Estuco plástico y pintura vinílica en muros", "Unidad": "m²", "Cantidad_Contratada": 400.0, "Precio_Unitario": 16500, "match_keys": ["estuco", "pintura", "vinilica"]},
+    {
+        "Item": "3.1", 
+        "Capitulo": "3. ACABADOS Y PINTURA", 
+        "Actividad": "Estuco y pintura vinílica en muros", 
+        "Unidad": "m²", 
+        "Cantidad_Contratada": 455.78, 
+        "Precio_Unitario": 16500, 
+        "match_keys": ["estuco", "pintura", "vinilica"]
+    },
 
     # 4. CUBIERTA
-    {"Item": "4.1", "Capitulo": "4. CUBIERTA", "Actividad": "Montaje de cubierta en Eternit / Teja y accesorios", "Unidad": "m²", "Cantidad_Contratada": 160.0, "Precio_Unitario": 45000, "match_keys": ["cubierta", "eternit", "teja"]},
-
-    # 5. ESTRUCTURA DE CONFINAMIENTO
-    {"Item": "5.1", "Capitulo": "5. ESTRUCTURA", "Actividad": "Concreto para columnetas y vigas de corona", "Unidad": "m³", "Cantidad_Contratada": 3.5, "Precio_Unitario": 720000, "match_keys": ["columnetas", "columnas", "vigas", "corona"]},
-    {"Item": "5.2", "Capitulo": "5. ESTRUCTURA", "Actividad": "Acero de refuerzo figurado para confinamiento", "Unidad": "kg", "Cantidad_Contratada": 280.0, "Precio_Unitario": 5800, "match_keys": ["acero", "figurado", "refuerzo"]},
-
-    # 6. DEMOLICIONES Y PRELIMINARES
-    {"Item": "6.1", "Capitulo": "6. PRELIMINARES", "Actividad": "Demolición de muros, pisos existentes y desmonte", "Unidad": "m²", "Cantidad_Contratada": 85.0, "Precio_Unitario": 25000, "match_keys": ["demolicion", "desmonte", "retiro"]},
-    {"Item": "6.2", "Capitulo": "6. PRELIMINARES", "Actividad": "Limpieza general de obra y entrega técnica", "Unidad": "gl", "Cantidad_Contratada": 1.0, "Precio_Unitario": 800000, "match_keys": ["limpieza", "aseo", "entrega"]}
+    {
+        "Item": "4.1", 
+        "Capitulo": "4. CUBIERTA", 
+        "Actividad": "Montaje de cubierta en Eternit", 
+        "Unidad": "m²", 
+        "Cantidad_Contratada": 132.05, 
+        "Precio_Unitario": 45000, 
+        "match_keys": ["cubierta", "eternit"]
+    }
 ]
 
 # Catálogo de Proyectos JGM ConTech
@@ -304,14 +335,38 @@ def normalizar_texto(texto):
 # ==============================================================================
 # 4. MOTOR MATEMÁTICO: CRUCE RELACIONAL BIM 5D & BITÁCORA
 # ==============================================================================
-def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
+def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="mezzanine"):
     """Cruza el presupuesto contractual con los registros reales de bitácora."""
-    acumulados = {item["Item"]: 0.0 for item in df_ppto_base}
-    desperdicios = {item["Item"]: [] for item in df_ppto_base}
+    lista_ppto = [dict(item) for item in df_ppto_base]
+    acumulados = {item["Item"]: 0.0 for item in lista_ppto}
+    desperdicios = {item["Item"]: [] for item in lista_ppto}
     
     if not df_bitacora.empty and 'actividad' in df_bitacora.columns and 'cantidad' in df_bitacora.columns:
+        # 1. Si existen registros de metrado BIM ([BIM_TAKEOFF]) en Supabase, sincronizamos Cantidad_Contratada
         for _, row in df_bitacora.iterrows():
             act_txt = normalizar_texto(row.get('actividad', ''))
+            if 'bim_takeoff' in act_txt or 'takeoff' in act_txt:
+                try:
+                    cant_bim = float(row.get('cantidad', 0) or 0)
+                except:
+                    cant_bim = 0.0
+                if cant_bim > 0:
+                    for item in lista_ppto:
+                        keys = item.get("match_keys", [])
+                        if any(k in act_txt for k in keys):
+                            item["Cantidad_Contratada"] = cant_bim
+                            break
+
+        # 2. Acumulación de Avance Real en Campo (Bitácora de Obra)
+        # Nota: Los registros [BIM_TAKEOFF] son diseño/metrado base, NUNCA avance ejecutado.
+        for _, row in df_bitacora.iterrows():
+            act_raw = str(row.get('actividad', ''))
+            act_txt = normalizar_texto(act_raw)
+            
+            # Omitir metrados de diseño BIM
+            if 'bim_takeoff' in act_txt or 'takeoff' in act_txt:
+                continue
+                
             try:
                 cant = float(row.get('cantidad', 0) or 0)
             except:
@@ -321,9 +376,15 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
             except:
                 desp = 0.0
                 
+            # Si el proyecto activo es Casa Mendoza, solo acumular si el registro pertenece a Casa Mendoza.
+            # Dado que en Sabanalarga la remodelación está en fase de diseño/presupuesto y aún no inicia obra física,
+            # evitamos que registros de prueba o del Mezzanine se asignen como obra ejecutada.
+            if proyecto_id == "casa_mendoza":
+                if "mendoza" not in act_txt and "sabanalarga" not in act_txt:
+                    continue
+                    
             matched_item = None
-            # Matching universal basado en las claves del proyecto activo
-            for item in df_ppto_base:
+            for item in lista_ppto:
                 keys = item.get("match_keys", [])
                 if any(k in act_txt for k in keys):
                     matched_item = item["Item"]
@@ -335,7 +396,7 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora):
                     desperdicios[matched_item].append(desp)
 
     filas = []
-    for item in df_ppto_base:
+    for item in lista_ppto:
         it = item["Item"]
         contratado = float(item["Cantidad_Contratada"])
         ejecutado = round(acumulados[it], 2)
@@ -597,7 +658,7 @@ with st.sidebar:
 lista_ppto_activa = proyecto_actual["ppto_base"]
 df_obra_activa = df_cloud
 
-df_5d = consolidar_presupuesto_y_ejecucion(lista_ppto_activa, df_obra_activa)
+df_5d = consolidar_presupuesto_y_ejecucion(lista_ppto_activa, df_obra_activa, proyecto_actual["id"])
 
 total_ppto_contratado = df_5d["Presupuesto_Total"].sum()
 total_costo_ejecutado = df_5d["Costo_Ejecutado"].sum()
