@@ -1410,9 +1410,9 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     
     firma_img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "firma_juan_gonzalez.png")
     if os.path.exists(firma_img_path):
-        firma_flowable = RLImage(firma_img_path, width=130, height=52.5)
+        firma_flowable = RLImage(firma_img_path, width=150, height=49.4)
     else:
-        firma_flowable = Spacer(1, 52.5)
+        firma_flowable = Spacer(1, 49.4)
         
     sig_contratista_html = (
         f"<b>{contratista_nom.upper()}</b><br/>"
