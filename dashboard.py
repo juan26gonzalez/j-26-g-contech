@@ -16,7 +16,7 @@ import plotly.express as px
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable, Image as RLImage
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.pdfgen import canvas
@@ -689,14 +689,17 @@ PROYECTOS_DISPONIBLES = {
         "nombre": "Remodelación Casa Mendoza",
         "subtitulo": "Familia Mendoza • Sabanalarga, Atlántico • Modelo: Casa Mendoza 1.1.rvt",
         "contratante": "Familia Mendoza",
-        "contratista": "Ing. Juan González (Director)",
+        "cedula_cliente": "",
+        "contratista": "Ing. Juan González Mendoza",
+        "cedula_contratista": "C.C. 1001867834 • M.P. 021037-0828864 ATL",
+        "cargo_contratista": "Ingeniero Residente de Obra",
         "ubicacion": "Sabanalarga, Atlántico",
         "badge": "REVIT 2027 BIM 5D",
         "ppto_base": PRESUPUESTO_CASA_MENDOZA,
         "a_def": 8.0, "i_def": 2.0, "u_def": 5.0, "ant_def": 15.0, "gar_def": 5.0,
         "modelo_bim": "Casa Mendoza 1.1.rvt (Autodesk Revit 2027)",
         "logo": "🏡",
-        "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Director de Obra",
+        "firma_residente": "ING. JUAN GONZÁLEZ MENDOZA\nC.C. 1001867834 • M.P. 021037-0828864 ATL\nIngeniero Residente de Obra",
         "firma_interventor": "SUPERVISIÓN / PROPIETARIO\nRepresentante Familia Mendoza"
     },
     "🏢 Mezzanine 3 Niveles (DOLMEN S.A. • Barranquilla)": {
@@ -704,14 +707,17 @@ PROYECTOS_DISPONIBLES = {
         "nombre": "Mezzanine 3 Niveles",
         "subtitulo": "DOLMEN S.A. E.S.P. • INGENDES S.A.S. • Barranquilla, Atlántico",
         "contratante": "DOLMEN S.A. E.S.P.",
-        "contratista": "INGENDES S.A.S.",
+        "cedula_cliente": "NIT: 802.015.442-1",
+        "contratista": "Ing. Juan González Mendoza",
+        "cedula_contratista": "C.C. 1001867834 • M.P. 021037-0828864 ATL",
+        "cargo_contratista": "Ingeniero Residente de Obra",
         "ubicacion": "Barranquilla, Atlántico",
         "badge": "ENTERPRISE BIM 5D",
         "ppto_base": PRESUPUESTO_OFICIAL_BASE,
         "a_def": 10.0, "i_def": 3.0, "u_def": 5.0, "ant_def": 20.0, "gar_def": 5.0,
         "modelo_bim": "Revit 2027 • Estructura & Acero",
         "logo": "🏢",
-        "firma_residente": "ING. JUAN GONZÁLEZ\nIngeniero Residente • INGENDES S.A.S.",
+        "firma_residente": "ING. JUAN GONZÁLEZ MENDOZA\nC.C. 1001867834 • M.P. 021037-0828864 ATL\nIngeniero Residente de Obra",
         "firma_interventor": "INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P."
     }
 }
@@ -1075,14 +1081,14 @@ class PresupuestoCanvas(canvas.Canvas):
             self.setStrokeColor(colors.HexColor("#cbd5e1"))
             self.setLineWidth(0.5)
             self.line(36, 756, 576, 756)
-            self.drawString(36, 760, f"JGM ConTech Executive BIM 5D OS • {self.doc_title[:60]}")
+            self.drawString(36, 760, f"JGM ConTech • {self.doc_title[:60]}")
             self.drawRightString(576, 760, "DOCUMENTO OFICIAL DE COSTOS")
             
         # Pie de página en todas las páginas
         self.setStrokeColor(colors.HexColor("#cbd5e1"))
         self.setLineWidth(0.5)
         self.line(36, 36, 576, 36)
-        self.drawString(36, 26, "JGM ConTech Executive BIM 5D OS • Generado automáticamente con validez contractual")
+        self.drawString(36, 26, "JGM ConTech • Presupuesto Contractual Oficial con Validez Jurídica")
         self.drawRightString(576, 26, f"Página {self._pageNumber} de {page_count}")
         self.restoreState()
 
@@ -1116,8 +1122,8 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
         'DocSub',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=7.5,
-        leading=10,
+        fontSize=8.5,
+        leading=11,
         textColor=colors.HexColor('#2563eb'),
         textTransform='uppercase'
     )
@@ -1177,10 +1183,12 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     # 1. MEMBRETE EJECUTIVO SUPERIOR
     fecha_actual_str = datetime.now().strftime("%d/%m/%Y")
     proy_nombre = proyecto_actual.get('nombre', 'Proyecto de Construcción')
+    es_ppto = proyecto_actual.get("tipo") == "presupuesto" or "PRESUPUESTO" in proyecto_actual.get("badge", "").upper()
+    modalidad_str = "PRESUPUESTO" if es_ppto else "BIM 5D"
     
     header_data = [
         [
-            Paragraph("<b>JGM ConTech</b> • Executive BIM 5D OS", subtitle_style),
+            Paragraph("<b>JGM ConTech</b>", subtitle_style),
             Paragraph(f"<b>FECHA DE EMISIÓN:</b> {fecha_actual_str}", ParagraphStyle('HeadR', parent=cell_right, fontSize=7))
         ],
         [
@@ -1189,7 +1197,7 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
         ],
         [
             Paragraph(f"<b>Proyecto:</b> {proy_nombre} • {proyecto_actual.get('ubicacion', 'Colombia')}", cell_text),
-            Paragraph(f"<b>Modalidad:</b> {proyecto_actual.get('badge', 'APU CONTRACTUAL')}", cell_right)
+            Paragraph(f"<b>Modalidad:</b> {modalidad_str}", cell_right)
         ]
     ]
     header_table = Table(header_data, colWidths=[360, 180])
@@ -1205,12 +1213,28 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#2563eb"), spaceAfter=8, spaceBefore=4))
 
     # 2. FICHA TÉCNICA CONTRACTUAL
+    contratante_nom = proyecto_actual.get('contratante', 'Cliente Privado')
+    cedula_cliente = proyecto_actual.get('cedula_cliente', '').strip()
+    contratista_nom = proyecto_actual.get('contratista', 'Ing. Juan González Mendoza')
+    cedula_contratista = proyecto_actual.get('cedula_contratista', 'C.C. 1001867834 • M.P. 021037-0828864 ATL').strip()
+    cargo_contratista = proyecto_actual.get('cargo_contratista', 'Ingeniero Residente de Obra')
+
+    txt_cliente = f"<b>{contratante_nom}</b>"
+    if cedula_cliente:
+        txt_cliente += f"<br/><font color='#64748b'>C.C. / NIT: {cedula_cliente}</font>"
+
+    txt_contratista = f"<b>{contratista_nom}</b>"
+    if cedula_contratista:
+        txt_contratista += f"<br/><font color='#64748b'>{cedula_contratista}</font>"
+    if cargo_contratista:
+        txt_contratista += f"<br/><font color='#2563eb'><b>{cargo_contratista}</b></font>"
+
     meta_data = [
         [
             Paragraph("<b>ENTIDAD CONTRATANTE / CLIENTE:</b>", cell_text_bold),
-            Paragraph(f"{proyecto_actual.get('contratante', 'Cliente Privado')}", cell_text),
+            Paragraph(txt_cliente, cell_text),
             Paragraph("<b>DIRECCIÓN TÉCNICA / CONTRATISTA:</b>", cell_text_bold),
-            Paragraph(f"{proyecto_actual.get('contratista', 'Ing. Juan González')}", cell_text)
+            Paragraph(txt_contratista, cell_text)
         ],
         [
             Paragraph("<b>UBICACIÓN DE LA OBRA:</b>", cell_text_bold),
@@ -1219,6 +1243,19 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
             Paragraph(f"{proyecto_actual.get('modelo_bim', 'Presupuesto Base APU')}", cell_text)
         ]
     ]
+    meta_table = Table(meta_data, colWidths=[120, 150, 130, 140])
+    meta_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 8))
     meta_table = Table(meta_data, colWidths=[120, 150, 130, 140])
     meta_table.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
@@ -1371,20 +1408,45 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
         ('RIGHTPADDING', (0,0), (-1,-1), 6),
     ]))
     
-    sig_residente = proyecto_actual.get('firma_residente', 'ING. JUAN GONZÁLEZ\nDirector de Obra').replace('\n', '<br/>')
-    sig_interventor = proyecto_actual.get('firma_interventor', 'SUPERVISIÓN / CLIENTE\nRepresentante Legal').replace('\n', '<br/>')
+    firma_img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "firma_juan_gonzalez.png")
+    if os.path.exists(firma_img_path):
+        firma_flowable = RLImage(firma_img_path, width=130, height=52.5)
+    else:
+        firma_flowable = Spacer(1, 52.5)
+        
+    sig_contratista_html = (
+        f"<b>{contratista_nom.upper()}</b><br/>"
+        f"{cedula_contratista}<br/>"
+        f"<b>{cargo_contratista}</b>"
+    )
+    
+    sig_cliente_html = (
+        f"<b>{contratante_nom.upper()}</b><br/>"
+        f"{('C.C. / NIT: ' + cedula_cliente + '<br/>') if cedula_cliente else ''}"
+        f"<b>Entidad Contratante / Supervisión</b>"
+    )
+    
+    tabla_firmas = Table([
+        [firma_flowable, Spacer(1, 52.5)],
+        [
+            Paragraph("____________________________________________<br/><b>DIRECCIÓN TÉCNICA / CONTRATISTA</b><br/>" + sig_contratista_html, ParagraphStyle('SigL', parent=cell_text, alignment=1, leading=10)),
+            Paragraph("____________________________________________<br/><b>SUPERVISIÓN / CLIENTE CONTRATANTE</b><br/>" + sig_cliente_html, ParagraphStyle('SigR', parent=cell_text, alignment=1, leading=10))
+        ]
+    ], colWidths=[270, 270])
+    tabla_firmas.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,0), 'BOTTOM'),
+        ('VALIGN', (0,1), (-1,1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 0),
+        ('TOPPADDING', (0,1), (-1,1), 2),
+    ]))
     
     cierre_elementos = [
         Paragraph("3. LIQUIDACIÓN CONTRACTUAL Y FACTOR AIU", sec_heading),
         Spacer(1, 4),
         t_liq,
-        Spacer(1, 24),
-        Table([
-            [
-                Paragraph("____________________________________________<br/><b>DIRECCIÓN TÉCNICA / CONTRATISTA</b><br/>" + sig_residente, ParagraphStyle('SigL', parent=cell_text, alignment=1)),
-                Paragraph("____________________________________________<br/><b>SUPERVISIÓN / CLIENTE CONTRATANTE</b><br/>" + sig_interventor, ParagraphStyle('SigR', parent=cell_text, alignment=1))
-            ]
-        ], colWidths=[270, 270], style=[('VALIGN', (0,0), (-1,-1), 'TOP')])
+        Spacer(1, 14),
+        tabla_firmas
     ]
     story.append(KeepTogether(cierre_elementos))
 
@@ -1598,15 +1660,18 @@ if st.session_state.get("mostrar_crear_proyecto", False):
         es_solo_ppto = "Solo Presupuesto" in tipo_proy
         
         # Paso 2: Metadatos
-        col_m1, col_m2, col_m3 = st.columns([1.5, 1.2, 0.9])
+        col_m1, col_m2, col_m3 = st.columns([1.3, 1.3, 1.0])
         with col_m1:
             nuevo_nombre = st.text_input("🏷️ Nombre del Proyecto:", placeholder="Ej: Remodelación Oficinas Norte", key="np_nombre")
             nuevo_cliente = st.text_input("👤 Entidad Contratante / Cliente:", placeholder="Ej: Inversiones del Caribe S.A.S.", key="np_cliente")
+            nueva_cedula_cliente = st.text_input("🆔 Cédula / NIT del Cliente:", placeholder="Ej: C.C. 1045678901 ó NIT 900...", key="np_ced_cli")
         with col_m2:
             nueva_ubicacion = st.text_input("📍 Ubicación / Ciudad:", placeholder="Ej: Barranquilla, Atlántico", key="np_ubicacion")
-            nuevo_contratista = st.text_input("👷 Contratista / Director de Obra:", value="Ing. Juan González (Director)", key="np_contratista")
+            nuevo_contratista = st.text_input("👷 Contratista:", value="Ing. Juan González Mendoza", key="np_contratista")
+            nueva_cedula_contratista = st.text_input("🆔 Cédula / M.P. Contratista:", value="C.C. 1001867834 • M.P. 021037-0828864 ATL", key="np_ced_contra")
         with col_m3:
             nuevo_icono = st.selectbox("🎨 Ícono:", ["📊", "🏡", "🏢", "🏗️", "🛣️", "🏬", "🏥", "🏭", "🏠"], index=0 if es_solo_ppto else 3, key="np_icono")
+            nuevo_cargo = st.text_input("👔 Cargo Contratista:", value="Ingeniero Residente de Obra", key="np_cargo")
             modelo_bim_text = "Presupuesto Contractual Base (Sin Modelo 3D)" if es_solo_ppto else st.text_input("📐 Archivo Revit .rvt:", value="Modelo_Proyecto.rvt", key="np_rvt")
 
         st.markdown("---")
@@ -1720,7 +1785,10 @@ if st.session_state.get("mostrar_crear_proyecto", False):
                         "nombre": nuevo_nombre.strip(),
                         "subtitulo": f"{nuevo_cliente.strip() or 'Cliente Privado'} • {nueva_ubicacion.strip() or 'Colombia'} • {'Presupuesto Contractual Base' if es_solo_ppto else 'BIM 5D'}",
                         "contratante": nuevo_cliente.strip() or "Cliente Privado",
-                        "contratista": nuevo_contratista.strip() or "Ing. Juan González",
+                        "cedula_cliente": nueva_cedula_cliente.strip(),
+                        "contratista": nuevo_contratista.strip() or "Ing. Juan González Mendoza",
+                        "cedula_contratista": nueva_cedula_contratista.strip() or "C.C. 1001867834 • M.P. 021037-0828864 ATL",
+                        "cargo_contratista": nuevo_cargo.strip() or "Ingeniero Residente de Obra",
                         "ubicacion": nueva_ubicacion.strip() or "Colombia",
                         "badge": "SOLO PRESUPUESTO" if es_solo_ppto else "REVIT 2027 BIM 5D",
                         "ppto_base": items_finales,
@@ -1731,8 +1799,8 @@ if st.session_state.get("mostrar_crear_proyecto", False):
                         "gar_def": float(np_gar),
                         "modelo_bim": modelo_bim_text,
                         "logo": nuevo_icono,
-                        "firma_residente": f"{nuevo_contratista.strip()}\nIngeniero Director de Obra",
-                        "firma_interventor": f"SUPERVISIÓN / CLIENTE\nRepresentante {nuevo_cliente.strip() or 'Cliente Privado'}"
+                        "firma_residente": f"{nuevo_contratista.strip()}\n{nueva_cedula_contratista.strip()}\n{nuevo_cargo.strip()}",
+                        "firma_interventor": f"SUPERVISIÓN / CLIENTE\n{nuevo_cliente.strip() or 'Cliente Privado'}\n{nueva_cedula_cliente.strip()}"
                     }
                     guardar_proyecto_en_disco(display_key, datos_nuevo)
                     PROYECTOS_DISPONIBLES[display_key] = datos_nuevo
@@ -1940,8 +2008,8 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
         "APU CONTRACTUAL"
     )
     
-    # BARRA DE ACCIONES EJECUTIVAS: EXPORTAR PDF Y EDITAR APU
-    c_btn1, c_btn2, c_btn3 = st.columns([1.1, 1.2, 0.7])
+    # BARRA DE ACCIONES EJECUTIVAS: EXPORTAR PDF, EDITAR APU Y CÉDULAS
+    c_btn1, c_btn2, c_btn3 = st.columns([1.1, 1.1, 1.1])
     with c_btn1:
         pdf_presupuesto = generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual)
         st.download_button(
@@ -1954,8 +2022,53 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
             help="Descarga el documento formal del presupuesto en PDF con membrete ejecutivo, resumen por capítulos, matriz APU, AIU y firmas."
         )
     with c_btn2:
-        modo_edicion = st.toggle("✏️ Editar Capítulos y Actividades APU", value=st.session_state.get("modo_edicion_apu", False), key="toggle_edit_apu")
+        modo_edicion = st.toggle("✏️ Editar Capítulos y APU", value=st.session_state.get("modo_edicion_apu", False), key="toggle_edit_apu")
         st.session_state["modo_edicion_apu"] = modo_edicion
+    with c_btn3:
+        modo_meta = st.toggle("📋 Editar Cédulas & Firmantes", value=st.session_state.get("modo_meta_contrato", False), key="toggle_meta_contrato")
+        st.session_state["modo_meta_contrato"] = modo_meta
+
+    if st.session_state.get("modo_meta_contrato", False):
+        with st.container(border=True):
+            render_html("""
+            <div style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(248, 250, 252, 1) 100%); border-left: 4px solid #10b981; padding: 14px 18px; border-radius: 12px; margin-bottom: 14px;">
+                <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #065f46;">📋 Cédulas, Contratista y Cliente (Ficha Técnica y Firmas PDF)</h4>
+                <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #64748b;">
+                    Ingrese o modifique la cédula del cliente (C.C. / NIT) y los datos profesionales del contratista (Cédula, Matrícula Profesional y Cargo). Al guardar, se reflejan automáticamente en el membrete y en las firmas del documento PDF oficial.
+                </p>
+            </div>
+            """)
+            col_meta_cli, col_meta_con = st.columns(2)
+            with col_meta_cli:
+                st.markdown("**👤 Entidad Contratante / Cliente:**")
+                edit_cli_nom = st.text_input("Nombre del Cliente / Entidad:", value=proyecto_actual.get("contratante", "Cliente Privado"), key="edit_meta_cli_nom")
+                edit_cli_ced = st.text_input("Cédula / NIT del Cliente:", value=proyecto_actual.get("cedula_cliente", ""), placeholder="Ej: C.C. 1045678901 ó NIT 900...", key="edit_meta_cli_ced")
+            with col_meta_con:
+                st.markdown("**👷 Dirección Técnica / Contratista:**")
+                edit_con_nom = st.text_input("Nombre del Contratista:", value=proyecto_actual.get("contratista", "Ing. Juan González Mendoza"), key="edit_meta_con_nom")
+                edit_con_ced = st.text_input("Cédula y Matrícula Profesional:", value=proyecto_actual.get("cedula_contratista", "C.C. 1001867834 • M.P. 021037-0828864 ATL"), key="edit_meta_con_ced")
+                edit_con_car = st.text_input("Cargo Profesional:", value=proyecto_actual.get("cargo_contratista", "Ingeniero Residente de Obra"), key="edit_meta_con_car")
+
+            c_mb1, c_mb2 = st.columns([1.2, 3])
+            with c_mb1:
+                if st.button("💾 Guardar Datos y Cédulas", type="primary", use_container_width=True, key="btn_save_meta_contrato"):
+                    proyecto_actual["contratante"] = edit_cli_nom.strip()
+                    proyecto_actual["cedula_cliente"] = edit_cli_ced.strip()
+                    proyecto_actual["contratista"] = edit_con_nom.strip()
+                    proyecto_actual["cedula_contratista"] = edit_con_ced.strip()
+                    proyecto_actual["cargo_contratista"] = edit_con_car.strip()
+                    proyecto_actual["firma_residente"] = f"{edit_con_nom.strip()}\n{edit_con_ced.strip()}\n{edit_con_car.strip()}"
+                    proyecto_actual["firma_interventor"] = f"SUPERVISIÓN / CLIENTE\n{edit_cli_nom.strip()}\n{edit_cli_ced.strip()}"
+                    PROYECTOS_DISPONIBLES[st.session_state["proyecto_activo_seleccionado"]] = proyecto_actual
+                    guardar_proyecto_en_disco(st.session_state["proyecto_activo_seleccionado"], proyecto_actual)
+                    st.session_state["modo_meta_contrato"] = False
+                    st.success("✅ ¡Cédulas y datos de contrato guardados con éxito!")
+                    st.rerun()
+            with c_mb2:
+                if st.button("✖ Cerrar", key="btn_close_meta_contrato"):
+                    st.session_state["modo_meta_contrato"] = False
+                    st.rerun()
+            st.markdown("<hr style='margin: 16px 0; border: 0; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
 
     if st.session_state.get("modo_edicion_apu", False):
         with st.container(border=True):
