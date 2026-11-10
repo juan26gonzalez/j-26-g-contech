@@ -235,7 +235,7 @@ PRESUPUESTO_OFICIAL_BASE = [
 
 # ==============================================================================
 # 3B. PRESUPUESTO OFICIAL: CASA MENDOZA 1.1 (REVIT 2027 • SABANALARGA)
-# Únicamente los ítems reales modelados y extraídos por pyRevit desde el archivo .rvt
+# Integración paramétrica completa con las tablas de planificación de Revit
 # ==============================================================================
 PRESUPUESTO_CASA_MENDOZA = [
     # 1. MAMPOSTERÍA
@@ -266,13 +266,24 @@ PRESUPUESTO_CASA_MENDOZA = [
         "Unidad": "m²", 
         "Cantidad_Contratada": 213.34, 
         "Precio_Unitario": 55000, 
-        "match_keys": ["piso ceramico", "enchape", "piso"]
+        "match_keys": ["piso ceramico", "enchape", "piso", "suelo", "assembly"]
     },
 
-    # 3. ACABADOS Y PINTURA
+    # 3. CIELOS RASOS (Ceiling Quantities)
     {
         "Item": "3.1", 
-        "Capitulo": "3. ACABADOS Y PINTURA", 
+        "Capitulo": "3. CIELOS RASOS", 
+        "Actividad": "Instalación de cielorraso", 
+        "Unidad": "m²", 
+        "Cantidad_Contratada": 185.00, 
+        "Precio_Unitario": 38000, 
+        "match_keys": ["cielorraso", "cielo raso", "ceiling"]
+    },
+
+    # 4. ACABADOS Y PINTURA
+    {
+        "Item": "4.1", 
+        "Capitulo": "4. ACABADOS Y PINTURA", 
         "Actividad": "Estuco y pintura vinílica en muros", 
         "Unidad": "m²", 
         "Cantidad_Contratada": 455.78, 
@@ -280,15 +291,46 @@ PRESUPUESTO_CASA_MENDOZA = [
         "match_keys": ["estuco", "pintura", "vinilica"]
     },
 
-    # 4. CUBIERTA
+    # 5. CARPINTERÍA (Door Quantities & Ventanas)
     {
-        "Item": "4.1", 
-        "Capitulo": "4. CUBIERTA", 
+        "Item": "5.1", 
+        "Capitulo": "5. CARPINTERIA", 
+        "Actividad": "Suministro e instalación de puertas interiores y acceso", 
+        "Unidad": "und", 
+        "Cantidad_Contratada": 8.0, 
+        "Precio_Unitario": 350000, 
+        "match_keys": ["puertas", "puerta", "door"]
+    },
+    {
+        "Item": "5.2", 
+        "Capitulo": "5. CARPINTERIA", 
+        "Actividad": "Suministro e instalación de ventanería en aluminio y vidrio", 
+        "Unidad": "und", 
+        "Cantidad_Contratada": 6.0, 
+        "Precio_Unitario": 280000, 
+        "match_keys": ["ventanas", "ventana", "window", "ventaneria"]
+    },
+
+    # 6. CUBIERTA
+    {
+        "Item": "6.1", 
+        "Capitulo": "6. CUBIERTA", 
         "Actividad": "Montaje de cubierta en Eternit", 
         "Unidad": "m²", 
         "Cantidad_Contratada": 132.05, 
         "Precio_Unitario": 45000, 
-        "match_keys": ["cubierta", "eternit"]
+        "match_keys": ["cubierta", "eternit", "techo"]
+    },
+
+    # 7. APARATOS SANITARIOS
+    {
+        "Item": "7.1", 
+        "Capitulo": "7. APARATOS SANITARIOS", 
+        "Actividad": "Suministro e instalación de aparatos sanitarios y griferías", 
+        "Unidad": "und", 
+        "Cantidad_Contratada": 5.0, 
+        "Precio_Unitario": 420000, 
+        "match_keys": ["sanitarios", "aparatos sanitarios", "griferia", "plumbing"]
     }
 ]
 
