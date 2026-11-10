@@ -9,6 +9,8 @@ from datetime import datetime, timezone, timedelta
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+import plotly.graph_objects as go
+import plotly.express as px
 
 def render_html(html_str: str):
     """
@@ -22,6 +24,28 @@ def render_html(html_str: str):
         if line.strip() and not line.strip().startswith("<!--")
     ]
     st.markdown(" ".join(clean_lines), unsafe_allow_html=True)
+
+def render_section_banner(icon: str, title: str, subtitle: str, badge: str = "OFICIAL"):
+    """
+    Renderiza una cabecera ejecutiva uniforme y de primer nivel visual para cada subpestaña.
+    """
+    banner_html = f"""
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px 24px; margin-bottom: 22px; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px; border-left: 5px solid #2563eb;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; border: 1px solid #bfdbfe; box-shadow: 0 2px 8px rgba(37,99,235,0.08);">
+                {icon}
+            </div>
+            <div>
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <h2 style="font-size: 1.25rem; font-weight: 900; color: #0f172a; margin: 0; letter-spacing: -0.02em;">{title}</h2>
+                    <span style="background: #eff6ff; color: #1d4ed8; font-size: 0.68rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; letter-spacing: 0.05em; text-transform: uppercase;">{badge}</span>
+                </div>
+                <p style="font-size: 0.82rem; color: #64748b; margin: 3px 0 0 0; font-weight: 500;">{subtitle}</p>
+            </div>
+        </div>
+    </div>
+    """
+    render_html(banner_html)
 
 # ==============================================================================
 # 1. CONFIGURACIÓN DE PÁGINA Y METADATOS CORPORATIVOS
@@ -51,7 +75,7 @@ html, body, [class*="css"] {
 footer { visibility: hidden; }
 header { background: transparent; }
 
-/* CENTRADO DE LA BARRA DE NAVEGACIÓN SUPERIOR */
+/* CENTRADO Y ESTILO EJECUTIVO DE LA BARRA DE NAVEGACIÓN SUPERIOR */
 div[data-testid="stSegmentedControl"] {
     display: flex !important;
     justify-content: center !important;
@@ -60,35 +84,38 @@ div[data-testid="stSegmentedControl"] {
 }
 
 div[data-testid="stSegmentedControl"] > div {
-    background: #ffffff !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(16px) !important;
     padding: 6px !important;
-    border-radius: 999px !important;
+    border-radius: 16px !important;
     border: 1px solid #cbd5e1 !important;
-    box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.08) !important;
-    gap: 4px !important;
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08) !important;
+    gap: 6px !important;
     display: flex !important;
     flex-wrap: wrap !important;
     justify-content: center !important;
 }
 
 div[data-testid="stSegmentedControl"] button {
-    border-radius: 999px !important;
+    border-radius: 12px !important;
     font-size: 0.82rem !important;
     font-weight: 700 !important;
-    padding: 7px 16px !important;
+    padding: 8px 16px !important;
     color: #475569 !important;
     transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: none !important;
 }
 
 div[data-testid="stSegmentedControl"] button:hover {
     color: #0f172a !important;
-    background: #f8fafc !important;
+    background: #f1f5f9 !important;
+    transform: translateY(-1px);
 }
 
 div[data-testid="stSegmentedControl"] button[aria-selected="true"] {
     background: linear-gradient(135deg, #0a0f1d 0%, #1e3a8a 100%) !important;
     color: #ffffff !important;
-    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.35) !important;
+    box-shadow: 0 4px 14px rgba(30, 58, 138, 0.35) !important;
 }
 
 div[data-testid="stSegmentedControl"] button[aria-selected="true"] * {
@@ -100,9 +127,106 @@ div[data-testid="stSegmentedControl"] button[aria-selected="true"] * {
 div[data-testid="stRadio"] > div[role="radiogroup"] {
     display: flex !important;
     justify-content: center !important;
-    gap: 8px !important;
+    gap: 6px !important;
     flex-wrap: wrap !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 24px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(16px) !important;
+    padding: 6px !important;
+    border-radius: 16px !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08) !important;
+}
+
+/* EXECUTIVE DARK LUXURY SIDEBAR */
+section[data-testid="stSidebar"] {
+    background: linear-gradient(180deg, #090d16 0%, #0d1527 50%, #0f172a 100%) !important;
+    border-right: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35) !important;
+}
+
+section[data-testid="stSidebar"] * {
+    color: #f1f5f9;
+}
+
+section[data-testid="stSidebar"] hr {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    margin: 16px 0 !important;
+}
+
+section[data-testid="stSidebar"] div[data-baseweb="select"] > div {
+    background: rgba(15, 23, 42, 0.9) !important;
+    border: 1px solid rgba(56, 189, 248, 0.35) !important;
+    border-radius: 12px !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+}
+
+section[data-testid="stSidebar"] div[data-baseweb="select"] * {
+    color: #ffffff !important;
+}
+
+section[data-testid="stSidebar"] div[data-baseweb="popover"] ul {
+    background: #0f172a !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+}
+
+section[data-testid="stSidebar"] div[data-baseweb="popover"] li {
+    color: #ffffff !important;
+}
+
+section[data-testid="stSidebar"] div[data-baseweb="popover"] li:hover {
+    background: #1e3a8a !important;
+}
+
+/* Sidebar Expander */
+section[data-testid="stSidebar"] [data-testid="stExpander"] {
+    background: rgba(15, 23, 42, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    border-radius: 14px !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stExpander"] details {
+    border: none !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary {
+    color: #ffffff !important;
+    font-weight: 800 !important;
+    font-size: 0.85rem !important;
+}
+
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {
+    color: #38bdf8 !important;
+}
+
+/* Sidebar Sliders */
+section[data-testid="stSidebar"] .stSlider label {
+    color: #94a3b8 !important;
+    font-size: 0.74rem !important;
+    font-weight: 700 !important;
+}
+
+section[data-testid="stSidebar"] .stSlider > div > div > div > div {
+    background: #2563eb !important;
+}
+
+/* Sidebar Buttons */
+section[data-testid="stSidebar"] div.stButton > button {
+    background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25) !important;
+    box-shadow: 0 4px 16px rgba(37, 99, 235, 0.3) !important;
+    font-weight: 800 !important;
+    border-radius: 12px !important;
+}
+
+/* Universal Container Card Styling */
+div[data-testid="stVerticalBlockBorderWrapper"] > div {
+    border-radius: 18px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.03) !important;
+    background: #ffffff !important;
+    padding: 18px !important;
 }
 
 /* Bento Cards Universales */
@@ -676,13 +800,30 @@ def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion, info_proyec
 # 6. SIDEBAR COMPACTO: COMPAÑERO DE CONTROL Y PARÁMETROS
 # ==============================================================================
 with st.sidebar:
-    st.markdown("## 🏢 **JGM ConTech**")
-    st.caption("Executive BIM 5D OS")
-    st.markdown("[📱 **Abrir Bitácora de Campo ↗**](https://jagm2000-jgmcontech-bitacora.vercel.app)")
-    st.divider()
+    render_html("""
+    <div style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.45) 0%, rgba(15, 23, 42, 0.95) 100%); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 18px; padding: 20px 16px; margin-bottom: 14px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.35);">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 14px; background: linear-gradient(135deg, #2563eb, #06b6d4); font-size: 1.5rem; margin-bottom: 8px; box-shadow: 0 4px 14px rgba(37,99,235,0.45);">
+            🏢
+        </div>
+        <div style="font-size: 1.35rem; font-weight: 900; color: #ffffff; letter-spacing: -0.02em;">JGM ConTech</div>
+        <div style="font-size: 0.7rem; color: #38bdf8; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; margin-top: 3px;">Executive BIM 5D OS</div>
+        <div style="display: inline-flex; align-items: center; gap: 6px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); padding: 3px 10px; border-radius: 999px; margin-top: 10px;">
+            <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981; box-shadow: 0 0 8px #10b981;"></span>
+            <span style="font-size: 0.68rem; color: #34d399; font-weight: 800; letter-spacing: 0.04em;">EN LÍNEA • v2.4</span>
+        </div>
+    </div>
     
-    # Selector de Proyecto Activo (Multi-Proyecto)
-    st.markdown("### 🔀 **Proyecto Activo:**")
+    <a href="https://jagm2000-jgmcontech-bitacora.vercel.app" target="_blank" style="display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%); color: #ffffff; padding: 11px 16px; border-radius: 12px; font-size: 0.8rem; font-weight: 800; text-decoration: none; border: 1px solid rgba(255,255,255,0.25); box-shadow: 0 4px 16px rgba(37,99,235,0.3); transition: all 0.2s ease; margin-bottom: 18px;">
+        <span>📱</span>
+        <span>Abrir Bitácora de Campo ↗</span>
+    </a>
+    """)
+
+    render_html("""
+    <div style="font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 6px; display: flex; align-items: center; gap: 6px;">
+        <span>🔀</span><span>Proyecto Activo:</span>
+    </div>
+    """)
     proyecto_sel_key = st.selectbox(
         "Seleccionar Proyecto:",
         options=list(PROYECTOS_DISPONIBLES.keys()),
@@ -690,30 +831,45 @@ with st.sidebar:
         label_visibility="collapsed"
     )
     proyecto_actual = PROYECTOS_DISPONIBLES[proyecto_sel_key]
-    
-    st.markdown(f"**{proyecto_actual['logo']} {proyecto_actual['nombre']}**")
-    st.caption(f"{proyecto_actual['contratante']} • {proyecto_actual['ubicacion']}")
-    st.markdown(f"🟢 **BIM:** `{proyecto_actual['modelo_bim']}`")
-    
-    st.divider()
-    
+
+    render_html(f"""
+    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 14px; margin-top: 8px; margin-bottom: 16px;">
+        <div style="font-size: 0.95rem; font-weight: 900; color: #ffffff;">{proyecto_actual['logo']} {proyecto_actual['nombre']}</div>
+        <div style="font-size: 0.74rem; color: #94a3b8; margin-top: 3px;">📍 {proyecto_actual['ubicacion']}</div>
+        <div style="font-size: 0.72rem; color: #cbd5e1; margin-top: 2px;">👤 {proyecto_actual['contratante']}</div>
+        <div style="display: flex; align-items: center; gap: 6px; background: rgba(37, 99, 235, 0.25); border: 1px solid rgba(56, 189, 248, 0.4); padding: 5px 10px; border-radius: 8px; margin-top: 10px;">
+            <span style="font-size: 0.85rem;">📐</span>
+            <span style="font-size: 0.72rem; color: #38bdf8; font-weight: 800; font-family: monospace;">BIM: {proyecto_actual['modelo_bim']}</span>
+        </div>
+    </div>
+    """)
+
     # Conexión Nube Supabase
     df_cloud = cargar_datos_bitacora_cloud()
     total_reg_cloud = len(df_cloud)
-    st.caption(f"Sincronización Nube: {'🟢 Conectado' if total_reg_cloud > 0 else '🟡 Sin datos'} ({total_reg_cloud} reg)")
+    render_html(f"""
+    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 14px; padding: 14px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+            <span style="font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8;">Base de Datos Cloud</span>
+            <span style="font-size: 0.66rem; font-weight: 800; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 7px; border-radius: 6px;">🟢 LIVE REST</span>
+        </div>
+        <div style="font-size: 0.82rem; color: #ffffff; font-weight: 800; font-family: monospace;">{total_reg_cloud} Registros Sincronizados</div>
+    </div>
+    """)
     if st.button("🔄 Sincronizar en Vivo (Supabase)", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
-        
-    st.divider()
-    
+
     # Parámetros Contractuales de Liquidación
-    st.markdown("### ⚙️ Parámetros Contractuales (AIU)")
-    param_a = st.slider("Administración (% A)", min_value=3.0, max_value=20.0, value=float(proyecto_actual["a_def"]), step=0.5)
-    param_i = st.slider("Imprevistos (% I)", min_value=1.0, max_value=8.0, value=float(proyecto_actual["i_def"]), step=0.5)
-    param_u = st.slider("Utilidad (% U)", min_value=2.0, max_value=15.0, value=float(proyecto_actual["u_def"]), step=0.5)
-    param_anticipo = st.slider("Amortización Anticipo (%)", min_value=0.0, max_value=30.0, value=float(proyecto_actual["ant_def"]), step=1.0)
-    param_garantia = st.slider("Retención Garantía (%)", min_value=0.0, max_value=10.0, value=float(proyecto_actual["gar_def"]), step=1.0)
+    with st.expander("⚙️ Parámetros Contractuales (AIU)", expanded=True):
+        render_html("""
+        <p style="font-size: 0.72rem; color: #94a3b8; margin-bottom: 8px;">Ajuste los porcentajes contractuales de liquidación de actas:</p>
+        """)
+        param_a = st.slider("Administración (% A)", min_value=3.0, max_value=20.0, value=float(proyecto_actual["a_def"]), step=0.5)
+        param_i = st.slider("Imprevistos (% I)", min_value=1.0, max_value=8.0, value=float(proyecto_actual["i_def"]), step=0.5)
+        param_u = st.slider("Utilidad (% U)", min_value=2.0, max_value=15.0, value=float(proyecto_actual["u_def"]), step=0.5)
+        param_anticipo = st.slider("Amortización Anticipo (%)", min_value=0.0, max_value=30.0, value=float(proyecto_actual["ant_def"]), step=1.0)
+        param_garantia = st.slider("Retención Garantía (%)", min_value=0.0, max_value=10.0, value=float(proyecto_actual["gar_def"]), step=1.0)
     
     params_liquidacion = {
         "pct_a": param_a,
@@ -886,12 +1042,51 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
             render_html("""
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
                 <h3 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">📊 Desglose de Presupuesto vs. Costo Ejecutado</h3>
-                <span style="font-size: 0.72rem; font-weight: 800; background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 6px;">Por Capítulo APU</span>
+                <span style="font-size: 0.72rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; padding: 3px 8px; border-radius: 6px;">Por Capítulo APU</span>
             </div>
             """)
-            chart_data = df_caps.set_index("Capitulo")[["Presupuesto_Total", "Costo_Ejecutado"]]
-            chart_data.columns = ["Presupuesto Base ($)", "Costo Ejecutado ($)"]
-            st.bar_chart(chart_data, color=["#cbd5e1", "#2563eb"])
+            fig_caps = go.Figure()
+            fig_caps.add_trace(go.Bar(
+                x=df_caps["Capitulo"],
+                y=df_caps["Presupuesto_Total"],
+                name="Presupuesto Base",
+                marker=dict(color="#94a3b8", cornerradius=6),
+                hovertemplate="<b>%{x}</b><br>Presupuesto Base: $%{y:,.0f} COP<extra></extra>"
+            ))
+            fig_caps.add_trace(go.Bar(
+                x=df_caps["Capitulo"],
+                y=df_caps["Costo_Ejecutado"],
+                name="Costo Ejecutado",
+                marker=dict(color="#2563eb", cornerradius=6),
+                hovertemplate="<b>%{x}</b><br>Costo Ejecutado: $%{y:,.0f} COP<extra></extra>"
+            ))
+            fig_caps.update_layout(
+                barmode="group",
+                margin=dict(l=10, r=10, t=10, b=10),
+                height=380,
+                plot_bgcolor="rgba(0,0,0,0)",
+                paper_bgcolor="rgba(0,0,0,0)",
+                legend=dict(
+                    orientation="h",
+                    yanchor="bottom",
+                    y=1.02,
+                    xanchor="right",
+                    x=1,
+                    font=dict(family="Plus Jakarta Sans", size=11, color="#64748b")
+                ),
+                xaxis=dict(
+                    tickfont=dict(family="Plus Jakarta Sans", size=10, color="#475569"),
+                    gridcolor="#f1f5f9"
+                ),
+                yaxis=dict(
+                    tickfont=dict(family="Plus Jakarta Sans", size=10, color="#64748b"),
+                    gridcolor="#f1f5f9",
+                    tickprefix="$",
+                    tickformat=",.0s"
+                ),
+                font=dict(family="Plus Jakarta Sans")
+            )
+            st.plotly_chart(fig_caps, use_container_width=True, config={"displayModeBar": False})
         
     with col_cap2:
         with st.container(border=True):
@@ -917,17 +1112,22 @@ if menu_seleccionado == "🏠 Panel Ejecutivo":
 # VISTA 2: PRESUPUESTO & DESGLOSE 5D (APU)
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
-    st.markdown("### 💰 Matriz de Control Financiero 5D (APU)")
-    st.caption("Cruce automatizado entre el presupuesto contractual oficial y los registros de avance de bitácora.")
+    render_section_banner(
+        "💰",
+        "Matriz de Control Financiero 5D (APU)",
+        "Cruce automatizado entre el cómputo métrico Revit, el presupuesto base y la ejecución certificada de bitácora.",
+        "APU CONTRACTUAL"
+    )
     
-    f_col1, f_col2, f_col3 = st.columns([1.2, 1, 1])
-    with f_col1:
-        filtro_txt = st.text_input("🔍 Buscar ítem o actividad:", placeholder="Ej. zapata, losa, hea, 3.2...")
-    with f_col2:
-        capitulos = ["Todos los Capítulos"] + sorted(list(df_5d["Capitulo"].unique()))
-        filtro_cap = st.selectbox("Filtrar por Capítulo:", capitulos)
-    with f_col3:
-        filtro_est = st.selectbox("Estado de Ejecución:", ["Todos los Estados", "🔵 En Curso", "🟢 Completado", "🔴 Mayor Cantidad", "⚪ Sin Iniciar"])
+    with st.container(border=True):
+        f_col1, f_col2, f_col3 = st.columns([1.2, 1, 1])
+        with f_col1:
+            filtro_txt = st.text_input("🔍 Buscar ítem o actividad:", placeholder="Ej. mamposteria, porcelanato, cubierta...")
+        with f_col2:
+            capitulos = ["Todos los Capítulos"] + sorted(list(df_5d["Capitulo"].unique()))
+            filtro_cap = st.selectbox("Filtrar por Capítulo:", capitulos)
+        with f_col3:
+            filtro_est = st.selectbox("Estado de Ejecución:", ["Todos los Estados", "🔵 En Curso", "🟢 Completado", "🔴 Mayor Cantidad", "⚪ Sin Iniciar"])
         
     df_filtrado = df_5d.copy()
     if filtro_txt:
@@ -974,8 +1174,12 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
 # VISTA 3: MEJORA 1 - GENERADOR DE ACTAS DE CORTE & FACTURACIÓN CONTRACTUAL
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "📑 Actas de Corte & Cobro":
-    st.markdown("### 📑 Generador de Actas de Corte y Cobro Oficiales")
-    st.caption(f"Liquidación contractual automática con AIU, amortización y retenciones para {proyecto_actual['contratante']}.")
+    render_section_banner(
+        "📑",
+        "Generador de Actas de Corte y Cobro Oficiales",
+        f"Liquidación contractual automática con AIU, amortización y retenciones para {proyecto_actual['contratante']}.",
+        "LIQUIDACIÓN 5D"
+    )
     
     col_acta1, col_acta2 = st.columns([1.2, 0.8])
     with col_acta1:
@@ -1030,8 +1234,12 @@ elif menu_seleccionado == "📑 Actas de Corte & Cobro":
 # VISTA 4: MEJORA 2 - SIMULADOR DE MAYORES CANTIDADES & ADICIONALES (EAC)
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "⚠️ Mayores Cantidades & Adicionales":
-    st.markdown("### ⚠️ Simulador de Mayores Cantidades de Obra y Sobrecostos")
-    st.caption("Detección en tiempo real de actividades con volumen superior al contractual para tramitar actas modificatorias.")
+    render_section_banner(
+        "⚠️",
+        "Simulador de Mayores Cantidades de Obra y Sobrecostos",
+        "Detección en tiempo real de actividades con volumen superior al contractual para tramitar actas modificatorias.",
+        "CONTROL DE COSTOS EAC"
+    )
 
     df_mayores = df_5d[df_5d["Mayor_Cantidad"] > 0]
     total_items_mayores = len(df_mayores)
@@ -1075,8 +1283,12 @@ elif menu_seleccionado == "⚠️ Mayores Cantidades & Adicionales":
 # VISTA 5: MEJORA 3 - RENDIMIENTO & PRODUCTIVIDAD DE CUADRILLAS
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "👥 Rendimiento & Cuadrillas":
-    st.markdown("### 👥 Productividad de Mano de Obra y Desempeño de Cuadrillas")
-    st.caption("Cálculo de rendimientos diarios por oficial y cuadrilla frente a los estándares de APU contractuales.")
+    render_section_banner(
+        "👥",
+        "Productividad de Mano de Obra y Desempeño de Cuadrillas",
+        "Cálculo de rendimientos diarios por oficial y cuadrilla frente a los estándares de APU contractuales.",
+        "DESEMPEÑO TÉCNICO"
+    )
 
     if not df_obra_activa.empty:
         # Agrupación por actividad y cálculo de rendimiento
@@ -1167,8 +1379,12 @@ elif menu_seleccionado == "👥 Rendimiento & Cuadrillas":
 # VISTA 6: CURVA S & PLAZO 4D (EVM)
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "📈 Curva S & Plazo 4D":
-    st.markdown("### 📈 Gestión del Valor Ganado (Earned Value Management - EVM)")
-    st.caption("Seguimiento del desempeño de cronograma (SPI) y análisis de variaciones de costo en el horizonte del proyecto.")
+    render_section_banner(
+        "📈",
+        "Gestión del Valor Ganado (Earned Value Management - EVM)",
+        "Seguimiento del desempeño de cronograma (SPI), costos (CPI) y análisis dinámico de la Curva S.",
+        "LÍNEA BASE 4D"
+    )
     
     BAC = total_ppto_contratado
     EV = total_costo_ejecutado
@@ -1190,26 +1406,93 @@ elif menu_seleccionado == "📈 Curva S & Plazo 4D":
         estado_cpi = "🟢 Eficiente" if CPI >= 0.98 else "🔴 Sobrecosto"
         st.metric("💰 Índice de Costo (CPI)", f"{CPI:.2f}", estado_cpi, delta_color="normal" if CPI>=0.98 else "inverse")
         
-    st.markdown("---")
-    st.markdown("#### Curva S: Avance Físico Planificado vs. Real Ejecutado (%)")
+    st.write("")
     fechas_curva = ["Sem 1", "Sem 2", "Sem 3", "Sem 4", "Sem 5", "Sem 6", "Sem 7", "Sem 8"]
     plan_acumulado = [3.5, 8.5, 16.0, 28.5, 45.0, 68.0, 88.0, 100.0]
-    real_acumulado = [3.2, 8.0, 15.5, avance_fisico_ponderado] + [np.nan]*(len(fechas_curva)-4)
     
-    df_curva = pd.DataFrame({
-        "Semana": fechas_curva,
-        "Planificado (Línea Base)": plan_acumulado,
-        "Real Ejecutado (Bitácora)": real_acumulado
-    }).set_index("Semana")
-    
-    st.line_chart(df_curva, color=["#94a3b8", "#2563eb"])
+    with st.container(border=True):
+        render_html("""
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div>
+                <h4 style="font-size: 1.05rem; font-weight: 800; color: #0f172a; margin: 0;">📊 Curva S: Avance Físico Planificado vs. Real Ejecutado (%)</h4>
+                <p style="font-size: 0.78rem; color: #64748b; margin: 2px 0 0 0;">Línea base proyectada (Gantt contractual) vs. Cómputo físico certificado en bitácora</p>
+            </div>
+            <span style="font-size: 0.72rem; font-weight: 800; background: #eff6ff; color: #1d4ed8; padding: 4px 10px; border-radius: 6px;">Horizonte 8 Semanas</span>
+        </div>
+        """)
+        
+        fig_curva = go.Figure()
+        # Línea Planificada
+        fig_curva.add_trace(go.Scatter(
+            x=fechas_curva,
+            y=plan_acumulado,
+            mode="lines+markers",
+            name="Planificado (Línea Base)",
+            line=dict(color="#94a3b8", width=3, dash="dot", shape="spline"),
+            marker=dict(size=7, color="#64748b"),
+            fill="tozeroy",
+            fillcolor="rgba(148, 163, 184, 0.08)",
+            hovertemplate="<b>%{x}</b><br>Meta Planificada: %{y:.1f}%<extra></extra>"
+        ))
+        
+        # Puntos reales: si el avance ponderado > 0 lo graficamos, si no mostramos el arranque en 0.0%
+        val_real = avance_fisico_ponderado
+        real_acumulado = [val_real] + [np.nan] * (len(fechas_curva) - 1) if val_real == 0 else [3.2, 8.0, 15.5, val_real] + [np.nan] * (len(fechas_curva) - 4)
+        real_x = [f for f, r in zip(fechas_curva, real_acumulado) if not pd.isna(r)]
+        real_y = [r for r in real_acumulado if not pd.isna(r)]
+        
+        fig_curva.add_trace(go.Scatter(
+            x=real_x,
+            y=real_y,
+            mode="lines+markers",
+            name="Real Ejecutado (Bitácora Cloud)",
+            line=dict(color="#2563eb", width=4, shape="spline"),
+            marker=dict(size=9, color="#2563eb", symbol="diamond", line=dict(color="#ffffff", width=2)),
+            fill="tozeroy",
+            fillcolor="rgba(37, 99, 235, 0.15)",
+            hovertemplate="<b>%{x}</b><br>Avance Real Causado: %{y:.1f}%<extra></extra>"
+        ))
+        
+        fig_curva.add_hline(y=100, line_dash="dash", line_color="#cbd5e1", annotation_text="Meta Contractual (100%)", annotation_position="top right")
+
+        fig_curva.update_layout(
+            margin=dict(l=15, r=15, t=15, b=15),
+            height=420,
+            plot_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor="rgba(0,0,0,0)",
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="center",
+                x=0.5,
+                font=dict(family="Plus Jakarta Sans", size=12, color="#0f172a")
+            ),
+            xaxis=dict(
+                tickfont=dict(family="Plus Jakarta Sans", size=11, color="#475569"),
+                gridcolor="#f1f5f9"
+            ),
+            yaxis=dict(
+                ticksuffix="%",
+                range=[0, 108],
+                tickfont=dict(family="Plus Jakarta Sans", size=11, color="#64748b"),
+                gridcolor="#f1f5f9"
+            ),
+            font=dict(family="Plus Jakarta Sans"),
+            hovermode="x unified"
+        )
+        st.plotly_chart(fig_curva, use_container_width=True, config={"displayModeBar": False})
 
 # ------------------------------------------------------------------------------
 # VISTA 7: INSUMOS & MATERIALES BIM (EXPLOSIÓN PARAMÉTRICA DE REQUISICIONES)
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "🧱 Insumos BIM":
-    st.markdown("### 🧱 Explosión Paramétrica de Insumos & Materiales BIM")
-    st.caption("Cálculo cuantitativo de insumos para compras y almacén basado en los cómputos métricos de diseño y avance de obra.")
+    render_section_banner(
+        "🧱",
+        "Explosión Paramétrica de Insumos & Materiales BIM",
+        "Cálculo cuantitativo de insumos para compras y almacén basado en los cómputos métricos de diseño y avance de obra.",
+        "LOGÍSTICA & ALMACÉN"
+    )
 
     if proyecto_actual["id"] == "casa_mendoza":
         card_mamposteria_html = """
@@ -1323,8 +1606,12 @@ elif menu_seleccionado == "🧱 Insumos BIM":
 # VISTA 8: AUDITORÍA BITÁCORA CLOUD
 # ------------------------------------------------------------------------------
 elif menu_seleccionado == "📡 Bitácora Cloud":
-    st.markdown("### 📡 Registros en Tiempo Real de la Bitácora de Campo")
-    st.caption("Datos capturados por los ingenieros residentes en obra desde la aplicación móvil/web conectada a Supabase.")
+    render_section_banner(
+        "📡",
+        "Registros en Tiempo Real de Bitácora Cloud",
+        "Datos capturados por los ingenieros residentes en obra desde la aplicación móvil/web sincronizada con Supabase.",
+        "REST API LIVE"
+    )
     
     if not df_obra_activa.empty:
         df_mostrar = df_obra_activa.copy()
