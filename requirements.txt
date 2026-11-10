@@ -4,3 +4,4 @@ numpy
 openpyxl
 requests
 plotly>=5.18.0
+reportlab>=4.0.0

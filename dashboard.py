@@ -13,6 +13,13 @@ from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 import plotly.graph_objects as go
 import plotly.express as px
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.platypus import (
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, HRFlowable
+)
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.pdfgen import canvas
 
 def normalizar_texto(texto):
     if not texto or not isinstance(texto, str):
@@ -1038,6 +1045,356 @@ def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion, info_proyec
     return buffer
 
 # ==============================================================================
+# 5B. GENERADOR DE PRESUPUESTO OFICIAL EN PDF CON MEMBRETE PROFESIONAL
+# ==============================================================================
+class PresupuestoCanvas(canvas.Canvas):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._saved_page_states = []
+        self.doc_title = "Presupuesto Oficial de Obra"
+
+    def showPage(self):
+        self._saved_page_states.append(dict(self.__dict__))
+        self._startPage()
+
+    def save(self):
+        num_pages = len(self._saved_page_states)
+        for state in self._saved_page_states:
+            self.__dict__.update(state)
+            self.draw_page_decorations(num_pages)
+            super().showPage()
+        super().save()
+
+    def draw_page_decorations(self, page_count):
+        self.saveState()
+        self.setFont("Helvetica", 7.5)
+        self.setFillColor(colors.HexColor("#64748b"))
+        
+        # Encabezado en páginas 2 en adelante
+        if self._pageNumber > 1:
+            self.setStrokeColor(colors.HexColor("#cbd5e1"))
+            self.setLineWidth(0.5)
+            self.line(36, 756, 576, 756)
+            self.drawString(36, 760, f"JGM ConTech Executive BIM 5D OS • {self.doc_title[:60]}")
+            self.drawRightString(576, 760, "DOCUMENTO OFICIAL DE COSTOS")
+            
+        # Pie de página en todas las páginas
+        self.setStrokeColor(colors.HexColor("#cbd5e1"))
+        self.setLineWidth(0.5)
+        self.line(36, 36, 576, 36)
+        self.drawString(36, 26, "JGM ConTech Executive BIM 5D OS • Generado automáticamente con validez contractual")
+        self.drawRightString(576, 26, f"Página {self._pageNumber} de {page_count}")
+        self.restoreState()
+
+
+def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
+    """
+    Genera un archivo PDF profesional del presupuesto contractual de obra
+    con membrete ejecutivo, desglose de capítulos, matriz APU, AIU y firmas.
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=letter,
+        leftMargin=36,
+        rightMargin=36,
+        topMargin=40,
+        bottomMargin=45
+    )
+    
+    styles = getSampleStyleSheet()
+    
+    title_style = ParagraphStyle(
+        'DocTitle',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=14,
+        leading=17,
+        textColor=colors.HexColor('#0f172a')
+    )
+    subtitle_style = ParagraphStyle(
+        'DocSub',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7.5,
+        leading=10,
+        textColor=colors.HexColor('#2563eb'),
+        textTransform='uppercase'
+    )
+    sec_heading = ParagraphStyle(
+        'SecHead',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=9,
+        leading=12,
+        textColor=colors.HexColor('#1e3a8a')
+    )
+    cell_text = ParagraphStyle(
+        'CellText',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7.2,
+        leading=9,
+        textColor=colors.HexColor('#1e293b')
+    )
+    cell_text_bold = ParagraphStyle(
+        'CellTextBold',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7.2,
+        leading=9,
+        textColor=colors.HexColor('#0f172a')
+    )
+    cell_chap = ParagraphStyle(
+        'CellChap',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7.8,
+        leading=9.5,
+        textColor=colors.HexColor('#1e3a8a')
+    )
+    cell_right = ParagraphStyle(
+        'CellRight',
+        parent=styles['Normal'],
+        fontName='Helvetica',
+        fontSize=7.2,
+        leading=9,
+        alignment=2,
+        textColor=colors.HexColor('#0f172a')
+    )
+    cell_right_bold = ParagraphStyle(
+        'CellRightBold',
+        parent=styles['Normal'],
+        fontName='Helvetica-Bold',
+        fontSize=7.2,
+        leading=9,
+        alignment=2,
+        textColor=colors.HexColor('#0f172a')
+    )
+
+    story = []
+    
+    # 1. MEMBRETE EJECUTIVO SUPERIOR
+    fecha_actual_str = datetime.now().strftime("%d/%m/%Y")
+    proy_nombre = proyecto_actual.get('nombre', 'Proyecto de Construcción')
+    
+    header_data = [
+        [
+            Paragraph("<b>JGM ConTech</b> • Executive BIM 5D OS", subtitle_style),
+            Paragraph(f"<b>FECHA DE EMISIÓN:</b> {fecha_actual_str}", ParagraphStyle('HeadR', parent=cell_right, fontSize=7))
+        ],
+        [
+            Paragraph("PRESUPUESTO GENERAL DE OBRA Y APU", title_style),
+            Paragraph(f"<b>CÓDIGO:</b> PPTO-{str(proyecto_actual.get('id', 'PROY')).upper()[:12]}", ParagraphStyle('HeadR2', parent=cell_right, fontSize=8, textColor=colors.HexColor('#1e3a8a')))
+        ],
+        [
+            Paragraph(f"<b>Proyecto:</b> {proy_nombre} • {proyecto_actual.get('ubicacion', 'Colombia')}", cell_text),
+            Paragraph(f"<b>Modalidad:</b> {proyecto_actual.get('badge', 'APU CONTRACTUAL')}", cell_right)
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[360, 180])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1),
+        ('TOPPADDING', (0,0), (-1,-1), 1),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 4))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#2563eb"), spaceAfter=8, spaceBefore=4))
+
+    # 2. FICHA TÉCNICA CONTRACTUAL
+    meta_data = [
+        [
+            Paragraph("<b>ENTIDAD CONTRATANTE / CLIENTE:</b>", cell_text_bold),
+            Paragraph(f"{proyecto_actual.get('contratante', 'Cliente Privado')}", cell_text),
+            Paragraph("<b>DIRECCIÓN TÉCNICA / CONTRATISTA:</b>", cell_text_bold),
+            Paragraph(f"{proyecto_actual.get('contratista', 'Ing. Juan González')}", cell_text)
+        ],
+        [
+            Paragraph("<b>UBICACIÓN DE LA OBRA:</b>", cell_text_bold),
+            Paragraph(f"{proyecto_actual.get('ubicacion', 'Colombia')}", cell_text),
+            Paragraph("<b>MODELO / ESPECIFICACIÓN:</b>", cell_text_bold),
+            Paragraph(f"{proyecto_actual.get('modelo_bim', 'Presupuesto Base APU')}", cell_text)
+        ]
+    ]
+    meta_table = Table(meta_data, colWidths=[120, 150, 130, 140])
+    meta_table.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,-1), colors.HexColor('#f8fafc')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING', (0,0), (-1,-1), 4),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 4),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+    ]))
+    story.append(meta_table)
+    story.append(Spacer(1, 8))
+
+    # 3. RESUMEN EJECUTIVO POR CAPÍTULOS
+    story.append(Paragraph("1. RESUMEN EJECUTIVO POR CAPÍTULOS", sec_heading))
+    story.append(Spacer(1, 4))
+    
+    total_costo_directo = df_5d["Presupuesto_Total"].sum()
+    resumen_caps = df_5d.groupby("Capitulo")["Presupuesto_Total"].sum().reset_index()
+    resumen_caps["Pct"] = (resumen_caps["Presupuesto_Total"] / total_costo_directo * 100) if total_costo_directo > 0 else 0
+    
+    tabla_caps_data = [
+        [
+            Paragraph("<b>Capítulo de Obra</b>", ParagraphStyle('ThC', parent=cell_text_bold, textColor=colors.white)),
+            Paragraph("<b>Subtotal Costo Directo ($ COP)</b>", ParagraphStyle('ThR', parent=cell_right_bold, textColor=colors.white)),
+            Paragraph("<b>Participación (%)</b>", ParagraphStyle('ThR2', parent=cell_right_bold, textColor=colors.white))
+        ]
+    ]
+    for _, r in resumen_caps.iterrows():
+        tabla_caps_data.append([
+            Paragraph(str(r["Capitulo"]), cell_text),
+            Paragraph(f"${r['Presupuesto_Total']:,.0f}", cell_right),
+            Paragraph(f"{r['Pct']:.1f}%", cell_right)
+        ])
+    tabla_caps_data.append([
+        Paragraph("<b>TOTAL COSTO DIRECTO DE OBRA</b>", cell_text_bold),
+        Paragraph(f"<b>${total_costo_directo:,.0f}</b>", cell_right_bold),
+        Paragraph("<b>100.0%</b>", cell_right_bold)
+    ])
+    
+    t_caps = Table(tabla_caps_data, colWidths=[280, 160, 100])
+    t_caps.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e3a8a')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#eff6ff')),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(t_caps)
+    story.append(Spacer(1, 10))
+
+    # 4. MATRIZ DETALLADA DE ÍTEMS Y ACTIVIDADES APU
+    story.append(Paragraph("2. MATRIZ DETALLADA DE CANTIDADES Y PRECIOS UNITARIOS (APU)", sec_heading))
+    story.append(Spacer(1, 4))
+    
+    matriz_headers = [
+        Paragraph("<b>Ítem</b>", ParagraphStyle('MTh1', parent=cell_text_bold, textColor=colors.white, alignment=1)),
+        Paragraph("<b>Descripción de la Actividad Constructiva (APU)</b>", ParagraphStyle('MTh2', parent=cell_text_bold, textColor=colors.white)),
+        Paragraph("<b>Und</b>", ParagraphStyle('MTh3', parent=cell_text_bold, textColor=colors.white, alignment=1)),
+        Paragraph("<b>Cantidad</b>", ParagraphStyle('MTh4', parent=cell_right_bold, textColor=colors.white)),
+        Paragraph("<b>Precio Unit. ($)</b>", ParagraphStyle('MTh5', parent=cell_right_bold, textColor=colors.white)),
+        Paragraph("<b>Subtotal ($ COP)</b>", ParagraphStyle('MTh6', parent=cell_right_bold, textColor=colors.white))
+    ]
+    
+    matriz_rows = [matriz_headers]
+    cap_actual = None
+    table_styles = [
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e3a8a')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#f1f5f9')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+    ]
+    
+    row_idx = 1
+    for _, r in df_5d.iterrows():
+        cap_fila = r["Capitulo"]
+        if cap_fila != cap_actual:
+            cap_actual = cap_fila
+            subtotal_cap = df_5d[df_5d["Capitulo"] == cap_actual]["Presupuesto_Total"].sum()
+            matriz_rows.append([
+                Paragraph(f"<b>CAP.</b>", cell_chap),
+                Paragraph(f"<b>{cap_actual.upper()}</b>", cell_chap),
+                Paragraph("", cell_text),
+                Paragraph("", cell_text),
+                Paragraph("<b>Subtotal:</b>", cell_right_bold),
+                Paragraph(f"<b>${subtotal_cap:,.0f}</b>", cell_right_bold)
+            ])
+            table_styles.append(('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#f1f5f9')))
+            table_styles.append(('LINEBELOW', (0, row_idx), (-1, row_idx), 1, colors.HexColor('#93c5fd')))
+            row_idx += 1
+            
+        matriz_rows.append([
+            Paragraph(str(r["Item"]), ParagraphStyle('CItem', parent=cell_text, alignment=1)),
+            Paragraph(str(r["Actividad"]), cell_text),
+            Paragraph(str(r["Unidad"]), ParagraphStyle('CUnd', parent=cell_text, alignment=1)),
+            Paragraph(f"{r['Cantidad_Contratada']:,.2f}", cell_right),
+            Paragraph(f"${r['Precio_Unitario']:,.0f}", cell_right),
+            Paragraph(f"${r['Presupuesto_Total']:,.0f}", cell_right)
+        ])
+        if row_idx % 2 == 1:
+            table_styles.append(('BACKGROUND', (0, row_idx), (-1, row_idx), colors.HexColor('#fafafa')))
+        row_idx += 1
+        
+    t_matriz = Table(matriz_rows, colWidths=[36, 244, 30, 60, 75, 95], repeatRows=1)
+    t_matriz.setStyle(TableStyle(table_styles))
+    story.append(t_matriz)
+    story.append(Spacer(1, 10))
+
+    # 5. LIQUIDACIÓN CONTRACTUAL Y FACTOR AIU
+    pct_a = params_liquidacion["pct_a"]
+    pct_i = params_liquidacion["pct_i"]
+    pct_u = params_liquidacion["pct_u"]
+    
+    val_a = total_costo_directo * (pct_a / 100.0)
+    val_i = total_costo_directo * (pct_i / 100.0)
+    val_u = total_costo_directo * (pct_u / 100.0)
+    val_aiu = val_a + val_i + val_u
+    val_bruto = total_costo_directo + val_aiu
+    iva_u = val_u * 0.19
+    total_ppto_global = val_bruto + iva_u
+    
+    liq_data = [
+        [Paragraph("<b>CONCEPTO CONTRACTUAL</b>", cell_text_bold), Paragraph("<b>PORCENTAJE (%)</b>", cell_right_bold), Paragraph("<b>VALOR (COP)</b>", cell_right_bold)],
+        [Paragraph("Subtotal Costo Directo de Actividades (APU)", cell_text), Paragraph("100.00%", cell_right), Paragraph(f"${total_costo_directo:,.0f}", cell_right)],
+        [Paragraph(f"(+) Administración", cell_text), Paragraph(f"{pct_a:.2f}%", cell_right), Paragraph(f"${val_a:,.0f}", cell_right)],
+        [Paragraph(f"(+) Imprevistos", cell_text), Paragraph(f"{pct_i:.2f}%", cell_right), Paragraph(f"${val_i:,.0f}", cell_right)],
+        [Paragraph(f"(+) Utilidad", cell_text), Paragraph(f"{pct_u:.2f}%", cell_right), Paragraph(f"${val_u:,.0f}", cell_right)],
+        [Paragraph("<b>SUBTOTAL PRESUPUESTO BRUTO (Directo + AIU)</b>", cell_text_bold), Paragraph(f"<b>{100 + pct_a + pct_i + pct_u:.2f}%</b>", cell_right_bold), Paragraph(f"<b>${val_bruto:,.0f}</b>", cell_right_bold)],
+        [Paragraph("(+) Impuesto IVA (19% sobre Utilidad)", cell_text), Paragraph(f"{pct_u*0.19:.2f}%", cell_right), Paragraph(f"${iva_u:,.0f}", cell_right)],
+        [Paragraph("<b>PRESUPUESTO TOTAL OFICIAL DE CONTRATACIÓN</b>", ParagraphStyle('TotL', parent=cell_text_bold, textColor=colors.HexColor('#1e3a8a'))), Paragraph("", cell_text), Paragraph(f"<b>${total_ppto_global:,.0f} COP</b>", ParagraphStyle('TotR', parent=cell_right_bold, textColor=colors.HexColor('#1e3a8a')))]
+    ]
+    t_liq = Table(liq_data, colWidths=[280, 100, 160])
+    t_liq.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f5f9')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (0,5), (-1,5), colors.HexColor('#f8fafc')),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#dbeafe')),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    ]))
+    
+    sig_residente = proyecto_actual.get('firma_residente', 'ING. JUAN GONZÁLEZ\nDirector de Obra').replace('\n', '<br/>')
+    sig_interventor = proyecto_actual.get('firma_interventor', 'SUPERVISIÓN / CLIENTE\nRepresentante Legal').replace('\n', '<br/>')
+    
+    cierre_elementos = [
+        Paragraph("3. LIQUIDACIÓN CONTRACTUAL Y FACTOR AIU", sec_heading),
+        Spacer(1, 4),
+        t_liq,
+        Spacer(1, 24),
+        Table([
+            [
+                Paragraph("____________________________________________<br/><b>DIRECCIÓN TÉCNICA / CONTRATISTA</b><br/>" + sig_residente, ParagraphStyle('SigL', parent=cell_text, alignment=1)),
+                Paragraph("____________________________________________<br/><b>SUPERVISIÓN / CLIENTE CONTRATANTE</b><br/>" + sig_interventor, ParagraphStyle('SigR', parent=cell_text, alignment=1))
+            ]
+        ], colWidths=[270, 270], style=[('VALIGN', (0,0), (-1,-1), 'TOP')])
+    ]
+    story.append(KeepTogether(cierre_elementos))
+
+    canvas_maker = lambda *args, **kwargs: PresupuestoCanvas(*args, **kwargs)
+    doc.build(story, canvasmaker=canvas_maker)
+    
+    buffer.seek(0)
+    return buffer
+
+# ==============================================================================
 # 6. SIDEBAR COMPACTO: COMPAÑERO DE CONTROL Y PARÁMETROS
 # ==============================================================================
 with st.sidebar:
@@ -1582,6 +1939,103 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
         "Cruce automatizado entre el cómputo métrico Revit, el presupuesto base y la ejecución certificada de bitácora.",
         "APU CONTRACTUAL"
     )
+    
+    # BARRA DE ACCIONES EJECUTIVAS: EXPORTAR PDF Y EDITAR APU
+    c_btn1, c_btn2, c_btn3 = st.columns([1.1, 1.2, 0.7])
+    with c_btn1:
+        pdf_presupuesto = generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual)
+        st.download_button(
+            label="📄 Exportar Presupuesto PDF (Membrete Oficial)",
+            data=pdf_presupuesto,
+            file_name=f"Presupuesto_Oficial_{proyecto_actual['id']}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            mime="application/pdf",
+            type="primary",
+            use_container_width=True,
+            help="Descarga el documento formal del presupuesto en PDF con membrete ejecutivo, resumen por capítulos, matriz APU, AIU y firmas."
+        )
+    with c_btn2:
+        modo_edicion = st.toggle("✏️ Editar Capítulos y Actividades APU", value=st.session_state.get("modo_edicion_apu", False), key="toggle_edit_apu")
+        st.session_state["modo_edicion_apu"] = modo_edicion
+
+    if st.session_state.get("modo_edicion_apu", False):
+        with st.container(border=True):
+            render_html(f"""
+            <div style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.08) 0%, rgba(248, 250, 252, 1) 100%); border-left: 4px solid #2563eb; padding: 14px 18px; border-radius: 12px; margin-bottom: 14px;">
+                <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #1e3a8a;">✏️ Editor de Capítulos y Actividades Constructivas (APU)</h4>
+                <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #64748b;">
+                    Modifique directamente los nombres de los <strong>capítulos</strong>, descripciones de las <strong>actividades</strong>, unidades, cantidades y precios. Al guardar, todos los cómputos, resúmenes, gráficos y el PDF oficial se actualizarán de forma inmediata.
+                </p>
+            </div>
+            """)
+            
+            # Construir tabla editable con los datos actuales
+            data_edit = []
+            for item in proyecto_actual["ppto_base"]:
+                data_edit.append({
+                    "Item": str(item.get("Item", "")),
+                    "Capitulo": str(item.get("Capitulo", "")),
+                    "Actividad": str(item.get("Actividad", "")),
+                    "Unidad": str(item.get("Unidad", "und")),
+                    "Cantidad": float(item.get("Cantidad_Contratada", 1.0)),
+                    "Precio_Unitario": float(item.get("Precio_Unitario", 0.0))
+                })
+            df_para_editar = pd.DataFrame(data_edit)
+            
+            edited_apu_df = st.data_editor(
+                df_para_editar,
+                num_rows="dynamic",
+                use_container_width=True,
+                key="editor_tabla_apu",
+                column_config={
+                    "Item": st.column_config.TextColumn("Ítem", width="small", required=True),
+                    "Capitulo": st.column_config.TextColumn("Capítulo (Nombre de Etapa)", width="medium", required=True),
+                    "Actividad": st.column_config.TextColumn("Actividad Constructiva (Descripción APU)", width="large", required=True),
+                    "Unidad": st.column_config.TextColumn("Und", width="small", required=True),
+                    "Cantidad": st.column_config.NumberColumn("Cantidad", format="%.2f", min_value=0.01, required=True),
+                    "Precio_Unitario": st.column_config.NumberColumn("Precio Unitario ($ COP)", format="$%d", min_value=0.0, required=True)
+                }
+            )
+            
+            c_ed1, c_ed2, c_ed3 = st.columns([1.1, 1, 2])
+            with c_ed1:
+                if st.button("💾 Guardar Cambios en Presupuesto", type="primary", use_container_width=True, key="btn_save_apu_edits"):
+                    nuevos_items = []
+                    for idx, r in edited_apu_df.iterrows():
+                        act_str = str(r.get("Actividad", "")).strip()
+                        cap_str = str(r.get("Capitulo", "")).strip()
+                        if act_str and act_str.lower() not in ["nan", "none"]:
+                            it_str = str(r.get("Item", f"{idx+1}")).strip()
+                            und_str = str(r.get("Unidad", "und")).strip()
+                            cant_val = float(r.get("Cantidad", 1.0) or 1.0)
+                            pu_val = float(r.get("Precio_Unitario", 0.0) or 0.0)
+                            match_keys = [w for w in normalizar_texto(act_str).split() if len(w) > 3]
+                            nuevos_items.append({
+                                "Item": it_str,
+                                "Capitulo": cap_str or "1. ACTIVIDADES GENERALES",
+                                "Actividad": act_str,
+                                "Unidad": und_str,
+                                "Cantidad_Contratada": cant_val,
+                                "Precio_Unitario": pu_val,
+                                "match_keys": match_keys
+                            })
+                            
+                    if nuevos_items:
+                        proyecto_actual["ppto_base"] = nuevos_items
+                        PROYECTOS_DISPONIBLES[st.session_state["proyecto_activo_seleccionado"]]["ppto_base"] = nuevos_items
+                        guardar_proyecto_en_disco(st.session_state["proyecto_activo_seleccionado"], proyecto_actual)
+                        st.session_state["modo_edicion_apu"] = False
+                        st.cache_data.clear()
+                        st.success("✅ ¡Capítulos y actividades de APU actualizados y guardados exitosamente!")
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Ingrese al menos una actividad válida.")
+                        
+            with c_ed2:
+                if st.button("✖ Cancelar Edición", use_container_width=True, key="btn_cancel_apu_edits"):
+                    st.session_state["modo_edicion_apu"] = False
+                    st.rerun()
+                    
+            st.markdown("<hr style='margin: 16px 0; border: 0; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
     
     with st.container(border=True):
         f_col1, f_col2, f_col3 = st.columns([1.2, 1, 1])
