@@ -60,11 +60,11 @@ export default function TabCurvaS({ data }: TabCurvaSProps) {
           <div className="text-[11px] text-slate-500 mt-0.5">{pvPct}% programado</div>
         </div>
 
-        <div className="bento-card border-l-4 border-l-blue-600">
+        <div className="bento-card border-l-4 border-l-slate-800">
           <div className="text-[11px] font-bold uppercase text-slate-500">
             Valor Ganado Real (EV)
           </div>
-          <div className="kpi-num text-xl font-extrabold text-blue-700 mt-1">
+          <div className="kpi-num text-xl font-extrabold text-slate-900 mt-1">
             {formatCOP(ev)}
           </div>
           <div className="text-[11px] text-slate-500 mt-0.5">
@@ -129,8 +129,8 @@ export default function TabCurvaS({ data }: TabCurvaSProps) {
                 type="monotone"
                 dataKey="Real"
                 name="Ejecutado Real (EV)"
-                stroke="#2563eb"
-                fill="#dbeafe"
+                stroke="#0f172a"
+                fill="#cbd5e1"
                 fillOpacity={0.65}
                 strokeWidth={3}
                 connectNulls={false}

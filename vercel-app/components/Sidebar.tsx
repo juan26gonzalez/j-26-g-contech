@@ -54,21 +54,21 @@ export default function Sidebar({
   };
 
   const content = (
-    <div className="flex flex-col h-full bg-white border-r border-slate-200 px-4 py-5 overflow-y-auto select-none">
+    <div className="flex flex-col h-full bg-gradient-to-b from-slate-100/95 via-slate-200/90 to-slate-100/95 backdrop-blur-md border-r border-slate-300 px-4 py-5 overflow-y-auto select-none">
       {/* Brand Header */}
-      <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-blue-900 rounded-2xl p-4 text-white border border-blue-500/30 shadow-lg mb-4">
+      <div className="steel-panel-dark rounded-2xl p-4 text-white mb-4">
         <div className="flex items-center justify-between gap-2 mb-2.5">
           <div className="flex items-center gap-3 min-w-0">
             <img
               src="/logo-mark.png"
               alt="JGM ConTech Gerencia"
-              className="w-10 h-10 rounded-xl shadow-md border border-white/15 shrink-0"
+              className="w-11 h-11 rounded-xl shadow-md border border-slate-300/60 shrink-0"
             />
             <div className="min-w-0">
-              <div className="text-[17px] font-extrabold tracking-tight leading-none truncate">
+              <div className="text-[17px] font-extrabold tracking-tight leading-none truncate text-slate-50">
                 JGM ConTech
               </div>
-              <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-sky-300 mt-1">
+              <div className="text-[10px] font-bold tracking-[0.14em] uppercase text-slate-300 mt-1">
                 Gerencia BIM 5D
               </div>
             </div>
@@ -99,7 +99,7 @@ export default function Sidebar({
         href={BITACORA_APP_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="w-full mb-4 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold py-2.5 px-3 rounded-xl shadow-sm transition-colors"
+        className="w-full mb-4 flex items-center justify-center gap-2 steel-btn-primary text-white text-xs font-bold py-2.5 px-3 rounded-xl"
       >
         <span>📱</span>
         <span>Abrir Bitácora de Campo</span>
@@ -117,7 +117,7 @@ export default function Sidebar({
             onSelectProyecto(e.target.value);
             onCloseMobile();
           }}
-          className="w-full rounded-xl border border-slate-300 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-xl border border-slate-300 bg-white/90 px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-600"
         >
           {Object.values(proyectos).map((p) => (
             <option key={p.id} value={p.id}>
@@ -131,7 +131,7 @@ export default function Sidebar({
       {proyectoActual && (
         <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 mb-3 text-xs space-y-1">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-blue-700 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-800 bg-slate-200/80 px-2 py-0.5 rounded-full border border-slate-400/70">
               {proyectoActual.tipo === "presupuesto"
                 ? "Solo Presupuesto"
                 : "Modo BIM 5D"}
@@ -253,7 +253,7 @@ export default function Sidebar({
           <div key={s.key} className="space-y-1">
             <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700">
               <span>{s.label}</span>
-              <span className="font-mono font-bold text-blue-700">
+              <span className="font-mono font-bold text-slate-900">
                 {params[s.key].toFixed(s.step < 1 ? 1 : 0)}%
               </span>
             </div>
@@ -264,7 +264,7 @@ export default function Sidebar({
               step={s.step}
               value={params[s.key]}
               onChange={(e) => handleSlider(s.key, Number(e.target.value))}
-              className="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
+              className="w-full h-1.5 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-slate-800"
             />
           </div>
         ))}

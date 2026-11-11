@@ -162,7 +162,7 @@ export default function TabBitacoraCloud({
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-extrabold py-2.5 px-3 rounded-xl shadow-sm"
+              className="w-full steel-btn-primary font-extrabold py-2.5 px-3 rounded-xl"
             >
               {submitting ? "⏳..." : "🚀 Enviar Cloud"}
             </button>
@@ -179,7 +179,7 @@ export default function TabBitacoraCloud({
           <button
             type="button"
             onClick={() => setShowGlobalAudit((v) => !v)}
-            className="text-xs font-bold text-blue-700 hover:underline"
+            className="text-xs font-bold text-slate-800 hover:text-slate-950 hover:underline"
           >
             {showGlobalAudit
               ? "Ocultar Auditoría Global"
@@ -212,7 +212,7 @@ export default function TabBitacoraCloud({
                       {formatColombiaTimestamp(r.created_at, r.fecha)}
                     </td>
                     <td className="p-2 font-semibold text-slate-900">{r.actividad}</td>
-                    <td className="p-2 text-right font-mono font-bold text-blue-700">
+                    <td className="p-2 text-right font-mono font-bold text-slate-900">
                       {r.cantidad}
                     </td>
                     <td className="p-2 text-center">{r.unidad || "und"}</td>

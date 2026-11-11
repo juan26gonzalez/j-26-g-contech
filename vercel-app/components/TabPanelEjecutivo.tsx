@@ -33,7 +33,7 @@ export default function TabPanelEjecutivo({
       label: "Presupuesto Base Directo",
       value: formatCOP(totals.total_ppto_contratado),
       sub: `+ AIU: ${formatCOP(totalContratadoAiu)}`,
-      border: "border-l-4 border-l-blue-600",
+      border: "border-l-4 border-l-slate-800",
       valColor: "text-slate-900",
     },
     {
@@ -101,7 +101,7 @@ export default function TabPanelEjecutivo({
               Progreso Físico Ponderado de Obra (BIM 5D)
             </span>
           </div>
-          <span className="font-mono text-sm font-extrabold text-blue-700">
+          <span className="font-mono text-sm font-extrabold text-slate-900">
             {totals.avance_fisico_ponderado.toFixed(2)}% Completado
           </span>
         </div>
@@ -110,7 +110,7 @@ export default function TabPanelEjecutivo({
             className="h-full rounded-full transition-all duration-500"
             style={{
               width: `${Math.min(totals.avance_fisico_ponderado, 100)}%`,
-              background: "linear-gradient(90deg, #2563eb 0%, #10b981 100%)",
+              background: "linear-gradient(90deg, #334155 0%, #0f172a 48%, #10b981 100%)",
             }}
           />
         </div>
@@ -158,7 +158,7 @@ export default function TabPanelEjecutivo({
                 <Bar
                   dataKey="Ejecutado"
                   name="Costo Ejecutado"
-                  fill="#2563eb"
+                  fill="#0f172a"
                   radius={[6, 6, 0, 0]}
                 />
               </BarChart>
@@ -192,7 +192,7 @@ export default function TabPanelEjecutivo({
                     <td className="py-2.5 px-2 text-right font-mono text-slate-700">
                       {formatCOP(cap.Presupuesto_Total)}
                     </td>
-                    <td className="py-2.5 px-2 text-right font-mono font-bold text-blue-700">
+                    <td className="py-2.5 px-2 text-right font-mono font-bold text-slate-900">
                       {formatCOP(cap.Costo_Ejecutado)}
                     </td>
                     <td className="py-2.5 px-2 text-right font-mono font-bold">
@@ -201,7 +201,7 @@ export default function TabPanelEjecutivo({
                           cap["Avance_%"] >= 99
                             ? "bg-emerald-100 text-emerald-800"
                             : cap["Avance_%"] > 0
-                            ? "bg-blue-100 text-blue-800"
+                            ? "bg-slate-200 text-slate-900 border border-slate-300"
                             : "bg-slate-100 text-slate-600"
                         }`}
                       >

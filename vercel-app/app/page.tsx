@@ -240,7 +240,7 @@ export default function GerenciaBim5DPage() {
   };
 
   return (
-    <div className="min-h-screen flex bg-[#f8fafc]">
+    <div className="min-h-screen flex bg-transparent">
       <Sidebar
         proyectos={proyectos}
         proyectoActivoId={proyectoActual.id}
@@ -309,7 +309,7 @@ export default function GerenciaBim5DPage() {
           />
         )}
 
-        <footer className="pt-4 pb-2 text-center text-[11px] text-slate-400 font-medium">
+        <footer className="pt-4 pb-2 text-center text-[11px] text-slate-600 font-semibold">
           JGM ConTech • Gerencia BIM 5D Cloud (Next.js + Python Pandas + ReportLab + Supabase)
         </footer>
       </main>

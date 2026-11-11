@@ -161,7 +161,7 @@ export default function TabContratosPDF({
             onClick={() => setSubTab("cliente")}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
               subTab === "cliente"
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "steel-btn-primary text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -172,7 +172,7 @@ export default function TabContratosPDF({
             onClick={() => setSubTab("oficial")}
             className={`px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
               subTab === "oficial"
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "steel-btn-primary text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -296,7 +296,7 @@ export default function TabContratosPDF({
                   onChange={(e) =>
                     setCliCfg({ ...cliCfg, incluir_iva_u: e.target.checked })
                   }
-                  className="accent-blue-600 w-4 h-4"
+                  className="accent-slate-800 w-4 h-4"
                 />
                 Incluir IVA 19% sobre Utilidad (Régimen Común)
               </label>
@@ -318,12 +318,12 @@ export default function TabContratosPDF({
             />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="steel-subcard rounded-xl p-4 flex flex-wrap items-center justify-between gap-4">
             <div>
-              <div className="text-[11px] font-bold uppercase text-blue-700">
+              <div className="text-[11px] font-bold uppercase text-slate-600">
                 Valor Total del Contrato a Imprimir
               </div>
-              <div className="text-2xl font-extrabold font-mono text-blue-900">
+              <div className="text-2xl font-extrabold font-mono text-slate-900">
                 {formatCOP(totalContratoCli)}
               </div>
             </div>
@@ -331,7 +331,7 @@ export default function TabContratosPDF({
               type="button"
               onClick={handleDownloadCliente}
               disabled={loading}
-              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold shadow-md"
+              className="px-5 py-2.5 rounded-xl steel-btn-primary font-extrabold"
             >
               {loading ? "⏳ Generando PDF..." : "📥 Descargar Contrato Cliente PDF"}
             </button>
@@ -449,7 +449,7 @@ export default function TabContratosPDF({
                   {subItems.map((it, idx) => {
                     const checked = Boolean(selectedMap[it.Item]);
                     return (
-                      <tr key={it.Item} className={checked ? "bg-blue-50/30" : ""}>
+                      <tr key={it.Item} className={checked ? "bg-slate-200/45" : ""}>
                         <td className="p-2 text-center">
                           <input
                             type="checkbox"
@@ -460,7 +460,7 @@ export default function TabContratosPDF({
                                 [it.Item]: e.target.checked,
                               }))
                             }
-                            className="accent-blue-600"
+                            className="accent-slate-800"
                           />
                         </td>
                         <td className="p-2 font-mono font-bold">{it.Item}</td>
@@ -486,7 +486,7 @@ export default function TabContratosPDF({
                             className="w-full border border-slate-300 rounded px-2 py-1 text-right font-mono font-bold"
                           />
                         </td>
-                        <td className="p-2 text-right font-mono font-bold text-blue-700">
+                        <td className="p-2 text-right font-mono font-bold text-slate-900">
                           {formatCOP(it.Cantidad_Contratada * it.Tarifa_Mano_Obra)}
                         </td>
                       </tr>

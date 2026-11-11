@@ -28,7 +28,7 @@ export default function TabMayoresCantidades({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bento-card border-l-4 border-l-blue-600">
+        <div className="bento-card border-l-4 border-l-slate-800">
           <div className="text-[11px] font-bold uppercase text-slate-500">
             Presupuesto Inicial (BAC)
           </div>

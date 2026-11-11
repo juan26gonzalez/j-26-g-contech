@@ -237,7 +237,7 @@ export default function NewProjectModal({
               }}
               className={`text-left p-3.5 rounded-xl border-2 transition-all ${
                 tipo === "presupuesto"
-                  ? "border-blue-600 bg-blue-50"
+                  ? "border-slate-800 bg-slate-200/80 shadow-inner"
                   : "border-slate-200 hover:border-slate-300"
               }`}
             >
@@ -257,7 +257,7 @@ export default function NewProjectModal({
               }}
               className={`text-left p-3.5 rounded-xl border-2 transition-all ${
                 tipo === "bim"
-                  ? "border-blue-600 bg-blue-50"
+                  ? "border-slate-800 bg-slate-200/80 shadow-inner"
                   : "border-slate-200 hover:border-slate-300"
               }`}
             >
@@ -348,7 +348,7 @@ export default function NewProjectModal({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="font-extrabold text-slate-800">
                 3. Actividades del Presupuesto ({items.length} ítems • Costo Directo:{" "}
-                <span className="text-blue-700 font-mono">{formatCOP(totalDirecto)}</span>)
+                <span className="text-slate-900 font-mono">{formatCOP(totalDirecto)}</span>)
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
@@ -358,7 +358,7 @@ export default function NewProjectModal({
                 >
                   ⬇️ Plantilla Excel
                 </button>
-                <label className="cursor-pointer bg-blue-600 hover:bg-blue-700 text-white font-bold px-3 py-1.5 rounded-lg">
+                <label className="cursor-pointer steel-btn-primary font-bold px-3 py-1.5 rounded-lg">
                   {uploading ? "⏳ Procesando..." : "📤 Cargar Excel / CSV"}
                   <input
                     type="file"
@@ -513,7 +513,7 @@ export default function NewProjectModal({
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-extrabold shadow-md"
+              className="px-5 py-2 rounded-xl steel-btn-primary font-extrabold"
             >
               🚀 Crear y Activar Proyecto
             </button>

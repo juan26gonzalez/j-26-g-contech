@@ -1,84 +1,72 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#0f172a" />
-      <stop offset="55%" stop-color="#0b1530" />
-      <stop offset="100%" stop-color="#020617" />
+    <linearGradient id="bgSteel19" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="32%" stop-color="#cbd5e1"/>
+      <stop offset="65%" stop-color="#94a3b8"/>
+      <stop offset="100%" stop-color="#e2e8f0"/>
     </linearGradient>
-    <radialGradient id="glowGrad" cx="50%" cy="38%" r="42%">
-      <stop offset="0%" stop-color="#2563eb" stop-opacity="0.38" />
-      <stop offset="100%" stop-color="#0f172a" stop-opacity="0" />
-    </radialGradient>
-    <linearGradient id="blueCyan" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#2563eb" />
-      <stop offset="100%" stop-color="#38bdf8" />
+    <linearGradient id="darkGunmetal19" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="50%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
     </linearGradient>
-    <linearGradient id="accentCurve" x1="0%" y1="100%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#38bdf8" />
-      <stop offset="100%" stop-color="#10b981" />
-    </linearGradient>
+    <pattern id="brushSteel19" width="120" height="4" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="1" x2="120" y2="1" stroke="rgba(255,255,255,0.28)" stroke-width="1"/>
+      <line x1="0" y1="3" x2="120" y2="3" stroke="rgba(15,23,42,0.06)" stroke-width="1"/>
+    </pattern>
   </defs>
 
-  <!-- Full-bleed dark navy canvas -->
-  <rect width="512" height="512" fill="url(#bgGrad)" />
-  <rect width="512" height="512" fill="url(#glowGrad)" />
+  <!-- Placa Acero Inoxidable Cepillado -->
+  <rect width="512" height="512" rx="0" fill="url(#bgSteel19)"/>
+  <rect width="512" height="512" rx="0" fill="url(#brushSteel19)"/>
 
-  <!-- Subtle CAD blueprint grid -->
-  <g stroke="#1e3a8a" stroke-opacity="0.28" stroke-width="1">
-    <line x1="64" y1="0" x2="64" y2="512" />
-    <line x1="128" y1="0" x2="128" y2="512" />
-    <line x1="192" y1="0" x2="192" y2="512" />
-    <line x1="256" y1="0" x2="256" y2="512" />
-    <line x1="320" y1="0" x2="320" y2="512" />
-    <line x1="384" y1="0" x2="384" y2="512" />
-    <line x1="448" y1="0" x2="448" y2="512" />
-    <line x1="0" y1="64" x2="512" y2="64" />
-    <line x1="0" y1="128" x2="512" y2="128" />
-    <line x1="0" y1="192" x2="512" y2="192" />
-    <line x1="0" y1="256" x2="512" y2="256" />
-    <line x1="0" y1="320" x2="512" y2="320" />
-    <line x1="0" y1="384" x2="512" y2="384" />
-    <line x1="0" y1="448" x2="512" y2="448" />
+  <!-- Bisel especular exterior e interior mecanizado -->
+  <rect x="20" y="20" width="472" height="472" rx="76" fill="none" stroke="#ffffff" stroke-width="4" opacity="0.8"/>
+  <rect x="28" y="28" width="456" height="456" rx="68" fill="none" stroke="#64748b" stroke-width="1.5" opacity="0.5"/>
+
+  <!-- Remaches ranurados industriales -->
+  
+    <g transform="translate(72, 72)">
+      <circle cx="0" cy="0" r="8.5" fill="#475569" stroke="#ffffff" stroke-width="2"/>
+      <rect x="-5" y="-1" width="10" height="2" rx="1" fill="#cbd5e1"/>
+    </g>
+  
+  
+    <g transform="translate(440, 72)">
+      <circle cx="0" cy="0" r="8.5" fill="#475569" stroke="#ffffff" stroke-width="2"/>
+      <rect x="-5" y="-1" width="10" height="2" rx="1" fill="#cbd5e1"/>
+    </g>
+  
+  
+    <g transform="translate(72, 440)">
+      <circle cx="0" cy="0" r="8.5" fill="#475569" stroke="#ffffff" stroke-width="2"/>
+      <rect x="-5" y="-1" width="10" height="2" rx="1" fill="#cbd5e1"/>
+    </g>
+  
+  
+    <g transform="translate(440, 440)">
+      <circle cx="0" cy="0" r="8.5" fill="#475569" stroke="#ffffff" stroke-width="2"/>
+      <rect x="-5" y="-1" width="10" height="2" rx="1" fill="#cbd5e1"/>
+    </g>
+  
+
+  <!-- Sombra CNC sutil + Letrero JGM mecanizado oscuro -->
+  <g transform="translate(258, 210) scale(1.04)" opacity="0.18">
+    <path d="M -83 -52 L -61 -52 L -61 36 L -77 52 L -125 52 L -141 36 L -141 14 L -119 14 L -119 30 L -83 30 Z" fill="#0f172a"/>
+    <path d="M -27 -52 L 21 -52 L 37 -36 L 37 -22 L 15 -22 L 15 -30 L -21 -30 L -21 30 L 15 30 L 15 10 L -2 10 L -2 -8 L 37 -8 L 37 36 L 21 52 L -27 52 L -43 36 L -43 -36 Z" fill="#0f172a"/>
+    <path d="M 55 52 L 55 -52 L 79 -52 L 99 -8 L 119 -52 L 143 -52 L 143 52 L 123 52 L 123 -12 L 105 26 L 93 26 L 75 -12 L 75 52 Z" fill="#0f172a"/>
+  </g>
+  <g transform="translate(256, 206) scale(1.04)">
+    <path d="M -83 -52 L -61 -52 L -61 36 L -77 52 L -125 52 L -141 36 L -141 14 L -119 14 L -119 30 L -83 30 Z" fill="url(#darkGunmetal19)" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="miter"/>
+    <path d="M -27 -52 L 21 -52 L 37 -36 L 37 -22 L 15 -22 L 15 -30 L -21 -30 L -21 30 L 15 30 L 15 10 L -2 10 L -2 -8 L 37 -8 L 37 36 L 21 52 L -27 52 L -43 36 L -43 -36 Z" fill="url(#darkGunmetal19)" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="miter"/>
+    <path d="M 55 52 L 55 -52 L 79 -52 L 99 -8 L 119 -52 L 143 -52 L 143 52 L 123 52 L 123 -12 L 105 26 L 93 26 L 75 -12 L 75 52 Z" fill="url(#darkGunmetal19)" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="miter"/>
   </g>
 
-  <!-- Central Geometric BIM 5D Structural & Financial Emblem -->
-  <g transform="translate(256, 178)">
-    <!-- Outer architectural hexagon frame -->
-    <polygon points="0,-104 92,-52 92,52 0,104 -92,52 -92,-52"
-      fill="#0f172a" fill-opacity="0.88"
-      stroke="url(#blueCyan)" stroke-width="6" stroke-linejoin="round" />
+  <!-- Cápsula Gunmetal oscura con tipografía ConTech grabada -->
+  <rect x="85" y="294" width="342" height="72" rx="18" fill="url(#darkGunmetal19)" stroke="#64748b" stroke-width="2.5"/>
+  <rect x="88" y="297" width="336" height="66" rx="15" fill="none" stroke="rgba(255,255,255,0.16)" stroke-width="1"/>
+  <text x="256" y="346" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-weight="800" font-size="42" fill="#f8fafc" letter-spacing="4.5">ConTech</text>
 
-    <!-- Subtle inner architectural truss lines -->
-    <polygon points="0,-88 76,-44 76,44 0,88 -76,44 -76,-44"
-      fill="none" stroke="#38bdf8" stroke-opacity="0.22" stroke-width="1.5" />
-
-    <!-- Structural roof apex chevron (Civil Engineering Portal) -->
-    <path d="M -56 -16 L 0 -54 L 56 -16"
-      fill="none" stroke="#ffffff" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round" />
-
-    <!-- Ascending 5D Pillars / Cost Bars -->
-    <rect x="-46" y="4" width="22" height="44" rx="4" fill="#2563eb" />
-    <rect x="-11" y="-14" width="22" height="62" rx="4" fill="#38bdf8" />
-    <rect x="24" y="-32" width="22" height="80" rx="4" fill="#ffffff" />
-
-    <!-- Baseline Datum -->
-    <line x1="-58" y1="54" x2="58" y2="54" stroke="#94a3b8" stroke-width="3.5" stroke-linecap="round" />
-
-    <!-- S-Curve Growth Arc across pillars -->
-    <path d="M -52 24 C -20 24, -4 -18, 52 -42"
-      fill="none" stroke="url(#accentCurve)" stroke-width="5" stroke-linecap="round" />
-    <circle cx="52" cy="-42" r="5.5" fill="#10b981" stroke="#0f172a" stroke-width="2" />
-  </g>
-
-  <!-- Brand Typography (Matching Sister Bitácora App) -->
-  <text x="256" y="368" text-anchor="middle" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-weight="900" font-size="52" letter-spacing="-0.5">
-    <tspan fill="#ffffff">JGM </tspan>
-    <tspan fill="#38bdf8">ConTech</tspan>
-  </text>
-
-  <!-- Subtitle Badge Bar -->
-  <rect x="136" y="392" width="240" height="32" rx="16" fill="#1e3a8a" fill-opacity="0.55" stroke="#38bdf8" stroke-opacity="0.45" stroke-width="1.5" />
-  <text x="256" y="414" text-anchor="middle" font-family="Segoe UI, Arial, Helvetica, sans-serif" font-weight="800" font-size="16" fill="#e2e8f0" letter-spacing="3.5">
-    GERENCIA BIM 5D
-  </text>
+  <text x="256" y="405" text-anchor="middle" font-family="Segoe UI, Arial, sans-serif" font-weight="800" font-size="13" fill="#334155" letter-spacing="4.2">GERENCIA BIM 5D</text>
 </svg>

@@ -175,7 +175,7 @@ export default function TabPresupuestoAPU({
             type="button"
             onClick={handleDownloadPdf}
             disabled={downloadingPdf}
-            className="px-4 py-2 rounded-xl text-xs font-extrabold bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white shadow-sm"
+            className="px-4 py-2 rounded-xl text-xs font-extrabold steel-btn-primary disabled:opacity-60"
           >
             {downloadingPdf ? "⏳ Generando PDF..." : "📥 Descargar Presupuesto PDF"}
           </button>
@@ -196,7 +196,7 @@ export default function TabPresupuestoAPU({
 
       {/* Inline Editor: Firmantes */}
       {showEditSigners && (
-        <div className="bento-card border-2 border-blue-200 bg-blue-50/30 space-y-3 text-xs">
+        <div className="bento-card border-2 border-slate-400/70 space-y-3 text-xs">
           <div className="font-extrabold text-slate-900">
             🪪 Identificación Contractual y Firmantes del Documento
           </div>
@@ -286,7 +286,7 @@ export default function TabPresupuestoAPU({
             <button
               type="button"
               onClick={handleSaveSigners}
-              className="px-4 py-1.5 rounded-lg bg-blue-600 text-white font-bold"
+              className="px-4 py-1.5 rounded-lg steel-btn-primary font-bold"
             >
               💾 Guardar Identificación
             </button>
@@ -449,7 +449,7 @@ export default function TabPresupuestoAPU({
       )}
 
       {/* Honorarios por Consultoría Técnica */}
-      <div className="bento-card border border-blue-200 bg-gradient-to-r from-white to-blue-50/40 space-y-4">
+      <div className="bento-card border-l-4 border-l-slate-800 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h3 className="text-sm font-extrabold text-slate-900">
@@ -464,7 +464,7 @@ export default function TabPresupuestoAPU({
               type="checkbox"
               checked={hon.incluir}
               onChange={(e) => handleSaveHon({ ...hon, incluir: e.target.checked })}
-              className="accent-blue-600 w-4 h-4"
+              className="accent-slate-800 w-4 h-4"
             />
             <span>Incluir Bloque de Honorarios en el PDF</span>
           </label>
@@ -553,7 +553,7 @@ export default function TabPresupuestoAPU({
                     onChange={(e) =>
                       handleSaveHon({ ...hon, bonificable: e.target.checked })
                     }
-                    className="accent-blue-600"
+                    className="accent-slate-800"
                   />
                   Bonificable 100% si adjudica la obra
                 </label>
@@ -564,7 +564,7 @@ export default function TabPresupuestoAPU({
                     onChange={(e) =>
                       handleSaveHon({ ...hon, incluir_iva_hon: e.target.checked })
                     }
-                    className="accent-blue-600"
+                    className="accent-slate-800"
                   />
                   Sumar IVA (19%) sobre honorarios
                 </label>
@@ -575,7 +575,7 @@ export default function TabPresupuestoAPU({
                     onChange={(e) =>
                       handleSaveHon({ ...hon, incluir_visita: e.target.checked })
                     }
-                    className="accent-blue-600"
+                    className="accent-slate-800"
                   />
                   Incluir tarifa opcional de visita técnica
                 </label>
@@ -594,7 +594,7 @@ export default function TabPresupuestoAPU({
               </div>
             </div>
 
-            <div className="bg-white border border-blue-200 rounded-xl p-4 flex flex-col justify-center space-y-2">
+            <div className="steel-subcard rounded-xl p-4 flex flex-col justify-center space-y-2">
               <div className="text-[11px] font-bold uppercase text-slate-500">
                 Vista Previa Liquidación Consultoría
               </div>
@@ -604,7 +604,7 @@ export default function TabPresupuestoAPU({
               </div>
               <div className="flex justify-between">
                 <span>Honorarios Consultoría:</span>
-                <span className="font-mono font-bold text-blue-700">{formatCOP(valHon)}</span>
+                <span className="font-mono font-bold text-slate-900">{formatCOP(valHon)}</span>
               </div>
               {hon.incluir_iva_hon && (
                 <div className="flex justify-between">
@@ -612,7 +612,7 @@ export default function TabPresupuestoAPU({
                   <span className="font-mono">{formatCOP(ivaHon)}</span>
                 </div>
               )}
-              <div className="flex justify-between pt-2 border-t border-slate-200 text-sm font-extrabold text-blue-900">
+              <div className="flex justify-between pt-2 border-t border-slate-300 text-sm font-extrabold text-slate-900">
                 <span>Total a Cobrar:</span>
                 <span className="font-mono">{formatCOP(totalHon)}</span>
               </div>
@@ -686,7 +686,7 @@ export default function TabPresupuestoAPU({
                   <td className="py-2 px-2 text-right font-mono">
                     {formatNum(r.Cantidad_Contratada)}
                   </td>
-                  <td className="py-2 px-2 text-right font-mono text-blue-700 font-bold">
+                  <td className="py-2 px-2 text-right font-mono text-slate-900 font-bold">
                     {formatNum(r.Cantidad_Ejecutada)}
                   </td>
                   <td className="py-2 px-2 text-right font-mono">

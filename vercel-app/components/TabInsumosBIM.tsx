@@ -43,7 +43,7 @@ export default function TabInsumosBIM({ proyecto, data }: TabInsumosBIMProps) {
             onClick={() => setModo("demanda")}
             className={`px-3.5 py-2 rounded-lg transition-all ${
               modo === "demanda"
-                ? "bg-blue-600 text-white shadow-sm"
+                ? "steel-btn-primary text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -64,11 +64,11 @@ export default function TabInsumosBIM({ proyecto, data }: TabInsumosBIMProps) {
       </div>
 
       {proyecto.id === "casa_mendoza" && (
-        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 text-xs text-blue-950">
+        <div className="steel-subcard rounded-2xl p-4 text-xs text-slate-900">
           <div className="font-extrabold text-sm mb-1">
             🏡 Sincronización BIM Revit 2027 (Casa Mendoza 1.1.rvt)
           </div>
-          <p className="text-blue-800">
+          <p className="text-slate-700">
             Cuando se cargan registros con etiqueta <code>[BIM_TAKEOFF]</code> desde la app de campo o Revit, las cantidades contratadas de Mampostería, Pisos, Pañete y Cubierta se recalibran automáticamente sobre toda la explosión de insumos.
           </p>
         </div>
@@ -96,7 +96,7 @@ export default function TabInsumosBIM({ proyecto, data }: TabInsumosBIMProps) {
                     <td className="p-2.5 text-center font-mono text-slate-600">
                       {g.Unidad}
                     </td>
-                    <td className="p-2.5 text-right font-mono font-extrabold text-blue-700">
+                    <td className="p-2.5 text-right font-mono font-extrabold text-slate-900">
                       {formatNum(g.Total)}
                     </td>
                   </tr>

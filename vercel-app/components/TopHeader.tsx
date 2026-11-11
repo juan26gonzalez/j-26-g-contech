@@ -36,13 +36,7 @@ export default function TopHeader({
   return (
     <div className="space-y-4">
       {/* Executive Header Banner */}
-      <div
-        className="relative overflow-hidden rounded-2xl text-white p-5 sm:p-6 shadow-xl border border-blue-500/30"
-        style={{
-          background:
-            "linear-gradient(125deg, #0f172a 0%, #1e3a8a 58%, #2563eb 100%)",
-        }}
-      >
+      <div className="steel-panel-dark relative overflow-hidden rounded-2xl text-white p-5 sm:p-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -53,7 +47,7 @@ export default function TopHeader({
               >
                 ☰ Menú
               </button>
-              <span className="bg-blue-500/25 border border-sky-300/40 text-sky-100 text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full">
+              <span className="bg-slate-200/15 border border-slate-300/40 text-slate-100 text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full">
                 {proyecto.badge}
               </span>
               <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-bold px-2.5 py-1 rounded-full">
@@ -63,7 +57,7 @@ export default function TopHeader({
                 href={BITACORA_APP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-white/15 hover:bg-white/25 border border-white/30 text-white text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
+                className="bg-slate-100/15 hover:bg-slate-100/25 border border-slate-300/35 text-slate-50 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
               >
                 📱 Ir a Bitácora App ↗
               </a>
@@ -73,13 +67,13 @@ export default function TopHeader({
               <img
                 src="/logo-mark.png"
                 alt="JGM ConTech"
-                className="hidden sm:block w-11 h-11 rounded-xl border border-white/20 shadow-md shrink-0"
+                className="hidden sm:block w-12 h-12 rounded-xl border border-slate-300/50 shadow-md shrink-0"
               />
               <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-snug">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-snug text-white">
                   {proyecto.logo} {proyecto.nombre}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-200/90 mt-0.5">
+                <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
                   Contratante: <b>{proyecto.contratante}</b> &nbsp;|&nbsp; Dir. Técnica:{" "}
                   <b>{proyecto.contratista}</b> &nbsp;|&nbsp; Modelo:{" "}
                   <b>{proyecto.modelo_bim}</b>
@@ -89,8 +83,8 @@ export default function TopHeader({
           </div>
 
           <div className="flex items-stretch gap-3 shrink-0">
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-2.5 text-center min-w-[125px]">
-              <div className="text-[10px] font-bold uppercase tracking-wider text-sky-200">
+            <div className="bg-gradient-to-br from-slate-200/15 to-slate-400/10 backdrop-blur-md border border-slate-300/30 rounded-xl px-4 py-2.5 text-center min-w-[125px] shadow-inner">
+              <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300">
                 Avance Físico Pond.
               </div>
               <div className="text-xl sm:text-2xl font-extrabold font-mono text-white mt-0.5">
@@ -111,7 +105,7 @@ export default function TopHeader({
       </div>
 
       {/* Navigation Pills (9 modules) */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-1.5 shadow-sm overflow-x-auto">
+      <div className="bento-card !p-1.5 overflow-x-auto">
         <div className="flex items-center gap-1 min-w-max">
           {TABS.map((t) => {
             const active = activeTab === t.key;
@@ -122,8 +116,8 @@ export default function TopHeader({
                 onClick={() => onChangeTab(t.key)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
                   active
-                    ? "bg-blue-600 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                    ? "steel-btn-primary text-white shadow-sm"
+                    : "text-slate-700 hover:text-slate-950 hover:bg-slate-200/75"
                 }`}
               >
                 {t.label}

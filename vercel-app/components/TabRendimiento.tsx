@@ -28,7 +28,7 @@ export default function TabRendimiento({ data }: TabRendimientoProps) {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bento-card border-l-4 border-l-blue-600">
+        <div className="bento-card border-l-4 border-l-slate-800">
           <div className="text-[11px] font-bold uppercase text-slate-500">
             Frentes con Registro
           </div>
@@ -83,7 +83,7 @@ export default function TabRendimiento({ data }: TabRendimientoProps) {
                       {formatNum(r.Total_Producido)}
                     </td>
                     <td className="p-2.5 text-center font-mono">{r.Jornadas}</td>
-                    <td className="p-2.5 text-right font-mono font-bold text-blue-700">
+                    <td className="p-2.5 text-right font-mono font-bold text-slate-900">
                       {r.Rendimiento_Real}
                     </td>
                     <td className="p-2.5 text-right font-mono text-slate-600">

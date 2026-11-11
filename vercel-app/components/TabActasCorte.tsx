@@ -111,11 +111,11 @@ export default function TabActasCorte({
             {formatCOP(cd)}
           </div>
         </div>
-        <div className="bento-card border-l-4 border-l-blue-600">
+        <div className="bento-card border-l-4 border-l-slate-800">
           <div className="text-[11px] font-bold uppercase text-slate-500">
             Valor Bruto (+ AIU {(params.pct_a + params.pct_i + params.pct_u).toFixed(1)}%)
           </div>
-          <div className="kpi-num text-xl font-extrabold text-blue-800 mt-1">
+          <div className="kpi-num text-xl font-extrabold text-slate-900 mt-1">
             {formatCOP(bruto)}
           </div>
         </div>
