@@ -33,6 +33,7 @@ const PRESET_BUDGETS = [1500000, 3000000, 5000000, 8000000, 12000000];
 const ACTIVITY_LABELS: Record<RoomActivityKey, string> = {
   plantilla: "Plantilla de concreto 7cm",
   enchape: "Enchape piso porcelanato 51x51",
+  enchape_pared: "Enchape pared cerámica / porcelanato",
   cielorraso: "Cielo raso",
   mamposteria: "Muros mampostería bloque No. 12",
   panete: "Pañete muros",
@@ -163,6 +164,7 @@ export default function TabHabitacionesBIM({
     const byKey: Record<string, { label: string; m2: number; valor: number }> = {
       plantilla: { label: "Plantillas concreto 7cm", m2: 0, valor: 0 },
       enchape: { label: "Enchape piso porcelanato", m2: 0, valor: 0 },
+      enchape_pared: { label: "Enchape pared cerámica", m2: 0, valor: 0 },
       cielorraso: { label: "Cielo raso", m2: 0, valor: 0 },
     };
     let otrosValor = 0;
@@ -512,8 +514,8 @@ export default function TabHabitacionesBIM({
               Usar precios del Presupuesto 5D
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-            {(["plantilla", "enchape", "cielorraso"] as RoomActivityKey[]).map((key) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            {(["plantilla", "enchape", "enchape_pared", "cielorraso"] as RoomActivityKey[]).map((key) => {
               const current = resolveUnitPriceForRoomItem(
                 {
                   id: key,
@@ -568,13 +570,20 @@ export default function TabHabitacionesBIM({
 
         <div className="bento-card border-l-4 border-l-slate-700">
           <div className="text-[11px] font-bold uppercase text-slate-500">
-            🪩 Total Enchape Porcelanato
+            🪩 Total Enchape (Piso + Pared)
           </div>
           <div className="kpi-num text-xl font-extrabold text-slate-900 mt-1">
-            {formatCOP(resumenGlobalPorActividad.byKey.enchape.valor * aiuFactor)}
+            {formatCOP(
+              (resumenGlobalPorActividad.byKey.enchape.valor +
+                resumenGlobalPorActividad.byKey.enchape_pared.valor) *
+                aiuFactor
+            )}
           </div>
           <div className="text-[11px] text-slate-600 font-mono mt-0.5">
-            {formatNum(resumenGlobalPorActividad.byKey.enchape.m2)} m² cargados
+            Piso: {formatNum(resumenGlobalPorActividad.byKey.enchape.m2)} m²
+            {resumenGlobalPorActividad.byKey.enchape_pared.m2 > 0
+              ? ` • Pared: ${formatNum(resumenGlobalPorActividad.byKey.enchape_pared.m2)} m²`
+              : ""}
           </div>
         </div>
 
@@ -715,6 +724,7 @@ export default function TabHabitacionesBIM({
               { key: "ALL" as const, label: "Todas" },
               { key: "plantilla" as const, label: "🧱 Plantillas" },
               { key: "enchape" as const, label: "🪩 Enchape Piso" },
+              { key: "enchape_pared" as const, label: "🪵 Enchape Pared" },
               { key: "cielorraso" as const, label: "☁️ Cielo Raso" },
             ].map((f) => (
               <button

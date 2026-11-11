@@ -23,10 +23,10 @@ export const CASA_MENDOZA_ROOM_ORDER: string[] = [
 
 /**
  * Dataset desmenuzado por habitación tomado directamente de las tablas de
- * planificación (Schedules) de Revit 2027 — Casa Mendoza 1.1.rvt usando `Comments`.
- * Nota: En la captura de Pisos, la fila inferior tras "Enchape piso H Lisbeth"
- * quedó fuera del scroll vertical (se deja editable `Enchape piso Cocina` como
- * pendiente de verificar hasta importar el archivo .txt/.csv nativo de Revit).
+ * planificación (Schedules) de Revit 2027 — Casa Mendoza 1.1.rvt usando `Comments`:
+ * - Plantilla de concreto 7cm (11 zonas = 110 m²)
+ * - Enchape piso porcelanato baño + casa + cocina (11 zonas visibles: 111 m² suma entera / 110 m² total Revit)
+ * - Cielo raso (9 zonas: 88 m² suma entera / 87 m² Grand total Revit)
  */
 export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
   // Habitación Mamá
@@ -246,11 +246,10 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     id: "cm-cocina-enchape",
     room: "Cocina",
     activityKey: "enchape",
-    activityLabel: "Enchape piso porcelanato 51x51",
+    activityLabel: "Enchape piso porcelanato cocina 51x51",
     sourceComment: "Enchape piso Cocina",
     unit: "m²",
-    quantity: 0,
-    pendingVerify: true,
+    quantity: 14,
   },
   {
     id: "cm-cocina-cielorraso",
@@ -335,6 +334,7 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
 const DEFAULT_ACTIVITY_PRICES: Record<RoomActivityKey, number> = {
   plantilla: 34000,
   enchape: 58000,
+  enchape_pared: 58000,
   cielorraso: 38000,
   mamposteria: 47500,
   panete: 24000,
@@ -347,6 +347,17 @@ const DEFAULT_ACTIVITY_PRICES: Record<RoomActivityKey, number> = {
 const ACTIVITY_MATCH_HINTS: Record<RoomActivityKey, string[]> = {
   plantilla: ["plantilla", "solado", "base de piso"],
   enchape: ["porcelanato", "enchape", "ceramica", "piso"],
+  enchape_pared: [
+    "enchape de pared",
+    "enchape pared",
+    "enchape muro",
+    "ceramica pared",
+    "azulejo",
+    "salpicadero",
+    "backsplash",
+    "pared bano",
+    "pared cocina",
+  ],
   cielorraso: ["cielo", "cielorraso", "ceiling"],
   mamposteria: ["mamposteria", "bloque", "bloques"],
   panete: ["panete", "revoco"],
@@ -412,12 +423,24 @@ export function classifyRevitActivityAndRoom(
   const fNorm = normalizarTexto(rawFamilyType);
   const combined = `${fNorm} ${cNorm}`;
 
+  const isWallTile =
+    ["pared", "muro", "azulejo", "salpicadero", "backsplash", "wall", "ceramica"].some((w) =>
+      combined.includes(w)
+    ) &&
+    ["enchape", "ceramica", "porcelanato", "azulejo", "revestimiento", "salpicadero", "tile"].some(
+      (t) => combined.includes(t)
+    ) &&
+    !cNorm.includes("piso");
+
   let activityKey: RoomActivityKey = "otro";
   let activityLabel = rawFamilyType.trim() || "Actividad BIM Revit";
 
   if (combined.includes("plantilla") || combined.includes("solado")) {
     activityKey = "plantilla";
     activityLabel = "Plantilla de concreto 7cm";
+  } else if (isWallTile) {
+    activityKey = "enchape_pared";
+    activityLabel = "Enchape pared cerámica / porcelanato";
   } else if (
     combined.includes("enchape") ||
     combined.includes("porcelanato") ||
@@ -457,7 +480,10 @@ export function classifyRevitActivityAndRoom(
 
   // Remueve el prefijo de actividad del Comment de Revit para aislar la habitación
   const stripped = rawComment
-    .replace(/^\s*(plantilla\s+de\s+concreto(\s+7\s*cm)?|enchape\s+piso|enchape|cielo\s*raso|mamposteria\s+bloque|muros?|panete|pintura)\s*/i, "")
+    .replace(
+      /^\s*(plantilla\s+de\s+concreto(\s+7\s*cm)?|enchape\s+de\s+pared|enchape\s+pared|enchape\s+de\s+muro|enchape\s+muro|ceramica\s+pared|azulejo|enchape\s+piso|enchape|cielo\s*raso|mamposteria\s+bloque|muros?|panete|pintura)\s*/i,
+      ""
+    )
     .trim();
 
   const room = normalizeRevitRoomName(stripped || rawComment);
@@ -520,9 +546,16 @@ export function parseRevitScheduleLocal(text: string): {
       idxComment = cIdx;
       idxArea = aIdx;
       idxFamily = cols.findIndex((c) =>
-        ["family and type", "familia y tipo", "floor assembly", "type", "tipo", "actividad"].some((k) =>
-          c.includes(k)
-        )
+        [
+          "family and type",
+          "familia y tipo",
+          "floor assembly",
+          "material: name",
+          "material: descripcion",
+          "type",
+          "tipo",
+          "actividad",
+        ].some((k) => c.includes(k))
       );
       break;
     }
@@ -617,6 +650,16 @@ export function computeExecutedByRoomItem(
 
       if (!matchesRoom) continue;
 
+      if (
+        item.activityKey === "enchape" &&
+        (actNorm.includes("pared") || actNorm.includes("muro") || actNorm.includes("azulejo") || actNorm.includes("salpicadero"))
+      ) {
+        continue;
+      }
+      if (item.activityKey === "mamposteria" && actNorm.includes("enchape")) {
+        continue;
+      }
+
       const hints = ACTIVITY_MATCH_HINTS[item.activityKey] || [];
       if (hints.some((h) => actNorm.includes(h))) {
         executed[item.id] = Number(((executed[item.id] || 0) + cant).toFixed(2));
@@ -658,6 +701,11 @@ export function computeMaterialsForRoomSelection(
         add("Porcelanato / Cerámica 51x51 cm (inc. 5% desp.)", "m²", q * 1.05);
         add("Pegacor Cerámico (Bultos 25kg)", "Bultos", q * 0.25);
         add("Boquilla para Junta", "kg", q * 0.35);
+        break;
+      case "enchape_pared":
+        add("Cerámica / Porcelanato de Pared (inc. 8% desp. cortes)", "m²", q * 1.08);
+        add("Pegacor Blanco / Cerámico Pared (Bultos 25kg)", "Bultos", q * 0.25);
+        add("Boquilla Antimoho para Muro", "kg", q * 0.35);
         break;
       case "cielorraso":
         add("Panel de Cielorraso Suspendido (inc. 5% desp.)", "m²", q * 1.05);

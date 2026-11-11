@@ -490,11 +490,20 @@ def _classify_revit_row_py(raw_comment, raw_family=""):
     f_norm = normalizar_texto(raw_family)
     combined = f"{f_norm} {c_norm}"
 
+    is_wall_tile = (
+        any(w in combined for w in ["pared", "muro", "azulejo", "salpicadero", "backsplash", "wall", "ceramica"])
+        and any(t in combined for t in ["enchape", "ceramica", "porcelanato", "azulejo", "revestimiento", "salpicadero", "tile"])
+        and "piso" not in c_norm
+    )
+
     act_key = "otro"
     act_label = str(raw_family).strip() or "Actividad BIM Revit"
     if "plantilla" in combined or "solado" in combined:
         act_key = "plantilla"
         act_label = "Plantilla de concreto 7cm"
+    elif is_wall_tile:
+        act_key = "enchape_pared"
+        act_label = "Enchape pared cerámica / porcelanato"
     elif "enchape" in combined or "porcelanato" in combined or "piso " in combined:
         act_key = "enchape"
         act_label = "Enchape piso porcelanato baño 51x51" if "bano" in combined else "Enchape piso porcelanato 51x51"
@@ -521,6 +530,12 @@ def _classify_revit_row_py(raw_comment, raw_family=""):
         "plantilla de concreto 7cm",
         "plantilla de concreto 7 cm",
         "plantilla de concreto",
+        "enchape de pared",
+        "enchape pared",
+        "enchape de muro",
+        "enchape muro",
+        "ceramica pared",
+        "azulejo",
         "enchape piso",
         "enchape",
         "cielorraso",
@@ -582,7 +597,7 @@ def procesar_tabla_revit_bytes(filename, raw_bytes):
                 header_idx = i
                 col_comment = c_idx
                 col_area = a_idx
-                col_family = next((idx for idx, v in enumerate(row_vals) if any(k in v for k in ["family and type", "familia y tipo", "floor assembly", "type", "tipo", "actividad"])), None)
+                col_family = next((idx for idx, v in enumerate(row_vals) if any(k in v for k in ["family and type", "familia y tipo", "floor assembly", "material: name", "material: descripcion", "type", "tipo", "actividad"])), None)
                 break
 
         if header_idx is None:

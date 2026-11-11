@@ -15,6 +15,7 @@ export type TabKey =
 export type RoomActivityKey =
   | "plantilla"
   | "enchape"
+  | "enchape_pared"
   | "cielorraso"
   | "mamposteria"
   | "panete"
