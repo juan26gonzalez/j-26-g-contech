@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "functions": {
+    "api/**/*.py": {
+      "includeFiles": "py_engine/**"
+    }
+  }
+}
