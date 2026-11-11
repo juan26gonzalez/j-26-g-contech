@@ -1116,11 +1116,131 @@ def _obtener_firma_contratista_flowable(width=160, height=48):
     return Spacer(1, height)
 
 
-def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
+def _calcular_honorarios_consultoria(total_costo_directo, cfg_hon):
+    """Calcula el desglose financiero de honorarios profesionales por consultoría de presupuesto y APU."""
+    cfg = cfg_hon or {}
+    modo = cfg.get("modo_calculo", "fijo")
+    pct_hon = float(cfg.get("porcentaje", 5.0) or 0.0)
+    val_fijo = float(cfg.get("valor_fijo", 200000.0) or 0.0)
+    base_dir = float(total_costo_directo or 0.0)
+    if modo == "porcentaje":
+        val_hon = base_dir * (pct_hon / 100.0)
+        base_desc = f"{pct_hon:.2f}% s/ Costo Directo"
+    else:
+        val_hon = val_fijo
+        pct_eq = (val_hon / base_dir * 100.0) if base_dir > 0 else 0.0
+        base_desc = f"Tarifa Fija (~{pct_eq:.1f}%)"
+    incluir_iva = bool(cfg.get("incluir_iva_hon", False))
+    iva_hon = (val_hon * 0.19) if incluir_iva else 0.0
+    return {
+        "val_hon": val_hon,
+        "iva_hon": iva_hon,
+        "total_hon": val_hon + iva_hon,
+        "base_desc": base_desc,
+        "incluir_iva": incluir_iva,
+    }
+
+
+def _construir_bloque_honorarios_pdf(cfg_hon, total_costo_directo, contratista_nom, estilos, solo_consultoria=False):
+    """Construye la tabla y nota comercial de honorarios de consultoría para el PDF de Presupuesto y APU."""
+    hon_calc = _calcular_honorarios_consultoria(total_costo_directo, cfg_hon)
+    c_bold = estilos["cell_bold"]
+    c_txt = estilos["cell_txt"]
+    c_right = estilos["cell_right"]
+    c_rbold = estilos["cell_right_bold"]
+
+    hdr_col1 = "CONCEPTO DE CONSULTORÍA / REFERENCIA" if solo_consultoria else "CONCEPTO DE CONSULTORÍA TÉCNICA (APU)"
+    rows = [[
+        Paragraph(f"<b>{hdr_col1}</b>", c_bold),
+        Paragraph("<b>MODALIDAD / BASE</b>", c_rbold),
+        Paragraph("<b>VALOR (COP)</b>", c_rbold)
+    ]]
+    if solo_consultoria:
+        rows.append([
+            Paragraph("Inversión Estimada en Obra (Costo Directo de Referencia en Mercado — No es cobro de obra)", c_txt),
+            Paragraph("Referencia", c_right),
+            Paragraph(f"${total_costo_directo:,.0f}", c_right)
+        ])
+
+    rows.append([
+        Paragraph("<b>Honorarios Profesionales por Consultoría Técnica</b> (Presupuesto, Cómputos Métricos y APU)", c_txt),
+        Paragraph(_esc_xml(hon_calc["base_desc"]), c_right),
+        Paragraph(f"${hon_calc['val_hon']:,.0f}", c_right)
+    ])
+    if hon_calc["incluir_iva"]:
+        rows.append([
+            Paragraph("(+) Impuesto IVA (19% sobre Honorarios de Consultoría)", c_txt),
+            Paragraph("19.00%", c_right),
+            Paragraph(f"${hon_calc['iva_hon']:,.0f}", c_right)
+        ])
+    if cfg_hon.get("incluir_visita", False):
+        val_vis = float(cfg_hon.get("valor_visita", 70000.0) or 0.0)
+        rows.append([
+            Paragraph("Servicio Opcional: Supervisión Técnica / Visita de Inspección en Obra (si ejecuta tercero)", c_txt),
+            Paragraph("Por Visita", c_right),
+            Paragraph(f"${val_vis:,.0f} / visita", c_right)
+        ])
+
+    tot_label = (
+        "TOTAL HONORARIOS A PAGAR POR CONSULTORÍA TÉCNICA"
+        if solo_consultoria
+        else "TOTAL HONORARIOS DE CONSULTORÍA (Si la obra la ejecuta un tercero)"
+    )
+    rows.append([
+        Paragraph(f"<b>{tot_label}</b>", ParagraphStyle('HTotL', parent=c_bold, textColor=colors.HexColor('#1e3a8a'))),
+        Paragraph("", c_txt),
+        Paragraph(f"<b>${hon_calc['total_hon']:,.0f} COP</b>", ParagraphStyle('HTotR', parent=c_rbold, textColor=colors.HexColor('#1e3a8a')))
+    ])
+
+    t_hon = Table(rows, colWidths=[280, 100, 160])
+    t_style = [
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#f1f5f9')),
+        ('BOX', (0, 0), (-1, -1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#e2e8f0')),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#dbeafe')),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]
+    if solo_consultoria:
+        t_style.append(('BACKGROUND', (0, 1), (-1, 1), colors.HexColor('#f8fafc')))
+    t_hon.setStyle(TableStyle(t_style))
+
+    note_style = ParagraphStyle('HonNote', parent=c_txt, fontSize=7.4, leading=10.2, alignment=4, textColor=colors.HexColor('#1e293b'))
+    notas_html = []
+    if cfg_hon.get("bonificable", True):
+        notas_html.append(
+            f"<b>Condición Comercial (Bonificación 100% por Adjudicación):</b> Si EL CLIENTE contrata la ejecución integral de la obra con "
+            f"<b>{_esc_xml(contratista_nom)} (JGM ConTech)</b>, el <b>100% de estos honorarios de consultoría serán bonificados (sin costo adicional)</b>. "
+            f"En caso de ejecutar la obra con un tercero o por administración directa, deberá cancelar el valor de consultoría estipulado por concepto de cesión técnica del presupuesto, cómputos métricos y análisis APU."
+        )
+    notas_html.append(
+        "<b>Alcance y Limitación de Responsabilidad:</b> La modalidad de consultoría técnica remunera exclusivamente la ingeniería de costos, cuantificación de cantidades y estructuración de APU. "
+        "JGM ConTech no asume dirección de obra ni responsabilidad técnica, de calidad o sobrecostos por trabajos ejecutados por contratistas terceros."
+    )
+    nota_box = Table([[Paragraph("<br/>".join(notas_html), note_style)]], colWidths=[540])
+    nota_box.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#eff6ff')),
+        ('BOX', (0, 0), (-1, -1), 0.6, colors.HexColor('#93c5fd')),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 7),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 7),
+    ]))
+    return [t_hon, Spacer(1, 5), nota_box]
+
+
+def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual, cfg_honorarios=None):
     """
     Genera un archivo PDF profesional del presupuesto contractual de obra
-    con membrete ejecutivo, desglose de capítulos, matriz APU, AIU y firmas.
+    con membrete ejecutivo, desglose de capítulos, matriz APU, AIU, honorarios de consultoría y firmas.
     """
+    cfg_hon = cfg_honorarios if cfg_honorarios is not None else (proyecto_actual.get("honorarios_consultoria") or {})
+    incluir_hon = bool(cfg_hon.get("incluir", False))
+    solo_consultoria = incluir_hon and (cfg_hon.get("escenario", "anexo_aiu") == "solo_consultoria")
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
         buffer,
@@ -1137,7 +1257,7 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
         'DocTitle',
         parent=styles['Normal'],
         fontName='Helvetica-Bold',
-        fontSize=14,
+        fontSize=13.5 if solo_consultoria else 14,
         leading=17,
         textColor=colors.HexColor('#0f172a')
     )
@@ -1205,8 +1325,10 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     # 1. MEMBRETE EJECUTIVO SUPERIOR
     fecha_actual_str = datetime.now().strftime("%d/%m/%Y")
     proy_nombre = proyecto_actual.get('nombre', 'Proyecto de Construcción')
+    ubicacion_actual = _resolver_ubicacion_obra(proyecto_actual)
     es_ppto = proyecto_actual.get("tipo") == "presupuesto" or "PRESUPUESTO" in proyecto_actual.get("badge", "").upper()
-    modalidad_str = "PRESUPUESTO" if es_ppto else "BIM 5D"
+    modalidad_str = "CONSULTORÍA APU" if solo_consultoria else ("PRESUPUESTO" if es_ppto else "BIM 5D")
+    titulo_doc = "PRESUPUESTO BASE, APU Y CONSULTORÍA TÉCNICA" if solo_consultoria else "PRESUPUESTO GENERAL DE OBRA Y APU"
     
     header_data = [
         [
@@ -1214,11 +1336,11 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
             Paragraph(f"<b>FECHA DE EMISIÓN:</b> {fecha_actual_str}", ParagraphStyle('HeadR', parent=cell_right, fontSize=7))
         ],
         [
-            Paragraph("PRESUPUESTO GENERAL DE OBRA Y APU", title_style),
-            Paragraph(f"<b>CÓDIGO:</b> PPTO-{str(proyecto_actual.get('id', 'PROY')).upper()[:12]}", ParagraphStyle('HeadR2', parent=cell_right, fontSize=8, textColor=colors.HexColor('#1e3a8a')))
+            Paragraph(titulo_doc, title_style),
+            Paragraph(f"<b>CÓDIGO:</b> PPTO-{_esc_xml(str(proyecto_actual.get('id', 'PROY')).upper()[:12])}", ParagraphStyle('HeadR2', parent=cell_right, fontSize=8, textColor=colors.HexColor('#1e3a8a')))
         ],
         [
-            Paragraph(f"<b>Proyecto:</b> {proy_nombre} • {proyecto_actual.get('ubicacion', 'Colombia')}", cell_text),
+            Paragraph(f"<b>Proyecto:</b> {_esc_xml(proy_nombre)} • {_esc_xml(ubicacion_actual)}", cell_text),
             Paragraph(f"<b>Modalidad:</b> {modalidad_str}", cell_right)
         ]
     ]
@@ -1240,33 +1362,30 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     contratista_nom = proyecto_actual.get('contratista', 'Ing. Juan González Mendoza')
     cedula_contratista = proyecto_actual.get('cedula_contratista', 'C.C. 1001867834 • M.P. 021037-0828864 ATL').strip()
     cargo_contratista = proyecto_actual.get('cargo_contratista', 'Ingeniero Residente de Obra')
-    
-    ubicacion_actual = proyecto_actual.get('ubicacion', '').strip()
-    if not ubicacion_actual or ubicacion_actual in ['Sabanalarga, Atlántico', 'Colombia']:
-        ubicacion_actual = 'Calle 20D # 1 - 19. Sabanalarga, Atlántico'
 
-    txt_cliente = f"<b>{contratante_nom}</b>"
+    txt_cliente = f"<b>{_esc_xml(contratante_nom)}</b>"
     if cedula_cliente:
-        txt_cliente += f"<br/><font color='#64748b'>C.C. / NIT: {cedula_cliente}</font>"
+        txt_cliente += f"<br/><font color='#64748b'>C.C. / NIT: {_esc_xml(cedula_cliente)}</font>"
 
-    txt_contratista = f"<b>{contratista_nom}</b>"
+    txt_contratista = f"<b>{_esc_xml(contratista_nom)}</b>"
     if cedula_contratista:
-        txt_contratista += f"<br/><font color='#64748b'>{cedula_contratista}</font>"
+        txt_contratista += f"<br/><font color='#64748b'>{_esc_xml(cedula_contratista)}</font>"
     if cargo_contratista:
-        txt_contratista += f"<br/><font color='#2563eb'><b>{cargo_contratista}</b></font>"
+        txt_contratista += f"<br/><font color='#2563eb'><b>{_esc_xml(cargo_contratista)}</b></font>"
 
+    rol_der = "DIRECCIÓN TÉCNICA / CONSULTOR:" if solo_consultoria else "DIRECCIÓN TÉCNICA / CONTRATISTA:"
     meta_data = [
         [
             Paragraph("<b>ENTIDAD CONTRATANTE / CLIENTE:</b>", cell_text_bold),
             Paragraph(txt_cliente, cell_text),
-            Paragraph("<b>DIRECCIÓN TÉCNICA / CONTRATISTA:</b>", cell_text_bold),
+            Paragraph(f"<b>{rol_der}</b>", cell_text_bold),
             Paragraph(txt_contratista, cell_text)
         ],
         [
             Paragraph("<b>UBICACIÓN DE LA OBRA:</b>", cell_text_bold),
-            Paragraph(f"{ubicacion_actual}", cell_text),
+            Paragraph(_esc_xml(ubicacion_actual), cell_text),
             Paragraph("<b>MODELO / ESPECIFICACIÓN:</b>", cell_text_bold),
-            Paragraph(f"{proyecto_actual.get('modelo_bim', 'Presupuesto Base APU')}", cell_text)
+            Paragraph(_esc_xml(proyecto_actual.get('modelo_bim', 'Presupuesto Base APU')), cell_text)
         ]
     ]
     meta_table = Table(meta_data, colWidths=[120, 150, 130, 140])
@@ -1300,7 +1419,7 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     ]
     for _, r in resumen_caps.iterrows():
         tabla_caps_data.append([
-            Paragraph(str(r["Capitulo"]), cell_text),
+            Paragraph(_esc_xml(r["Capitulo"]), cell_text),
             Paragraph(f"${r['Presupuesto_Total']:,.0f}", cell_right),
             Paragraph(f"{r['Pct']:.1f}%", cell_right)
         ])
@@ -1357,8 +1476,8 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
             cap_actual = cap_fila
             subtotal_cap = df_5d[df_5d["Capitulo"] == cap_actual]["Presupuesto_Total"].sum()
             matriz_rows.append([
-                Paragraph(f"<b>CAP.</b>", cell_chap),
-                Paragraph(f"<b>{cap_actual.upper()}</b>", cell_chap),
+                Paragraph("<b>CAP.</b>", cell_chap),
+                Paragraph(f"<b>{_esc_xml(str(cap_actual).upper())}</b>", cell_chap),
                 Paragraph("", cell_text),
                 Paragraph("", cell_text),
                 Paragraph("<b>Subtotal:</b>", cell_right_bold),
@@ -1369,9 +1488,9 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
             row_idx += 1
             
         matriz_rows.append([
-            Paragraph(str(r["Item"]), ParagraphStyle('CItem', parent=cell_text, alignment=1)),
-            Paragraph(str(r["Actividad"]), cell_text),
-            Paragraph(str(r["Unidad"]), ParagraphStyle('CUnd', parent=cell_text, alignment=1)),
+            Paragraph(_esc_xml(r["Item"]), ParagraphStyle('CItem', parent=cell_text, alignment=1)),
+            Paragraph(_esc_xml(r["Actividad"]), cell_text),
+            Paragraph(_esc_xml(r["Unidad"]), ParagraphStyle('CUnd', parent=cell_text, alignment=1)),
             Paragraph(f"{r['Cantidad_Contratada']:,.2f}", cell_right),
             Paragraph(f"${r['Precio_Unitario']:,.0f}", cell_right),
             Paragraph(f"${r['Presupuesto_Total']:,.0f}", cell_right)
@@ -1385,64 +1504,24 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     story.append(t_matriz)
     story.append(Spacer(1, 10))
 
-    # 5. LIQUIDACIÓN CONTRACTUAL Y FACTOR AIU
-    pct_a = params_liquidacion["pct_a"]
-    pct_i = params_liquidacion["pct_i"]
-    pct_u = params_liquidacion["pct_u"]
-    
-    val_a = total_costo_directo * (pct_a / 100.0)
-    val_i = total_costo_directo * (pct_i / 100.0)
-    val_u = total_costo_directo * (pct_u / 100.0)
-    val_aiu = val_a + val_i + val_u
-    val_bruto = total_costo_directo + val_aiu
-    iva_u = val_u * 0.19
-    total_ppto_global = val_bruto + iva_u
-    
-    liq_data = [
-        [Paragraph("<b>CONCEPTO CONTRACTUAL</b>", cell_text_bold), Paragraph("<b>PORCENTAJE (%)</b>", cell_right_bold), Paragraph("<b>VALOR (COP)</b>", cell_right_bold)],
-        [Paragraph("Subtotal Costo Directo de Actividades (APU)", cell_text), Paragraph("100.00%", cell_right), Paragraph(f"${total_costo_directo:,.0f}", cell_right)],
-        [Paragraph(f"(+) Administración", cell_text), Paragraph(f"{pct_a:.2f}%", cell_right), Paragraph(f"${val_a:,.0f}", cell_right)],
-        [Paragraph(f"(+) Imprevistos", cell_text), Paragraph(f"{pct_i:.2f}%", cell_right), Paragraph(f"${val_i:,.0f}", cell_right)],
-        [Paragraph(f"(+) Utilidad", cell_text), Paragraph(f"{pct_u:.2f}%", cell_right), Paragraph(f"${val_u:,.0f}", cell_right)],
-        [Paragraph("<b>SUBTOTAL PRESUPUESTO BRUTO (Directo + AIU)</b>", cell_text_bold), Paragraph(f"<b>{100 + pct_a + pct_i + pct_u:.2f}%</b>", cell_right_bold), Paragraph(f"<b>${val_bruto:,.0f}</b>", cell_right_bold)],
-        [Paragraph("(+) Impuesto IVA (19% sobre Utilidad)", cell_text), Paragraph(f"{pct_u*0.19:.2f}%", cell_right), Paragraph(f"${iva_u:,.0f}", cell_right)],
-        [Paragraph("<b>PRESUPUESTO TOTAL OFICIAL DE CONTRATACIÓN</b>", ParagraphStyle('TotL', parent=cell_text_bold, textColor=colors.HexColor('#1e3a8a'))), Paragraph("", cell_text), Paragraph(f"<b>${total_ppto_global:,.0f} COP</b>", ParagraphStyle('TotR', parent=cell_right_bold, textColor=colors.HexColor('#1e3a8a')))]
-    ]
-    t_liq = Table(liq_data, colWidths=[280, 100, 160])
-    t_liq.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f5f9')),
-        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
-        ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
-        ('BACKGROUND', (0,5), (-1,5), colors.HexColor('#f8fafc')),
-        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#dbeafe')),
-        ('TOPPADDING', (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
-        ('LEFTPADDING', (0,0), (-1,-1), 6),
-        ('RIGHTPADDING', (0,0), (-1,-1), 6),
-    ]))
-    
-    firma_img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "firma_juan_gonzalez.png")
-    if os.path.exists(firma_img_path):
-        firma_flowable = RLImage(firma_img_path, width=160, height=48)
-    else:
-        firma_flowable = Spacer(1, 48)
-        
+    # 5. BLOQUE DE FIRMAS (compartido al cierre)
+    firma_flowable = _obtener_firma_contratista_flowable(160, 48)
     sig_contratista_html = (
-        f"<b>{contratista_nom.upper()}</b><br/>"
-        f"<b>{cargo_contratista}</b>"
+        f"<b>{_esc_xml(contratista_nom.upper())}</b><br/>"
+        f"<b>{_esc_xml(cargo_contratista)}</b>"
     )
-    
     sig_cliente_html = (
-        f"<b>{contratante_nom.upper()}</b><br/>"
-        f"{('C.C. / NIT: ' + cedula_cliente + '<br/>') if cedula_cliente else ''}"
-        f"<b>Entidad Contratante / Supervisión</b>"
+        f"<b>{_esc_xml(contratante_nom.upper())}</b><br/>"
+        f"{('C.C. / NIT: ' + _esc_xml(cedula_cliente) + '<br/>') if cedula_cliente else ''}"
+        f"<b>{'Cliente / Solicitante de Consultoría' if solo_consultoria else 'Entidad Contratante / Supervisión'}</b>"
     )
-    
+    lbl_sig_izq = "DIRECCIÓN TÉCNICA / INGENIERO CONSULTOR" if solo_consultoria else "DIRECCIÓN TÉCNICA / CONTRATISTA"
+    lbl_sig_der = "SOLICITANTE / CLIENTE" if solo_consultoria else "SUPERVISIÓN / CLIENTE CONTRATANTE"
     tabla_firmas = Table([
         [firma_flowable, Spacer(1, 48)],
         [
-            Paragraph("____________________________________________<br/><b>DIRECCIÓN TÉCNICA / CONTRATISTA</b><br/>" + sig_contratista_html, ParagraphStyle('SigL', parent=cell_text, alignment=1, leading=10)),
-            Paragraph("____________________________________________<br/><b>SUPERVISIÓN / CLIENTE CONTRATANTE</b><br/>" + sig_cliente_html, ParagraphStyle('SigR', parent=cell_text, alignment=1, leading=10))
+            Paragraph(f"____________________________________________<br/><b>{lbl_sig_izq}</b><br/>" + sig_contratista_html, ParagraphStyle('SigL', parent=cell_text, alignment=1, leading=10)),
+            Paragraph(f"____________________________________________<br/><b>{lbl_sig_der}</b><br/>" + sig_cliente_html, ParagraphStyle('SigR', parent=cell_text, alignment=1, leading=10))
         ]
     ], colWidths=[270, 270])
     tabla_firmas.setStyle(TableStyle([
@@ -1452,17 +1531,85 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
         ('BOTTOMPADDING', (0,0), (-1,0), 0),
         ('TOPPADDING', (0,1), (-1,1), 2),
     ]))
-    
-    cierre_elementos = [
-        Paragraph("3. LIQUIDACIÓN CONTRACTUAL Y FACTOR AIU", sec_heading),
-        Spacer(1, 4),
-        t_liq,
-        Spacer(1, 14),
-        tabla_firmas
-    ]
-    story.append(KeepTogether(cierre_elementos))
 
-    canvas_maker = lambda *args, **kwargs: PresupuestoCanvas(*args, **kwargs)
+    estilos_hon = {"cell_txt": cell_text, "cell_bold": cell_text_bold, "cell_right": cell_right, "cell_right_bold": cell_right_bold}
+
+    # 6. LIQUIDACIÓN CONTRACTUAL (AIU y/o HONORARIOS DE CONSULTORÍA)
+    if solo_consultoria:
+        bloque_consultoria = [
+            Paragraph("3. INVERSIÓN ESTIMADA DE OBRA Y HONORARIOS DE CONSULTORÍA", sec_heading),
+            Spacer(1, 4),
+            *_construir_bloque_honorarios_pdf(cfg_hon, total_costo_directo, contratista_nom, estilos_hon, solo_consultoria=True),
+            Spacer(1, 14),
+            tabla_firmas
+        ]
+        story.append(KeepTogether(bloque_consultoria))
+    else:
+        pct_a = params_liquidacion["pct_a"]
+        pct_i = params_liquidacion["pct_i"]
+        pct_u = params_liquidacion["pct_u"]
+
+        val_a = total_costo_directo * (pct_a / 100.0)
+        val_i = total_costo_directo * (pct_i / 100.0)
+        val_u = total_costo_directo * (pct_u / 100.0)
+        val_aiu = val_a + val_i + val_u
+        val_bruto = total_costo_directo + val_aiu
+        iva_u = val_u * 0.19
+        total_ppto_global = val_bruto + iva_u
+
+        liq_data = [
+            [Paragraph("<b>CONCEPTO CONTRACTUAL</b>", cell_text_bold), Paragraph("<b>PORCENTAJE (%)</b>", cell_right_bold), Paragraph("<b>VALOR (COP)</b>", cell_right_bold)],
+            [Paragraph("Subtotal Costo Directo de Actividades (APU)", cell_text), Paragraph("100.00%", cell_right), Paragraph(f"${total_costo_directo:,.0f}", cell_right)],
+            [Paragraph("(+) Administración", cell_text), Paragraph(f"{pct_a:.2f}%", cell_right), Paragraph(f"${val_a:,.0f}", cell_right)],
+            [Paragraph("(+) Imprevistos", cell_text), Paragraph(f"{pct_i:.2f}%", cell_right), Paragraph(f"${val_i:,.0f}", cell_right)],
+            [Paragraph("(+) Utilidad", cell_text), Paragraph(f"{pct_u:.2f}%", cell_right), Paragraph(f"${val_u:,.0f}", cell_right)],
+            [Paragraph("<b>SUBTOTAL PRESUPUESTO BRUTO (Directo + AIU)</b>", cell_text_bold), Paragraph(f"<b>{100 + pct_a + pct_i + pct_u:.2f}%</b>", cell_right_bold), Paragraph(f"<b>${val_bruto:,.0f}</b>", cell_right_bold)],
+            [Paragraph("(+) Impuesto IVA (19% sobre Utilidad)", cell_text), Paragraph(f"{pct_u*0.19:.2f}%", cell_right), Paragraph(f"${iva_u:,.0f}", cell_right)],
+            [Paragraph("<b>PRESUPUESTO TOTAL OFICIAL DE CONTRATACIÓN</b>", ParagraphStyle('TotL', parent=cell_text_bold, textColor=colors.HexColor('#1e3a8a'))), Paragraph("", cell_text), Paragraph(f"<b>${total_ppto_global:,.0f} COP</b>", ParagraphStyle('TotR', parent=cell_right_bold, textColor=colors.HexColor('#1e3a8a')))]
+        ]
+        t_liq = Table(liq_data, colWidths=[280, 100, 160])
+        t_liq.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f5f9')),
+            ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+            ('INNERGRID', (0,0), (-1,-1), 0.5, colors.HexColor('#e2e8f0')),
+            ('BACKGROUND', (0,5), (-1,5), colors.HexColor('#f8fafc')),
+            ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#dbeafe')),
+            ('TOPPADDING', (0,0), (-1,-1), 3),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+            ('LEFTPADDING', (0,0), (-1,-1), 6),
+            ('RIGHTPADDING', (0,0), (-1,-1), 6),
+        ]))
+
+        if incluir_hon:
+            story.append(KeepTogether([
+                Paragraph("3. LIQUIDACIÓN CONTRACTUAL Y FACTOR AIU (OPCIÓN EJECUCIÓN DE OBRA)", sec_heading),
+                Spacer(1, 4),
+                t_liq
+            ]))
+            story.append(Spacer(1, 10))
+            story.append(KeepTogether([
+                Paragraph("4. HONORARIOS PROFESIONALES POR CONSULTORÍA TÉCNICA (PRESUPUESTO Y APU)", sec_heading),
+                Spacer(1, 4),
+                *_construir_bloque_honorarios_pdf(cfg_hon, total_costo_directo, contratista_nom, estilos_hon, solo_consultoria=False),
+                Spacer(1, 14),
+                tabla_firmas
+            ]))
+        else:
+            story.append(KeepTogether([
+                Paragraph("3. LIQUIDACIÓN CONTRACTUAL Y FACTOR AIU", sec_heading),
+                Spacer(1, 4),
+                t_liq,
+                Spacer(1, 14),
+                tabla_firmas
+            ]))
+
+    canvas_maker = lambda *args, **kwargs: PresupuestoCanvas(
+        *args,
+        doc_title=f"Consultoría Presupuesto y APU - {proy_nombre}" if solo_consultoria else "Presupuesto Oficial de Obra",
+        doc_badge="CONSULTORÍA TÉCNICA APU" if solo_consultoria else "DOCUMENTO OFICIAL DE COSTOS",
+        footer_txt="JGM ConTech • Estudio Técnico de Presupuesto y APU (Honorarios de Consultoría)" if solo_consultoria else "JGM ConTech • Presupuesto Contractual Oficial con Validez Jurídica",
+        **kwargs
+    )
     doc.build(story, canvasmaker=canvas_maker)
     
     buffer.seek(0)
@@ -2480,18 +2627,41 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
         "APU CONTRACTUAL"
     )
     
-    # BARRA DE ACCIONES EJECUTIVAS: EXPORTAR PDF, EDITAR APU Y CÉDULAS
-    c_btn1, c_btn2, c_btn3 = st.columns([1.1, 1.1, 1.1])
+    proy_id_hon = proyecto_actual.get("id", "default")
+    hon_saved_base = st.session_state.get(
+        f"hon_draft_{proy_id_hon}",
+        proyecto_actual.get("honorarios_consultoria") or {}
+    )
+    cfg_hon_activo = {
+        "incluir": bool(st.session_state.get(f"hon_incluir_{proy_id_hon}", hon_saved_base.get("incluir", False))),
+        "escenario": st.session_state.get(f"hon_escenario_{proy_id_hon}", hon_saved_base.get("escenario", "anexo_aiu")),
+        "modo_calculo": st.session_state.get(f"hon_modo_{proy_id_hon}", hon_saved_base.get("modo_calculo", "fijo")),
+        "valor_fijo": float(st.session_state.get(f"hon_fijo_{proy_id_hon}", hon_saved_base.get("valor_fijo", 200000.0))),
+        "porcentaje": float(st.session_state.get(f"hon_pct_{proy_id_hon}", hon_saved_base.get("porcentaje", 5.0))),
+        "incluir_iva_hon": bool(st.session_state.get(f"hon_iva_{proy_id_hon}", hon_saved_base.get("incluir_iva_hon", False))),
+        "bonificable": bool(st.session_state.get(f"hon_bonif_{proy_id_hon}", hon_saved_base.get("bonificable", True))),
+        "incluir_visita": bool(st.session_state.get(f"hon_vis_{proy_id_hon}", hon_saved_base.get("incluir_visita", False))),
+        "valor_visita": float(st.session_state.get(f"hon_val_vis_{proy_id_hon}", hon_saved_base.get("valor_visita", 70000.0))),
+    }
+
+    # BARRA DE ACCIONES EJECUTIVAS: EXPORTAR PDF, EDITAR APU, CÉDULAS Y HONORARIOS
+    c_btn1, c_btn2, c_btn3, c_btn4 = st.columns([1.3, 0.9, 0.9, 0.95])
     with c_btn1:
-        pdf_presupuesto = generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual)
+        pdf_presupuesto = generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual, cfg_honorarios=cfg_hon_activo)
+        es_solo_cons_btn = cfg_hon_activo["incluir"] and cfg_hon_activo["escenario"] == "solo_consultoria"
+        if cfg_hon_activo["incluir"]:
+            lbl_pdf_btn = "📄 Exportar PDF (Consultoría APU)" if es_solo_cons_btn else "📄 Exportar Presupuesto PDF (+ Honorarios)"
+        else:
+            lbl_pdf_btn = "📄 Exportar Presupuesto PDF (Membrete Oficial)"
+        pref_pdf_name = "Presupuesto_Consultoria_APU" if es_solo_cons_btn else "Presupuesto_Oficial"
         st.download_button(
-            label="📄 Exportar Presupuesto PDF (Membrete Oficial)",
+            label=lbl_pdf_btn,
             data=pdf_presupuesto,
-            file_name=f"Presupuesto_Oficial_{proyecto_actual['id']}_{datetime.now().strftime('%Y%m%d')}.pdf",
+            file_name=f"{pref_pdf_name}_{proy_id_hon}_{datetime.now().strftime('%Y%m%d')}.pdf",
             mime="application/pdf",
             type="primary",
             use_container_width=True,
-            help="Descarga el documento formal del presupuesto en PDF con membrete ejecutivo, resumen por capítulos, matriz APU, AIU y firmas."
+            help="Descarga el documento formal del presupuesto en PDF con membrete ejecutivo, resumen por capítulos, matriz APU, AIU, honorarios de consultoría y firmas."
         )
     with c_btn2:
         modo_edicion = st.toggle("✏️ Editar Capítulos y APU", value=st.session_state.get("modo_edicion_apu", False), key="toggle_edit_apu")
@@ -2499,6 +2669,133 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
     with c_btn3:
         modo_meta = st.toggle("📋 Editar Cédulas & Firmantes", value=st.session_state.get("modo_meta_contrato", False), key="toggle_meta_contrato")
         st.session_state["modo_meta_contrato"] = modo_meta
+    with c_btn4:
+        modo_hon = st.toggle("💼 Honorarios Consultoría", value=st.session_state.get("modo_honorarios_ppto", False), key="toggle_honorarios_ppto")
+        st.session_state["modo_honorarios_ppto"] = modo_hon
+
+    if st.session_state.get("modo_honorarios_ppto", False):
+        with st.container(border=True):
+            render_html("""
+            <div style="background: linear-gradient(135deg, rgba(37, 99, 235, 0.08) 0%, rgba(248, 250, 252, 1) 100%); border-left: 4px solid #2563eb; padding: 14px 18px; border-radius: 12px; margin-bottom: 14px;">
+                <h4 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #1e3a8a;">💼 Honorarios Profesionales por Consultoría Técnica (Presupuesto y APU)</h4>
+                <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: #64748b;">
+                    Configure el cobro de sus honorarios por elaboración del presupuesto, cómputos métricos y APU cuando el cliente ejecute la obra con otro contratista o desee ver ambas opciones comerciales en el PDF.
+                </p>
+            </div>
+            """)
+            esc_labels = {
+                "anexo_aiu": "📋 Mixto: Mostrar Presupuesto de Obra (AIU) + Cláusula de Honorarios (Sección 4)",
+                "solo_consultoria": "💼 Solo Consultoría: Ocultar AIU y liquidar únicamente Honorarios de Presupuesto & APU"
+            }
+            modo_labels = {
+                "fijo": "Tarifa Fija ($ COP)",
+                "porcentaje": "Porcentaje (%) sobre Costo Directo"
+            }
+
+            hon_incluir = st.checkbox(
+                "✅ Incluir sección de Honorarios por Consultoría en el PDF de Presupuesto y APU",
+                value=bool(hon_saved_base.get("incluir", False)),
+                key=f"hon_incluir_{proy_id_hon}"
+            )
+            hon_escenario = st.selectbox(
+                "Presentación en el Documento PDF:",
+                options=["anexo_aiu", "solo_consultoria"],
+                index=0 if hon_saved_base.get("escenario", "anexo_aiu") == "anexo_aiu" else 1,
+                format_func=lambda opt: esc_labels[opt],
+                key=f"hon_escenario_{proy_id_hon}"
+            )
+
+            col_h1, col_h2 = st.columns(2)
+            with col_h1:
+                hon_modo = st.radio(
+                    "Modalidad de Cálculo de Honorarios:",
+                    options=["fijo", "porcentaje"],
+                    index=0 if hon_saved_base.get("modo_calculo", "fijo") == "fijo" else 1,
+                    format_func=lambda opt: modo_labels[opt],
+                    horizontal=True,
+                    key=f"hon_modo_{proy_id_hon}"
+                )
+                if hon_modo == "fijo":
+                    hon_fijo = st.number_input(
+                        "Valor Fijo de Honorarios ($ COP):",
+                        min_value=0.0,
+                        value=float(hon_saved_base.get("valor_fijo", 200000.0)),
+                        step=10000.0,
+                        key=f"hon_fijo_{proy_id_hon}"
+                    )
+                    hon_pct = float(hon_saved_base.get("porcentaje", 5.0))
+                else:
+                    hon_pct = st.number_input(
+                        "Porcentaje sobre Costo Directo (%):",
+                        min_value=0.5,
+                        max_value=30.0,
+                        value=float(hon_saved_base.get("porcentaje", 5.0)),
+                        step=0.5,
+                        key=f"hon_pct_{proy_id_hon}"
+                    )
+                    hon_fijo = float(hon_saved_base.get("valor_fijo", 200000.0))
+
+            with col_h2:
+                hon_bonif = st.checkbox(
+                    "🎁 Bonificable 100% si adjudica la ejecución de la obra con JGM ConTech",
+                    value=bool(hon_saved_base.get("bonificable", True)),
+                    key=f"hon_bonif_{proy_id_hon}"
+                )
+                hon_iva = st.checkbox(
+                    "🧾 Incluir IVA 19% sobre Honorarios (si factura como Responsable de IVA)",
+                    value=bool(hon_saved_base.get("incluir_iva_hon", False)),
+                    key=f"hon_iva_{proy_id_hon}"
+                )
+                hon_visita = st.checkbox(
+                    "👷 Ofrecer tarifa opcional de Supervisión / Visita Técnica en Sitio",
+                    value=bool(hon_saved_base.get("incluir_visita", False)),
+                    key=f"hon_vis_{proy_id_hon}"
+                )
+                if hon_visita:
+                    hon_val_visita = st.number_input(
+                        "Tarifa por Visita Técnica de Supervisión ($ COP):",
+                        min_value=0.0,
+                        value=float(hon_saved_base.get("valor_visita", 70000.0)),
+                        step=10000.0,
+                        key=f"hon_val_vis_{proy_id_hon}"
+                    )
+                else:
+                    hon_val_visita = float(hon_saved_base.get("valor_visita", 70000.0))
+
+            cfg_hon_panel = {
+                "incluir": bool(hon_incluir),
+                "escenario": hon_escenario,
+                "modo_calculo": hon_modo,
+                "valor_fijo": float(hon_fijo),
+                "porcentaje": float(hon_pct),
+                "incluir_iva_hon": bool(hon_iva),
+                "bonificable": bool(hon_bonif),
+                "incluir_visita": bool(hon_visita),
+                "valor_visita": float(hon_val_visita),
+            }
+            st.session_state[f"hon_draft_{proy_id_hon}"] = cfg_hon_panel
+            hon_res_ui = _calcular_honorarios_consultoria(total_ppto_contratado, cfg_hon_panel)
+
+            mh1, mh2, mh3 = st.columns(3)
+            mh1.metric("Costo Directo de Referencia", f"${total_ppto_contratado:,.0f}")
+            mh2.metric("Total Honorarios Consultoría", f"${hon_res_ui['total_hon']:,.0f}", delta=hon_res_ui["base_desc"])
+            mh3.metric("Estado en PDF", "ACTIVO" if hon_incluir else "INACTIVO", delta="Solo Consultoría" if (hon_incluir and hon_escenario == "solo_consultoria") else ("Mixto AIU + Honorarios" if hon_incluir else "Solo AIU Obra"))
+
+            c_hb1, c_hb2 = st.columns([1.3, 3])
+            with c_hb1:
+                if st.button("💾 Guardar Honorarios en Proyecto", type="primary", use_container_width=True, key="btn_save_hon_ppto"):
+                    proyecto_actual["honorarios_consultoria"] = cfg_hon_panel
+                    PROYECTOS_DISPONIBLES[st.session_state["proyecto_activo_seleccionado"]] = proyecto_actual
+                    guardar_proyecto_en_disco(st.session_state["proyecto_activo_seleccionado"], proyecto_actual)
+                    st.session_state[f"hon_draft_{proy_id_hon}"] = cfg_hon_panel
+                    st.session_state["modo_honorarios_ppto"] = False
+                    st.success("✅ Configuración de honorarios guardada en el proyecto.")
+                    st.rerun()
+            with c_hb2:
+                if st.button("✖ Cerrar Panel", key="btn_close_hon_ppto"):
+                    st.session_state["modo_honorarios_ppto"] = False
+                    st.rerun()
+            st.markdown("<hr style='margin: 16px 0; border: 0; border-top: 1px solid #cbd5e1;'>", unsafe_allow_html=True)
 
     if st.session_state.get("modo_meta_contrato", False):
         with st.container(border=True):
