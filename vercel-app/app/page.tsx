@@ -13,6 +13,7 @@ import TabMayoresCantidades from "../components/TabMayoresCantidades";
 import TabPanelEjecutivo from "../components/TabPanelEjecutivo";
 import TabPresupuestoAPU from "../components/TabPresupuestoAPU";
 import TabRendimiento from "../components/TabRendimiento";
+import TabVisor3DBIM from "../components/TabVisor3DBIM";
 import TopHeader from "../components/TopHeader";
 import { calcularConsolidacionLocal, callPythonJson } from "../lib/calcClient";
 import {
@@ -279,6 +280,14 @@ export default function GerenciaBim5DPage() {
             data={activeData}
             params={params}
             onUpdateProyecto={persistProyectoChange}
+          />
+        )}
+        {activeTab === "visor3d" && (
+          <TabVisor3DBIM
+            proyecto={proyectoActual}
+            data={activeData}
+            params={params}
+            onNavigateTab={setActiveTab}
           />
         )}
         {activeTab === "presupuesto" && (

@@ -16,6 +16,7 @@ interface TopHeaderProps {
 const TABS: { key: TabKey; label: string }[] = [
   { key: "panel", label: "🏠 Panel Ejecutivo" },
   { key: "habitaciones", label: "🏠 Habitaciones & Caja" },
+  { key: "visor3d", label: "🧊 Visor 3D BIM" },
   { key: "presupuesto", label: "💰 Presupuesto 5D (APU)" },
   { key: "contratos", label: "📜 Contratos PDF" },
   { key: "actas", label: "📑 Actas de Corte & Cobro" },
