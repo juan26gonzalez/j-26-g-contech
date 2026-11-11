@@ -1054,10 +1054,12 @@ def generar_acta_corte_excel(df_5d, numero_acta, params_liquidacion, info_proyec
 # 5B. GENERADOR DE PRESUPUESTO OFICIAL EN PDF CON MEMBRETE PROFESIONAL
 # ==============================================================================
 class PresupuestoCanvas(canvas.Canvas):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, doc_title="Presupuesto Oficial de Obra", doc_badge="DOCUMENTO OFICIAL DE COSTOS", footer_txt="JGM ConTech • Presupuesto Contractual Oficial con Validez Jurídica", **kwargs):
         super().__init__(*args, **kwargs)
         self._saved_page_states = []
-        self.doc_title = "Presupuesto Oficial de Obra"
+        self.doc_title = doc_title
+        self.doc_badge = doc_badge
+        self.footer_txt = footer_txt
 
     def showPage(self):
         self._saved_page_states.append(dict(self.__dict__))
@@ -1082,15 +1084,36 @@ class PresupuestoCanvas(canvas.Canvas):
             self.setLineWidth(0.5)
             self.line(36, 756, 576, 756)
             self.drawString(36, 760, f"JGM ConTech • {self.doc_title[:60]}")
-            self.drawRightString(576, 760, "DOCUMENTO OFICIAL DE COSTOS")
+            self.drawRightString(576, 760, self.doc_badge)
             
         # Pie de página en todas las páginas
         self.setStrokeColor(colors.HexColor("#cbd5e1"))
         self.setLineWidth(0.5)
         self.line(36, 36, 576, 36)
-        self.drawString(36, 26, "JGM ConTech • Presupuesto Contractual Oficial con Validez Jurídica")
+        self.drawString(36, 26, self.footer_txt)
         self.drawRightString(576, 26, f"Página {self._pageNumber} de {page_count}")
         self.restoreState()
+
+
+def _esc_xml(texto):
+    """Escapa caracteres especiales XML para párrafos de ReportLab."""
+    return str(texto or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _resolver_ubicacion_obra(proyecto_actual):
+    """Retorna la dirección/ubicación estandarizada de la obra activa."""
+    ubicacion = str(proyecto_actual.get('ubicacion', '')).strip()
+    if not ubicacion or ubicacion in ['Sabanalarga, Atlántico', 'Colombia']:
+        return 'Calle 20D # 1 - 19. Sabanalarga, Atlántico'
+    return ubicacion
+
+
+def _obtener_firma_contratista_flowable(width=160, height=48):
+    """Retorna el Flowable de imagen de firma oficial o un espaciador equivalente."""
+    firma_img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "firma_juan_gonzalez.png")
+    if os.path.exists(firma_img_path):
+        return RLImage(firma_img_path, width=width, height=height)
+    return Spacer(1, height)
 
 
 def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
@@ -1442,6 +1465,465 @@ def generar_presupuesto_pdf(df_5d, params_liquidacion, proyecto_actual):
     canvas_maker = lambda *args, **kwargs: PresupuestoCanvas(*args, **kwargs)
     doc.build(story, canvasmaker=canvas_maker)
     
+    buffer.seek(0)
+    return buffer
+
+
+def _construir_membrete_contrato_pdf(titulo_doc, codigo_doc, modalidad_doc, proy_nombre, ubicacion_actual, fecha_str):
+    """Construye el membrete estándar de JGM ConTech para contratos legales en PDF."""
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle('CTitle', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=13, leading=16, textColor=colors.HexColor('#0f172a'))
+    sub_style = ParagraphStyle('CSub', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=9, leading=12, textColor=colors.HexColor('#2563eb'))
+    cell_text = ParagraphStyle('CCell', parent=styles['Normal'], fontName='Helvetica', fontSize=7.5, leading=10, textColor=colors.HexColor('#1e293b'))
+    cell_right = ParagraphStyle('CRight', parent=cell_text, alignment=2)
+
+    header_data = [
+        [
+            Paragraph("<b>JGM ConTech</b>", sub_style),
+            Paragraph(f"<b>FECHA:</b> {_esc_xml(fecha_str)}", ParagraphStyle('CHeadR', parent=cell_right, fontSize=7.2))
+        ],
+        [
+            Paragraph(_esc_xml(titulo_doc), title_style),
+            Paragraph(f"<b>CÓDIGO:</b> {_esc_xml(codigo_doc)}", ParagraphStyle('CHeadR2', parent=cell_right, fontSize=8, textColor=colors.HexColor('#1e3a8a')))
+        ],
+        [
+            Paragraph(f"<b>Proyecto:</b> {_esc_xml(proy_nombre)} • {_esc_xml(ubicacion_actual)}", cell_text),
+            Paragraph(f"<b>Modalidad:</b> {_esc_xml(modalidad_doc)}", cell_right)
+        ]
+    ]
+    header_table = Table(header_data, colWidths=[360, 180])
+    header_table.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 1.5),
+        ('TOPPADDING', (0,0), (-1,-1), 1.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+    ]))
+    return [header_table, Spacer(1, 4), HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#2563eb"), spaceAfter=10, spaceBefore=4)]
+
+
+def _crear_estilos_legales_pdf():
+    """Retorna estilos tipográficos unificados para contratos jurídicos."""
+    styles = getSampleStyleSheet()
+    return {
+        "legal_body": ParagraphStyle('LegalBody', parent=styles['Normal'], fontName='Helvetica', fontSize=8.4, leading=11.8, alignment=4, textColor=colors.HexColor('#1e293b'), spaceAfter=5),
+        "clause_hdr": ParagraphStyle('ClauseHdr', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=8.6, leading=11.5, textColor=colors.HexColor('#1e3a8a'), spaceBefore=6, spaceAfter=2),
+        "cell_txt": ParagraphStyle('LCell', parent=styles['Normal'], fontName='Helvetica', fontSize=7.4, leading=9.5, textColor=colors.HexColor('#1e293b')),
+        "cell_bold": ParagraphStyle('LCellB', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=7.4, leading=9.5, textColor=colors.HexColor('#0f172a')),
+        "cell_right": ParagraphStyle('LCellR', parent=styles['Normal'], fontName='Helvetica', fontSize=7.4, leading=9.5, alignment=2, textColor=colors.HexColor('#0f172a')),
+        "cell_right_bold": ParagraphStyle('LCellRB', parent=styles['Normal'], fontName='Helvetica-Bold', fontSize=7.4, leading=9.5, alignment=2, textColor=colors.HexColor('#0f172a')),
+    }
+
+
+def generar_contrato_cliente_pdf(df_5d, params_liquidacion, proyecto_actual, cfg):
+    """
+    Genera el PDF formal del Contrato Civil de Obra Material a Precios Unitarios Fijos con Factor AIU
+    entre el Contratante (Cliente) y el Contratista (Ingeniero).
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=38, bottomMargin=45)
+    st_l = _crear_estilos_legales_pdf()
+    story = []
+
+    proy_nombre = proyecto_actual.get('nombre', 'Proyecto de Construcción')
+    ubicacion_actual = _resolver_ubicacion_obra(proyecto_actual)
+    contratante_nom = proyecto_actual.get('contratante', 'Cliente Privado')
+    cedula_cliente = proyecto_actual.get('cedula_cliente', '').strip()
+    contratista_nom = proyecto_actual.get('contratista', 'Ing. Juan González Mendoza')
+    cedula_contratista = proyecto_actual.get('cedula_contratista', 'C.C. 1001867834 • M.P. 021037-0828864 ATL').strip()
+    cargo_contratista = proyecto_actual.get('cargo_contratista', 'Ingeniero Residente de Obra')
+    fecha_str = cfg.get("fecha_firma", datetime.now().strftime("%d/%m/%Y"))
+
+    story.extend(_construir_membrete_contrato_pdf(
+        "CONTRATO CIVIL DE OBRA MATERIAL",
+        f"CTO-{cfg['num_contrato']}",
+        "PRECIOS UNITARIOS + AIU",
+        proy_nombre,
+        ubicacion_actual,
+        fecha_str
+    ))
+
+    # Comparecientes
+    id_cli_str = f", identificado(a) con <b>{_esc_xml(cedula_cliente)}</b>" if cedula_cliente else ""
+    intro_html = (
+        f"Entre los suscritos a saber: por una parte, <b>{_esc_xml(contratante_nom.upper())}</b>{id_cli_str}, "
+        f"quien para todos los efectos del presente documento se denominará <b>EL CONTRATANTE</b>; y por la otra parte, "
+        f"<b>{_esc_xml(contratista_nom.upper())}</b>, mayor de edad, Ingeniero Civil identificado con <b>{_esc_xml(cedula_contratista)}</b>, "
+        f"actuando en calidad de <b>{_esc_xml(cargo_contratista)}</b>, quien en adelante se denominará <b>EL CONTRATISTA</b>, "
+        f"hemos acordado celebrar el presente <b>CONTRATO DE OBRA CIVIL A PRECIOS UNITARIOS FIJOS CON FACTOR AIU</b>, "
+        f"regido por la legislación civil colombiana vigente y las siguientes cláusulas:"
+    )
+    story.append(Paragraph(intro_html, st_l["legal_body"]))
+
+    # Cláusula 1: Objeto y Presupuesto Base
+    story.append(Paragraph("CLÁUSULA PRIMERA – OBJETO Y ALCANCE DE LA OBRA", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"EL CONTRATISTA se obliga para con EL CONTRATANTE a ejecutar a todo costo (suministro de materiales de primera calidad, "
+        f"mano de obra calificada, dirección técnica, herramienta menor y equipo), las actividades constructivas correspondientes al proyecto "
+        f"<b>{_esc_xml(proy_nombre)}</b> en el inmueble ubicado en <b>{_esc_xml(ubicacion_actual)}</b>, conforme al siguiente detalle técnico:",
+        st_l["legal_body"]
+    ))
+
+    t_rows = [[
+        Paragraph("<b>Ítem</b>", ParagraphStyle('CTH1', parent=st_l["cell_bold"], textColor=colors.white, alignment=1)),
+        Paragraph("<b>Descripción de Actividad Constructiva (APU)</b>", ParagraphStyle('CTH2', parent=st_l["cell_bold"], textColor=colors.white)),
+        Paragraph("<b>Und</b>", ParagraphStyle('CTH3', parent=st_l["cell_bold"], textColor=colors.white, alignment=1)),
+        Paragraph("<b>Cant.</b>", ParagraphStyle('CTH4', parent=st_l["cell_right_bold"], textColor=colors.white)),
+        Paragraph("<b>P. Unit. ($)</b>", ParagraphStyle('CTH5', parent=st_l["cell_right_bold"], textColor=colors.white)),
+        Paragraph("<b>Subtotal ($ COP)</b>", ParagraphStyle('CTH6', parent=st_l["cell_right_bold"], textColor=colors.white)),
+    ]]
+    for _, r in df_5d.iterrows():
+        t_rows.append([
+            Paragraph(_esc_xml(r["Item"]), ParagraphStyle('CTI', parent=st_l["cell_txt"], alignment=1)),
+            Paragraph(_esc_xml(r["Actividad"]), st_l["cell_txt"]),
+            Paragraph(_esc_xml(r["Unidad"]), ParagraphStyle('CTU', parent=st_l["cell_txt"], alignment=1)),
+            Paragraph(f"{r['Cantidad_Contratada']:,.2f}", st_l["cell_right"]),
+            Paragraph(f"${r['Precio_Unitario']:,.0f}", st_l["cell_right"]),
+            Paragraph(f"${r['Presupuesto_Total']:,.0f}", st_l["cell_right"]),
+        ])
+    t_items = Table(t_rows, colWidths=[36, 254, 30, 55, 75, 90], repeatRows=1)
+    t_items.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e3a8a')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.4, colors.HexColor('#e2e8f0')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(t_items)
+    story.append(Spacer(1, 6))
+
+    # Cláusula 2: Valor y AIU
+    total_directo = float(df_5d["Presupuesto_Total"].sum())
+    pct_a = float(params_liquidacion["pct_a"])
+    pct_i = float(params_liquidacion["pct_i"])
+    pct_u = float(params_liquidacion["pct_u"])
+    val_a = total_directo * (pct_a / 100.0)
+    val_i = total_directo * (pct_i / 100.0)
+    val_u = total_directo * (pct_u / 100.0)
+    val_aiu = val_a + val_i + val_u
+    val_bruto = total_directo + val_aiu
+    iva_u = (val_u * 0.19) if cfg.get("incluir_iva_u", False) else 0.0
+    total_contrato = val_bruto + iva_u
+
+    story.append(Paragraph("CLÁUSULA SEGUNDA – VALOR DEL CONTRATO Y LIQUIDACIÓN AIU", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"El valor total estimado del presente contrato asciende a la suma de <b>${total_contrato:,.0f} COP</b>, "
+        f"desglosado en Costo Directo de actividades más el factor AIU (Administración, Imprevistos y Utilidad). "
+        f"Las cantidades finales a cobrar serán las efectivamente medidas y recibidas en obra:",
+        st_l["legal_body"]
+    ))
+
+    liq_rows = [
+        [Paragraph("<b>CONCEPTO CONTRACTUAL</b>", st_l["cell_bold"]), Paragraph("<b>PORCENTAJE</b>", st_l["cell_right_bold"]), Paragraph("<b>VALOR ($ COP)</b>", st_l["cell_right_bold"])],
+        [Paragraph("Costo Directo de Obra (Materiales + Mano de Obra + Equipos)", st_l["cell_txt"]), Paragraph("100.00%", st_l["cell_right"]), Paragraph(f"${total_directo:,.0f}", st_l["cell_right"])],
+        [Paragraph("(+) Administración (Dirección Técnica, Gestión y Operación)", st_l["cell_txt"]), Paragraph(f"{pct_a:.2f}%", st_l["cell_right"]), Paragraph(f"${val_a:,.0f}", st_l["cell_right"])],
+        [Paragraph("(+) Imprevistos", st_l["cell_txt"]), Paragraph(f"{pct_i:.2f}%", st_l["cell_right"]), Paragraph(f"${val_i:,.0f}", st_l["cell_right"])],
+        [Paragraph("(+) Utilidad del Contratista", st_l["cell_txt"]), Paragraph(f"{pct_u:.2f}%", st_l["cell_right"]), Paragraph(f"${val_u:,.0f}", st_l["cell_right"])],
+    ]
+    if cfg.get("incluir_iva_u", False):
+        liq_rows.append([Paragraph("(+) Impuesto IVA (19% sobre Utilidad)", st_l["cell_txt"]), Paragraph(f"{pct_u*0.19:.2f}%", st_l["cell_right"]), Paragraph(f"${iva_u:,.0f}", st_l["cell_right"])])
+    liq_rows.append([
+        Paragraph("<b>VALOR TOTAL DEL CONTRATO</b>", ParagraphStyle('CTotL', parent=st_l["cell_bold"], textColor=colors.HexColor('#1e3a8a'))),
+        Paragraph("", st_l["cell_txt"]),
+        Paragraph(f"<b>${total_contrato:,.0f} COP</b>", ParagraphStyle('CTotR', parent=st_l["cell_right_bold"], textColor=colors.HexColor('#1e3a8a')))
+    ])
+    t_val = Table(liq_rows, colWidths=[300, 100, 140])
+    t_val.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#f1f5f9')),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#dbeafe')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.4, colors.HexColor('#e2e8f0')),
+        ('TOPPADDING', (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 3),
+        ('LEFTPADDING', (0,0), (-1,-1), 6),
+        ('RIGHTPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(t_val)
+    story.append(Spacer(1, 4))
+
+    # Cláusula 3: Forma de pago
+    p_ant = float(cfg.get("pct_anticipo", 50.0))
+    p_cor = float(cfg.get("pct_corte", 40.0))
+    p_sal = float(cfg.get("pct_saldo", 10.0))
+    v_ant = total_contrato * (p_ant / 100.0)
+    v_cor = total_contrato * (p_cor / 100.0)
+    v_sal = total_contrato * (p_sal / 100.0)
+
+    story.append(Paragraph("CLÁUSULA TERCERA – FORMA DE PAGO", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"EL CONTRATANTE pagará a EL CONTRATISTA el valor del contrato de la siguiente manera: "
+        f"<b>1) Anticipo ({p_ant:.0f}%):</b> La suma de <b>${v_ant:,.0f} COP</b> a la firma del presente documento para compra inicial de materiales e inicio de obra; "
+        f"<b>2) Avance / Corte de Obra ({p_cor:.0f}%):</b> La suma de <b>${v_cor:,.0f} COP</b> contra avance físico verificado en obra; y "
+        f"<b>3) Saldo Final ({p_sal:.0f}%):</b> La suma de <b>${v_sal:,.0f} COP</b> al concluir el 100% de las actividades, entrega del área limpia y firma del Acta de Recibo a Satisfacción.",
+        st_l["legal_body"]
+    ))
+
+    # Cláusulas 4 a 8
+    story.append(Paragraph("CLÁUSULA CUARTA – PLAZO DE EJECUCIÓN", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"El plazo estimado para la ejecución total de la obra será de <b>{int(cfg.get('plazo_dias', 15))} días hábiles</b> contados a partir "
+        f"del desembolso efectivo del anticipo y la entrega del área de trabajo completamente despejada por parte de EL CONTRATANTE.",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph("CLÁUSULA QUINTA – OBLIGACIONES DE LAS PARTES", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        "<b>De EL CONTRATISTA:</b> Ejecutar los trabajos con materiales de óptima calidad, bajo supervisión directa del Ingeniero Civil residente, "
+        "manteniendo el orden constructivo y asumiendo el cumplimiento de seguridad social (EPS/ARL) de su equipo de trabajo. "
+        "<b>De EL CONTRATANTE:</b> Permitir el libre acceso al inmueble en horarios laborales, garantizar puntos básicos de agua y energía eléctrica para obra, "
+        "y efectuar oportunamente los desembolsos en las fechas de corte acordadas.",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph("CLÁUSULA SEXTA – MAYORES CANTIDADES Y OBRAS ADICIONALES", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        "Cualquier trabajo no contemplado en la Cláusula Primera, modificación arquitectónica o ampliación de áreas solicitada por EL CONTRATANTE "
+        "será liquidada mediante Acta de Mayor Cantidad o Adicional utilizando los precios unitarios base o nuevos APU previamente aprobados por escrito.",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph("CLÁUSULA SÉPTIMA – GARANTÍA DE CALIDAD Y ESTABILIDAD", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"EL CONTRATISTA garantiza la estabilidad técnica y correcta ejecución de la mano de obra realizada por un término de "
+        f"<b>{int(cfg.get('garantia_meses', 12))} meses</b> contados desde la fecha del Acta de Recibo Final, respondiendo por defectos constructivos "
+        f"imputables a su instalación (no cubre daños por mal uso o eventos de fuerza mayor).",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph("CLÁUSULA OCTAVA – AUTONOMÍA E INDEMNIDAD", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        "EL CONTRATISTA ejecutará la obra con plena autonomía técnica, financiera y directiva, sin existir subordinación laboral respecto de EL CONTRATANTE.",
+        st_l["legal_body"]
+    ))
+
+    notas = str(cfg.get("notas_adicionales", "")).strip()
+    if notas:
+        story.append(Paragraph("CLÁUSULA NOVENA – OBSERVACIONES ESPECIALES", st_l["clause_hdr"]))
+        story.append(Paragraph(_esc_xml(notas), st_l["legal_body"]))
+
+    # Cierre y Firmas
+    firma_flowable = _obtener_firma_contratista_flowable(160, 48)
+    sig_contra_html = f"<b>{_esc_xml(contratista_nom.upper())}</b><br/><b>{_esc_xml(cargo_contratista)}</b>"
+    sig_cli_html = (
+        f"<b>{_esc_xml(contratante_nom.upper())}</b><br/>"
+        f"{('C.C. / NIT: ' + _esc_xml(cedula_cliente) + '<br/>') if cedula_cliente else ''}"
+        f"<b>Propietario / Entidad Contratante</b>"
+    )
+    t_firmas = Table([
+        [firma_flowable, Spacer(1, 48)],
+        [
+            Paragraph("____________________________________________<br/><b>EL CONTRATISTA</b><br/>" + sig_contra_html, ParagraphStyle('CSL', parent=st_l["cell_txt"], alignment=1, leading=10)),
+            Paragraph("____________________________________________<br/><b>EL CONTRATANTE</b><br/>" + sig_cli_html, ParagraphStyle('CSR', parent=st_l["cell_txt"], alignment=1, leading=10))
+        ]
+    ], colWidths=[270, 270])
+    t_firmas.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,0), 'BOTTOM'),
+        ('VALIGN', (0,1), (-1,1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 0),
+        ('TOPPADDING', (0,1), (-1,1), 2),
+    ]))
+
+    bloque_cierre = [
+        Spacer(1, 8),
+        Paragraph(f"Para constancia y validez se firma en {_esc_xml(ubicacion_actual)}, a los {_esc_xml(fecha_str)}.", st_l["legal_body"]),
+        Spacer(1, 10),
+        t_firmas
+    ]
+    story.append(KeepTogether(bloque_cierre))
+
+    canvas_maker = lambda *args, **kwargs: PresupuestoCanvas(
+        *args,
+        doc_title=f"Contrato Obra {proy_nombre}",
+        doc_badge="CONTRATO CIVIL DE OBRA",
+        footer_txt="JGM ConTech • Contrato Civil de Obra Oficial con Validez Jurídica",
+        **kwargs
+    )
+    doc.build(story, canvasmaker=canvas_maker)
+    buffer.seek(0)
+    return buffer
+
+
+def generar_subcontrato_oficial_pdf(df_items_sub, proyecto_actual, cfg):
+    """
+    Genera el PDF del Subcontrato Civil de Mano de Obra a Destajo (Precios Unitarios)
+    entre el Contratista Principal (Ingeniero) y el Oficial Instalador / Maestro de Obra.
+    """
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(buffer, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=38, bottomMargin=45)
+    st_l = _crear_estilos_legales_pdf()
+    story = []
+
+    proy_nombre = proyecto_actual.get('nombre', 'Proyecto de Construcción')
+    ubicacion_actual = _resolver_ubicacion_obra(proyecto_actual)
+    contratista_nom = proyecto_actual.get('contratista', 'Ing. Juan González Mendoza')
+    cedula_contratista = proyecto_actual.get('cedula_contratista', 'C.C. 1001867834 • M.P. 021037-0828864 ATL').strip()
+    cargo_contratista = proyecto_actual.get('cargo_contratista', 'Ingeniero Residente de Obra')
+    fecha_str = cfg.get("fecha_inicio", datetime.now().strftime("%d/%m/%Y"))
+
+    nom_oficial = cfg.get("nombre_oficial", "Oficial Instalador").strip() or "Oficial Instalador"
+    ced_oficial = cfg.get("cedula_oficial", "").strip() or "____________________"
+    tel_oficial = cfg.get("telefono_oficial", "").strip() or "N/A"
+    esp_oficial = cfg.get("especialidad", "Albañilería y Acabados").strip()
+    pct_ret = float(cfg.get("pct_retencion", 10.0))
+
+    story.extend(_construir_membrete_contrato_pdf(
+        "SUBCONTRATO DE MANO DE OBRA A DESTAJO",
+        f"{cfg['num_subcontrato']}",
+        "PRECIOS UNITARIOS A DESTAJO",
+        proy_nombre,
+        ubicacion_actual,
+        fecha_str
+    ))
+
+    intro_html = (
+        f"Entre los suscritos a saber: <b>{_esc_xml(contratista_nom.upper())}</b>, mayor de edad, Ingeniero Civil identificado con "
+        f"<b>{_esc_xml(cedula_contratista)}</b>, actuando como Contratista Principal / Director Técnico, quien en adelante se denominará "
+        f"<b>EL CONTRATANTE</b>; y por la otra parte, <b>{_esc_xml(nom_oficial.upper())}</b>, mayor de edad, identificado con Cédula de Ciudadanía "
+        f"No. <b>{_esc_xml(ced_oficial)}</b>, teléfono <b>{_esc_xml(tel_oficial)}</b>, especialista en <b>{_esc_xml(esp_oficial)}</b>, quien actúa de forma "
+        f"autónoma con su propia herramienta y equipo auxiliar, y en adelante se denominará <b>EL SUBCONTRATISTA</b>, hemos acordado celebrar el "
+        f"presente <b>SUBCONTRATO CIVIL DE MANO DE OBRA A DESTAJO</b>, regido por las siguientes cláusulas:"
+    )
+    story.append(Paragraph(intro_html, st_l["legal_body"]))
+
+    # Cláusula 1: Objeto y Tabla de Destajo
+    story.append(Paragraph("CLÁUSULA PRIMERA – OBJETO Y TARIFAS UNITARIAS DE MANO DE OBRA (DESTAJO)", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"EL SUBCONTRATISTA se obliga a ejecutar con excelencia técnica, exclusivamente a todo costo de mano de obra (a destajo), las actividades "
+        f"seleccionadas a continuación dentro de la obra ubicada en <b>{_esc_xml(ubicacion_actual)}</b>. Las cantidades definitivas a pagar serán las "
+        f"realmente instaladas y medidas físicamente por el Ingeniero Residente:",
+        st_l["legal_body"]
+    ))
+
+    t_rows = [[
+        Paragraph("<b>Ítem</b>", ParagraphStyle('STH1', parent=st_l["cell_bold"], textColor=colors.white, alignment=1)),
+        Paragraph("<b>Descripción de la Actividad Contratada (Solo Mano de Obra)</b>", ParagraphStyle('STH2', parent=st_l["cell_bold"], textColor=colors.white)),
+        Paragraph("<b>Und</b>", ParagraphStyle('STH3', parent=st_l["cell_bold"], textColor=colors.white, alignment=1)),
+        Paragraph("<b>Cant. Est.</b>", ParagraphStyle('STH4', parent=st_l["cell_right_bold"], textColor=colors.white)),
+        Paragraph("<b>Tarifa M.O. ($)</b>", ParagraphStyle('STH5', parent=st_l["cell_right_bold"], textColor=colors.white)),
+        Paragraph("<b>Subtotal Est. ($)</b>", ParagraphStyle('STH6', parent=st_l["cell_right_bold"], textColor=colors.white)),
+    ]]
+
+    total_mo_est = 0.0
+    for _, r in df_items_sub.iterrows():
+        cant = float(r.get("Cantidad_Contratada", 0.0))
+        tarifa = float(r.get("Tarifa_Mano_Obra", 0.0))
+        sub_mo = cant * tarifa
+        total_mo_est += sub_mo
+        t_rows.append([
+            Paragraph(_esc_xml(r["Item"]), ParagraphStyle('STI', parent=st_l["cell_txt"], alignment=1)),
+            Paragraph(_esc_xml(r["Actividad"]), st_l["cell_txt"]),
+            Paragraph(_esc_xml(r["Unidad"]), ParagraphStyle('STU', parent=st_l["cell_txt"], alignment=1)),
+            Paragraph(f"{cant:,.2f}", st_l["cell_right"]),
+            Paragraph(f"${tarifa:,.0f}", st_l["cell_right"]),
+            Paragraph(f"${sub_mo:,.0f}", st_l["cell_right"]),
+        ])
+    t_rows.append([
+        Paragraph("", st_l["cell_txt"]),
+        Paragraph("<b>TOTAL ESTIMADO DE MANO DE OBRA A DESTAJO</b>", ParagraphStyle('STTotL', parent=st_l["cell_bold"], textColor=colors.HexColor('#1e3a8a'))),
+        Paragraph("", st_l["cell_txt"]),
+        Paragraph("", st_l["cell_txt"]),
+        Paragraph("", st_l["cell_txt"]),
+        Paragraph(f"<b>${total_mo_est:,.0f}</b>", ParagraphStyle('STTotR', parent=st_l["cell_right_bold"], textColor=colors.HexColor('#1e3a8a')))
+    ])
+
+    t_sub = Table(t_rows, colWidths=[36, 254, 30, 55, 75, 90], repeatRows=1)
+    t_sub.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor('#1e3a8a')),
+        ('BACKGROUND', (0,-1), (-1,-1), colors.HexColor('#dbeafe')),
+        ('BOX', (0,0), (-1,-1), 0.75, colors.HexColor('#cbd5e1')),
+        ('INNERGRID', (0,0), (-1,-1), 0.4, colors.HexColor('#e2e8f0')),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('TOPPADDING', (0,0), (-1,-1), 2.5),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 2.5),
+        ('LEFTPADDING', (0,0), (-1,-1), 4),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(t_sub)
+    story.append(Spacer(1, 6))
+
+    val_ret_est = total_mo_est * (pct_ret / 100.0)
+    story.append(Paragraph("CLÁUSULA SEGUNDA – CALIDAD TÉCNICA Y CORRECCIÓN DE DEFECTOS", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        "EL SUBCONTRATISTA ejecutará los trabajos cumpliendo estrictamente niveles, plomos, escuadras, pendientes, juntas uniformes y acabados finos. "
+        "Todo trabajo defectuoso (baldosas sopladas o huecas, desniveles, fisuras en juntas de cielo raso, salpicaduras) deberá ser demolido y "
+        "corregido por EL SUBCONTRATISTA a su exclusivo costo, asumiendo además el reemplazo de los materiales dañados por error de su ejecución.",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph(f"CLÁUSULA TERCERA – FORMA DE PAGO Y RETENCIÓN EN GARANTÍA ({pct_ret:.0f}%)", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"Los pagos se realizarán mediante cortes semanales de obra efectivamente ejecutada, nivelada y aprobada por EL CONTRATANTE. "
+        f"<b>No se entregarán anticipos sin avance ejecutado.</b> De cada corte semanal se retendrá un <b>{pct_ret:.0f}%</b> (aprox. ${val_ret_est:,.0f} COP sobre el total) "
+        f"por concepto de <b>Retención en Garantía</b>, suma que será devuelta al concluir el 100% de las actividades contratadas, dejar el área limpia y "
+        f"contar con la aprobación del propietario.",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph("CLÁUSULA CUARTA – SEGURIDAD SOCIAL (EPS/ARL) Y ELEMENTOS DE PROTECCIÓN (EPP)", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        "Es condición obligatoria que EL SUBCONTRATISTA y sus ayudantes cuenten con afiliación vigente a <b>EPS y ARL (Riesgo IV/V para construcción y alturas)</b> "
+        "y utilicen permanentemente sus Elementos de Protección Personal (botas, gafas para corte, guantes, mascarilla). El incumplimiento faculta a "
+        "EL CONTRATANTE para suspender la labor inmediatamente sin pago adicional.",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph("CLÁUSULA QUINTA – CUIDADO DE MATERIALES Y HERRAMIENTA MENOR", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        "EL SUBCONTRATISTA aportará su herramienta menor completa (cortadora, llanas, palas, niveles, atornilladores, extensiones) y velará por el "
+        "cuidado racional de los insumos de obra, evitando desperdicios o extravíos injustificados.",
+        st_l["legal_body"]
+    ))
+
+    story.append(Paragraph("CLÁUSULA SEXTA – PLAZO DE ENTREGA Y AUTONOMÍA CIVIL", st_l["clause_hdr"]))
+    story.append(Paragraph(
+        f"El plazo acordado para entrega total es de <b>{int(cfg.get('plazo_dias', 10))} días calendario</b>, con inicio el <b>{_esc_xml(cfg.get('fecha_inicio', fecha_str))}</b> "
+        f"y entrega máxima el <b>{_esc_xml(cfg.get('fecha_entrega', fecha_str))}</b>. Por tratarse de un subcontrato civil comercial a destajo, EL SUBCONTRATISTA "
+        f"actúa con autonomía técnica y administrativa para organizar su cuadrilla, sin que exista subordinación ni relación laboral directa con EL CONTRATANTE.",
+        st_l["legal_body"]
+    ))
+
+    firma_flowable = _obtener_firma_contratista_flowable(160, 48)
+    sig_contra_html = f"<b>{_esc_xml(contratista_nom.upper())}</b><br/><b>{_esc_xml(cargo_contratista)}</b>"
+    sig_sub_html = (
+        f"<b>{_esc_xml(nom_oficial.upper())}</b><br/>"
+        f"C.C. {_esc_xml(ced_oficial)}<br/>"
+        f"<b>Oficial Subcontratista • {_esc_xml(esp_oficial)}</b>"
+    )
+    t_firmas = Table([
+        [firma_flowable, Paragraph("<br/><font color='#94a3b8' size='6.5'>[ Espacio Firma y Huella ]</font>", ParagraphStyle('Huella', parent=st_l["cell_txt"], alignment=1))],
+        [
+            Paragraph("____________________________________________<br/><b>EL CONTRATANTE</b><br/>" + sig_contra_html, ParagraphStyle('SSL', parent=st_l["cell_txt"], alignment=1, leading=10)),
+            Paragraph("____________________________________________<br/><b>EL SUBCONTRATISTA</b><br/>" + sig_sub_html, ParagraphStyle('SSR', parent=st_l["cell_txt"], alignment=1, leading=10))
+        ]
+    ], colWidths=[270, 270])
+    t_firmas.setStyle(TableStyle([
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,0), 'BOTTOM'),
+        ('VALIGN', (0,1), (-1,1), 'TOP'),
+        ('BOTTOMPADDING', (0,0), (-1,0), 0),
+        ('TOPPADDING', (0,1), (-1,1), 2),
+    ]))
+
+    bloque_cierre = [
+        Spacer(1, 8),
+        Paragraph(f"En señal de acuerdo, se firma en {_esc_xml(ubicacion_actual)}, el día {_esc_xml(fecha_str)}.", st_l["legal_body"]),
+        Spacer(1, 10),
+        t_firmas
+    ]
+    story.append(KeepTogether(bloque_cierre))
+
+    canvas_maker = lambda *args, **kwargs: PresupuestoCanvas(
+        *args,
+        doc_title=f"Subcontrato Mano de Obra - {nom_oficial}",
+        doc_badge="SUBCONTRATO A DESTAJO",
+        footer_txt="JGM ConTech • Subcontrato Civil de Mano de Obra a Destajo con Validez Contractual",
+        **kwargs
+    )
+    doc.build(story, canvasmaker=canvas_maker)
     buffer.seek(0)
     return buffer
 
@@ -1811,6 +2293,7 @@ if st.session_state.get("mostrar_crear_proyecto", False):
 opciones_menu = [
     "🏠 Panel Ejecutivo",
     "💰 Presupuesto 5D (APU)",
+    "📜 Contratos PDF",
     "📑 Actas de Corte & Cobro",
     "⚠️ Mayores Cantidades & Adicionales",
     "👥 Rendimiento & Cuadrillas",
@@ -1819,7 +2302,7 @@ opciones_menu = [
     "📡 Bitácora Cloud"
 ]
 
-if "active_nav_tab" not in st.session_state:
+if "active_nav_tab" not in st.session_state or st.session_state["active_nav_tab"] not in opciones_menu:
     st.session_state["active_nav_tab"] = "🏠 Panel Ejecutivo"
 
 if hasattr(st, "segmented_control"):
@@ -2191,6 +2674,249 @@ elif menu_seleccionado == "💰 Presupuesto 5D (APU)":
             "Estado": st.column_config.TextColumn("Auditoría", width="small")
         }
     )
+
+# ------------------------------------------------------------------------------
+# VISTA 2B: CENTRO DE GENERACIÓN DE CONTRATOS LEGALES (PDF)
+# ------------------------------------------------------------------------------
+elif menu_seleccionado == "📜 Contratos PDF":
+    render_section_banner(
+        "📜",
+        "Centro de Generación de Contratos Legales",
+        f"Redacción automatizada en PDF con membrete JGM ConTech y firma digital para {proyecto_actual.get('contratante', 'el Cliente')} y subcontratistas.",
+        "CONTRATACIÓN LEGAL"
+    )
+    proy_id = proyecto_actual.get("id", "default")
+    ubicacion_cto = _resolver_ubicacion_obra(proyecto_actual)
+    ced_cli_actual = str(proyecto_actual.get("cedula_cliente", "")).strip()
+
+    with st.container(border=True):
+        c_info1, c_info2, c_info3 = st.columns(3)
+        c_info1.markdown(f"**👤 Cliente:** {proyecto_actual.get('contratante', 'Cliente Privado')}  \n`{ced_cli_actual or 'Sin C.C./NIT (editar en Presupuesto 5D)'}`")
+        c_info2.markdown(f"**📍 Dirección de la Obra:**  \n{ubicacion_cto}")
+        c_info3.markdown(f"**👷 Contratista:** {proyecto_actual.get('contratista', 'Ing. Juan González Mendoza')}  \n`{proyecto_actual.get('cedula_contratista', 'C.C. 1001867834')}`")
+
+    tab_cli, tab_sub = st.tabs([
+        "🤝 Contrato de Obra con Cliente",
+        "👷 Subcontrato con Oficiales (A Destajo)"
+    ])
+
+    with tab_cli:
+        st.markdown("#### 📄 Parámetros del Contrato Civil de Obra Material (Precios Unitarios + AIU)")
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            num_contrato = st.text_input(
+                "Número de Contrato:",
+                value=f"JGM-{datetime.now().strftime('%Y%m')}-01",
+                key=f"cto_cli_num_{proy_id}"
+            )
+            fecha_firma_dt = st.date_input(
+                "Fecha de Firma:",
+                value=datetime.now().date(),
+                key=f"cto_cli_fecha_{proy_id}"
+            )
+            plazo_dias_cli = st.number_input(
+                "Plazo de Ejecución (días hábiles):",
+                min_value=1, max_value=3650, value=15, step=1,
+                key=f"cto_cli_plazo_{proy_id}"
+            )
+            garantia_meses = st.number_input(
+                "Garantía de Calidad y Estabilidad (meses):",
+                min_value=1, max_value=120, value=12, step=1,
+                key=f"cto_cli_gar_{proy_id}"
+            )
+        with col_c2:
+            pct_anticipo_cto = st.number_input(
+                "% Anticipo (Al firmar contrato):",
+                min_value=0.0, max_value=100.0, value=50.0, step=5.0,
+                key=f"cto_cli_ant_{proy_id}"
+            )
+            pct_corte_cto = st.number_input(
+                "% Avance / Corte de Obra:",
+                min_value=0.0, max_value=100.0, value=40.0, step=5.0,
+                key=f"cto_cli_cor_{proy_id}"
+            )
+            pct_saldo_cto = st.number_input(
+                "% Saldo Final (Entrega 100%):",
+                min_value=0.0, max_value=100.0, value=10.0, step=5.0,
+                key=f"cto_cli_sal_{proy_id}"
+            )
+            incluir_iva_u = st.checkbox(
+                "Incluir IVA 19% sobre Utilidad (si factura como Responsable de IVA)",
+                value=False,
+                key=f"cto_cli_iva_{proy_id}"
+            )
+
+        suma_pagos = float(pct_anticipo_cto + pct_corte_cto + pct_saldo_cto)
+        if abs(suma_pagos - 100.0) > 0.01:
+            st.warning(f"⚠️ La suma de los porcentajes de forma de pago es **{suma_pagos:.1f}%**. Se recomienda ajustarlos para que sumen **100.0%**.")
+
+        notas_adicionales = st.text_area(
+            "Cláusula Novena — Observaciones Especiales (opcional):",
+            placeholder="Ej. Horario de trabajo autorizado de lunes a sábado de 7:30 a.m. a 5:00 p.m.; acceso de materiales por portería...",
+            key=f"cto_cli_notas_{proy_id}"
+        )
+
+        c_dir_cto = float(df_5d["Presupuesto_Total"].sum()) if not df_5d.empty else 0.0
+        p_a_c = float(params_liquidacion["pct_a"])
+        p_i_c = float(params_liquidacion["pct_i"])
+        p_u_c = float(params_liquidacion["pct_u"])
+        v_aiu_cto = c_dir_cto * ((p_a_c + p_i_c + p_u_c) / 100.0)
+        v_iva_cto = (c_dir_cto * (p_u_c / 100.0) * 0.19) if incluir_iva_u else 0.0
+        v_tot_cto = c_dir_cto + v_aiu_cto + v_iva_cto
+        v_ant_cto = v_tot_cto * (float(pct_anticipo_cto) / 100.0)
+
+        mc1, mc2, mc3, mc4 = st.columns(4)
+        mc1.metric("Costo Directo Base", f"${c_dir_cto:,.0f}")
+        mc2.metric(f"Factor AIU ({p_a_c + p_i_c + p_u_c:.1f}%)", f"${v_aiu_cto:,.0f}")
+        mc3.metric("Total del Contrato", f"${v_tot_cto:,.0f}", delta="Con IVA s/U" if incluir_iva_u else "Sin IVA s/U")
+        mc4.metric(f"Anticipo ({pct_anticipo_cto:.0f}%)", f"${v_ant_cto:,.0f}")
+
+        if df_5d.empty:
+            st.error("⚠️ El proyecto activo no tiene ítems de presupuesto para generar el contrato.")
+        else:
+            cfg_cli = {
+                "num_contrato": num_contrato.strip() or "JGM-001",
+                "fecha_firma": fecha_firma_dt.strftime("%d/%m/%Y"),
+                "incluir_iva_u": bool(incluir_iva_u),
+                "pct_anticipo": float(pct_anticipo_cto),
+                "pct_corte": float(pct_corte_cto),
+                "pct_saldo": float(pct_saldo_cto),
+                "plazo_dias": int(plazo_dias_cli),
+                "garantia_meses": int(garantia_meses),
+                "notas_adicionales": notas_adicionales,
+            }
+            pdf_cto_cli = generar_contrato_cliente_pdf(df_5d, params_liquidacion, proyecto_actual, cfg_cli)
+            st.download_button(
+                label="📥 Descargar Contrato Civil de Obra con Cliente (PDF Oficial)",
+                data=pdf_cto_cli,
+                file_name=f"Contrato_Cliente_{cfg_cli['num_contrato']}_{proy_id}.pdf",
+                mime="application/pdf",
+                type="primary",
+                use_container_width=True,
+                key=f"dl_cto_cli_{proy_id}"
+            )
+
+    with tab_sub:
+        st.markdown("#### 👷 Parámetros del Subcontrato Civil de Mano de Obra (A Destajo)")
+        col_s1, col_s2 = st.columns(2)
+        with col_s1:
+            num_subcontrato = st.text_input(
+                "Número de Subcontrato:",
+                value=f"SUB-{datetime.now().strftime('%Y%m')}-01",
+                key=f"sub_num_{proy_id}"
+            )
+            nombre_oficial = st.text_input(
+                "Nombre Completo del Oficial / Maestro:",
+                placeholder="Ej. Carlos Julio Pérez Pertuz",
+                key=f"sub_nom_{proy_id}"
+            )
+            cedula_oficial = st.text_input(
+                "Cédula de Ciudadanía (C.C.):",
+                placeholder="Ej. 1042456789",
+                key=f"sub_ced_{proy_id}"
+            )
+            telefono_oficial = st.text_input(
+                "Teléfono / WhatsApp:",
+                placeholder="Ej. 300 456 7890",
+                key=f"sub_tel_{proy_id}"
+            )
+        with col_s2:
+            especialidad_oficial = st.text_input(
+                "Especialidad / Cuadrilla:",
+                value="Albañilería, Enchapes y Drywall",
+                key=f"sub_esp_{proy_id}"
+            )
+            pct_retencion = st.number_input(
+                "% Retención en Garantía Semanal:",
+                min_value=0.0, max_value=30.0, value=10.0, step=1.0,
+                key=f"sub_ret_{proy_id}"
+            )
+            plazo_dias_sub = st.number_input(
+                "Plazo de Entrega (días calendario):",
+                min_value=1, max_value=365, value=10, step=1,
+                key=f"sub_plazo_{proy_id}"
+            )
+            col_sf1, col_sf2 = st.columns(2)
+            with col_sf1:
+                fecha_ini_sub = st.date_input(
+                    "Fecha de Inicio:",
+                    value=datetime.now().date(),
+                    key=f"sub_fini_{proy_id}"
+                )
+            with col_sf2:
+                fecha_ent_sub = st.date_input(
+                    "Fecha Máxima Entrega:",
+                    value=(datetime.now() + timedelta(days=10)).date(),
+                    key=f"sub_fent_{proy_id}"
+                )
+
+        if df_5d.empty:
+            st.error("⚠️ El proyecto activo no tiene ítems cargados.")
+        else:
+            st.markdown("#### 🛠️ Ítems Contratados y Tarifa Unitaria de Mano de Obra (A Destajo)")
+            st.caption("Marque los ítems asignados a este oficial y ajuste la tarifa unitaria de **solo mano de obra** ($/m², $/ml o $/und). Como guía inicial editable se precarga el 35% del P.U. del presupuesto.")
+
+            df_sub_base = pd.DataFrame({
+                "Incluir": [True] * len(df_5d),
+                "Item": df_5d["Item"].astype(str).tolist(),
+                "Actividad": df_5d["Actividad"].astype(str).tolist(),
+                "Unidad": df_5d["Unidad"].astype(str).tolist(),
+                "Cantidad_Contratada": df_5d["Cantidad_Contratada"].astype(float).tolist(),
+                "Precio_Contrato": df_5d["Precio_Unitario"].astype(float).tolist(),
+                "Tarifa_Mano_Obra": [max(0.0, float(round(float(pu) * 0.35, -2))) for pu in df_5d["Precio_Unitario"]],
+            })
+            edited_sub = st.data_editor(
+                df_sub_base,
+                hide_index=True,
+                use_container_width=True,
+                key=f"editor_sub_{proy_id}",
+                disabled=["Item", "Actividad", "Unidad", "Precio_Contrato"],
+                column_config={
+                    "Incluir": st.column_config.CheckboxColumn("¿Incluir?", default=True, width="small"),
+                    "Item": st.column_config.TextColumn("Ítem", width="small"),
+                    "Actividad": st.column_config.TextColumn("Actividad", width="large"),
+                    "Unidad": st.column_config.TextColumn("Und", width="small"),
+                    "Cantidad_Contratada": st.column_config.NumberColumn("Cant. Est.", format="%.2f", min_value=0.01),
+                    "Precio_Contrato": st.column_config.NumberColumn("P.U. Cliente (Ref.)", format="$%,.0f"),
+                    "Tarifa_Mano_Obra": st.column_config.NumberColumn("Tarifa M.O. Destajo ($)", format="$%,.0f", min_value=0.0, step=500.0),
+                }
+            )
+
+            df_sub_sel = edited_sub[edited_sub["Incluir"] == True].copy()
+            total_mo_sub = float((df_sub_sel["Cantidad_Contratada"].astype(float) * df_sub_sel["Tarifa_Mano_Obra"].astype(float)).sum()) if not df_sub_sel.empty else 0.0
+            val_ret_sub = total_mo_sub * (float(pct_retencion) / 100.0)
+            neto_cortes_sub = total_mo_sub - val_ret_sub
+
+            ks1, ks2, ks3, ks4 = st.columns(4)
+            ks1.metric("Ítems Asignados", f"{len(df_sub_sel)} ítems")
+            ks2.metric("Total M.O. Estimada", f"${total_mo_sub:,.0f}")
+            ks3.metric(f"Retención Garantía ({pct_retencion:.0f}%)", f"${val_ret_sub:,.0f}")
+            ks4.metric("Neto en Cortes Semanales", f"${neto_cortes_sub:,.0f}")
+
+            if df_sub_sel.empty:
+                st.warning("⚠️ Seleccione al menos un ítem en la tabla superior para generar el subcontrato.")
+            else:
+                cfg_sub = {
+                    "num_subcontrato": num_subcontrato.strip() or "SUB-001",
+                    "nombre_oficial": nombre_oficial.strip() or "Oficial Instalador",
+                    "cedula_oficial": cedula_oficial.strip(),
+                    "telefono_oficial": telefono_oficial.strip(),
+                    "especialidad": especialidad_oficial.strip() or "Albañilería y Acabados",
+                    "pct_retencion": float(pct_retencion),
+                    "plazo_dias": int(plazo_dias_sub),
+                    "fecha_inicio": fecha_ini_sub.strftime("%d/%m/%Y"),
+                    "fecha_entrega": fecha_ent_sub.strftime("%d/%m/%Y"),
+                }
+                pdf_cto_sub = generar_subcontrato_oficial_pdf(df_sub_sel, proyecto_actual, cfg_sub)
+                st.download_button(
+                    label="📥 Descargar Subcontrato de Mano de Obra a Destajo (PDF Oficial)",
+                    data=pdf_cto_sub,
+                    file_name=f"Subcontrato_{cfg_sub['num_subcontrato']}_{proy_id}.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True,
+                    key=f"dl_cto_sub_{proy_id}"
+                )
 
 # ------------------------------------------------------------------------------
 # VISTA 3: MEJORA 1 - GENERADOR DE ACTAS DE CORTE & FACTURACIÓN CONTRACTUAL
