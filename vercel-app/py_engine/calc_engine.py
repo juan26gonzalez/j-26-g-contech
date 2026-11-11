@@ -423,3 +423,210 @@ def procesar_archivo_presupuesto_bytes(filename, raw_bytes):
         return items, None
     except Exception as e:
         return None, f"Error al procesar el archivo: {str(e)}"
+
+
+def _decode_revit_text(raw_bytes):
+    """Decodifica archivos exportados de Revit (.txt/.csv) soportando UTF-16 LE/BE, UTF-8 y Latin-1."""
+    for enc in ["utf-8-sig", "utf-16", "utf-16-le", "utf-16-be", "latin-1"]:
+        try:
+            text = raw_bytes.decode(enc)
+            if "\x00" not in text and len(text.strip()) > 0:
+                return text
+        except Exception:
+            continue
+    return raw_bytes.decode("latin-1", errors="ignore")
+
+
+def _parse_area_num(raw_val):
+    if raw_val is None or (isinstance(raw_val, float) and np.isnan(raw_val)):
+        return np.nan
+    s = str(raw_val).lower()
+    for token in ["m²", "m2", "und", "ml", "m³", "m3", " "]:
+        s = s.replace(token, "")
+    s = s.strip()
+    if not s:
+        return np.nan
+    if "," in s and "." not in s:
+        s = s.replace(",", ".")
+    else:
+        s = s.replace(",", "")
+    try:
+        return float(s)
+    except Exception:
+        return np.nan
+
+
+def _normalize_revit_room_py(raw_suffix):
+    n = " ".join(normalizar_texto(raw_suffix).split())
+    if not n:
+        return "General / Sin Habitación"
+    if n in ("h mom", "mom") or "mama" in n:
+        return "Habitación Mamá"
+    if "esteban" in n:
+        return "Habitación Esteban"
+    if "nan" in n:
+        return "Habitación Nan & I"
+    if "abuelo" in n:
+        return "Habitación Abuelos"
+    if "lisbeth" in n:
+        return "Habitación Lisbeth"
+    if "huesped" in n:
+        return "Habitación Huésped"
+    if "sala" in n:
+        return "Sala"
+    if "cocina" in n:
+        return "Cocina"
+    if "bano 1" in n or n == "bano":
+        return "Baño 1"
+    if "puerta 1" in n or "entrada 1" in n:
+        return "Entrada / Puerta 1"
+    if "puerta 2" in n or "entrada 2" in n:
+        return "Entrada / Puerta 2"
+    return " ".join(w.capitalize() for w in str(raw_suffix).strip().split())
+
+
+def _classify_revit_row_py(raw_comment, raw_family=""):
+    c_norm = normalizar_texto(raw_comment)
+    f_norm = normalizar_texto(raw_family)
+    combined = f"{f_norm} {c_norm}"
+
+    act_key = "otro"
+    act_label = str(raw_family).strip() or "Actividad BIM Revit"
+    if "plantilla" in combined or "solado" in combined:
+        act_key = "plantilla"
+        act_label = "Plantilla de concreto 7cm"
+    elif "enchape" in combined or "porcelanato" in combined or "piso " in combined:
+        act_key = "enchape"
+        act_label = "Enchape piso porcelanato baño 51x51" if "bano" in combined else "Enchape piso porcelanato 51x51"
+    elif "cielo raso" in combined or "cielorraso" in combined or "ceiling" in combined:
+        act_key = "cielorraso"
+        act_label = "Cielo raso"
+    elif "mamposteria" in combined or "bloque" in combined or "muro" in combined:
+        act_key = "mamposteria"
+        act_label = "Muros mampostería bloque No. 12"
+    elif "panete" in combined or "revoco" in combined:
+        act_key = "panete"
+        act_label = "Pañete y mortero de revoco"
+    elif "estuco" in combined or "pintura" in combined:
+        act_key = "pintura"
+        act_label = "Estuco y pintura vinílica"
+    elif "cubierta" in combined or "eternit" in combined or "teja" in combined:
+        act_key = "cubierta"
+        act_label = "Cubierta teja Eternit"
+    elif "ventana" in combined or "puerta" in combined:
+        act_key = "carpinteria"
+        act_label = "Ventanería aluminio y vidrio" if "ventana" in combined else "Puertas interiores y acceso"
+
+    prefixes = [
+        "plantilla de concreto 7cm",
+        "plantilla de concreto 7 cm",
+        "plantilla de concreto",
+        "enchape piso",
+        "enchape",
+        "cielorraso",
+        "cielo raso",
+        "mamposteria bloque",
+        "muros",
+        "muro",
+        "panete",
+        "pintura",
+    ]
+    cleaned_suffix = str(raw_comment).strip()
+    low = normalizar_texto(cleaned_suffix)
+    for pref in prefixes:
+        if low.startswith(pref):
+            cleaned_suffix = cleaned_suffix[len(pref):].strip()
+            break
+
+    room = _normalize_revit_room_py(cleaned_suffix or raw_comment)
+    return act_key, act_label, room
+
+
+def procesar_tabla_revit_bytes(filename, raw_bytes):
+    """Parsea Schedules nativos de Revit (.txt tabulado, .csv o .xlsx) desmenuzados por Comments/Habitación usando Pandas."""
+    try:
+        name = str(filename or "").lower()
+        if name.endswith(".xlsx") or name.endswith(".xls"):
+            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None, dtype=str)
+        else:
+            text = _decode_revit_text(raw_bytes)
+            lines = [ln.rstrip("\r\n") for ln in text.splitlines() if ln.strip()]
+            if not lines:
+                return None, "El archivo de Revit está vacío."
+            sep = "\t"
+            for probe in lines[:8]:
+                if "\t" in probe:
+                    sep = "\t"
+                    break
+                if ";" in probe:
+                    sep = ";"
+                    break
+                if "," in probe:
+                    sep = ","
+                    break
+            rows = [[c.strip().strip('"') for c in ln.split(sep)] for ln in lines]
+            df_raw = pd.DataFrame(rows)
+
+        header_idx = None
+        col_comment = None
+        col_area = None
+        col_family = None
+
+        for i in range(min(len(df_raw), 18)):
+            row_vals = [normalizar_texto(str(v or "")) for v in df_raw.iloc[i].tolist()]
+            if len(row_vals) == 1 and row_vals[0].startswith("<"):
+                continue
+            c_idx = next((idx for idx, v in enumerate(row_vals) if any(k in v for k in ["comments", "comentarios", "hubicacion", "ubicacion", "habitacion", "zona", "frente"])), None)
+            a_idx = next((idx for idx, v in enumerate(row_vals) if any(k in v for k in ["area", "cantidad", "metrado", "count", "cant"])), None)
+            if c_idx is not None and a_idx is not None:
+                header_idx = i
+                col_comment = c_idx
+                col_area = a_idx
+                col_family = next((idx for idx, v in enumerate(row_vals) if any(k in v for k in ["family and type", "familia y tipo", "floor assembly", "type", "tipo", "actividad"])), None)
+                break
+
+        if header_idx is None:
+            return None, "No se detectaron columnas válidas de Revit (ej. Comments / Hubicación y Área)."
+
+        df_body = df_raw.iloc[header_idx + 1:].copy()
+        records = []
+        for _, row in df_body.iterrows():
+            comment = str(row.iloc[col_comment] if col_comment < len(row) else "").strip()
+            if not comment or comment.lower() in ("nan", "none"):
+                continue
+            c_norm = normalizar_texto(comment)
+            if c_norm.startswith("grand total") or c_norm.startswith("total ") or c_norm in ("comments", "hubicacion", "ubicacion"):
+                continue
+            if ":" in comment and comment.split(":")[-1].strip().isdigit():
+                continue
+
+            area_raw = row.iloc[col_area] if col_area < len(row) else ""
+            area_val = _parse_area_num(area_raw)
+            if np.isnan(area_val) or area_val <= 0:
+                continue
+
+            family_val = str(row.iloc[col_family]).strip() if col_family is not None and col_family < len(row) and str(row.iloc[col_family]).lower() != "nan" else ""
+            act_key, act_label, room = _classify_revit_row_py(comment, family_val)
+            slug_room = "".join(ch if ch.isalnum() else "-" for ch in normalizar_texto(room)).strip("-") or "zona"
+            records.append({
+                "id": f"{slug_room}-{act_key}",
+                "room": room,
+                "activityKey": act_key,
+                "activityLabel": act_label,
+                "sourceComment": comment,
+                "unit": "und" if act_key == "carpinteria" else "m²",
+                "quantity": float(area_val),
+            })
+
+        if not records:
+            return None, "No se encontraron filas con áreas válidas mayores a cero."
+
+        df_agg = pd.DataFrame(records)
+        grouped = df_agg.groupby(["id", "room", "activityKey", "activityLabel", "unit"], as_index=False).agg({
+            "quantity": "sum",
+            "sourceComment": "first",
+        })
+        grouped["quantity"] = grouped["quantity"].round(2)
+        return grouped.to_dict(orient="records"), None
+    except Exception as e:
+        return None, f"Error leyendo tabla Revit: {str(e)}"

@@ -13,7 +13,11 @@ if ROOT_DIR not in sys.path:
 import numpy as np
 import pandas as pd
 
-from py_engine.calc_engine import consolidar_todo, procesar_archivo_presupuesto_bytes
+from py_engine.calc_engine import (
+    consolidar_todo,
+    procesar_archivo_presupuesto_bytes,
+    procesar_tabla_revit_bytes,
+)
 from py_engine.excel_generator import generar_acta_corte_excel, generar_plantilla_excel_presupuesto
 from py_engine.pdf_generator import (
     generar_contrato_cliente_pdf,
@@ -85,6 +89,17 @@ class handler(BaseHTTPRequestHandler):
                 b64 = data.get("file_base64", "")
                 raw_file = base64.b64decode(b64)
                 items, err = procesar_archivo_presupuesto_bytes(filename, raw_file)
+                if err:
+                    self._send_json(400, {"ok": False, "error": err})
+                    return
+                self._send_json(200, {"ok": True, "items": items})
+                return
+
+            if action == "parse_revit_schedule":
+                filename = data.get("filename", "revit_schedule.txt")
+                b64 = data.get("file_base64", "")
+                raw_file = base64.b64decode(b64)
+                items, err = procesar_tabla_revit_bytes(filename, raw_file)
                 if err:
                     self._send_json(400, {"ok": False, "error": err})
                     return

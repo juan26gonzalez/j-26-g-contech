@@ -7,6 +7,7 @@ import TabActasCorte from "../components/TabActasCorte";
 import TabBitacoraCloud from "../components/TabBitacoraCloud";
 import TabContratosPDF from "../components/TabContratosPDF";
 import TabCurvaS from "../components/TabCurvaS";
+import TabHabitacionesBIM from "../components/TabHabitacionesBIM";
 import TabInsumosBIM from "../components/TabInsumosBIM";
 import TabMayoresCantidades from "../components/TabMayoresCantidades";
 import TabPanelEjecutivo from "../components/TabPanelEjecutivo";
@@ -271,6 +272,14 @@ export default function GerenciaBim5DPage() {
 
         {activeTab === "panel" && (
           <TabPanelEjecutivo data={activeData} params={params} />
+        )}
+        {activeTab === "habitaciones" && (
+          <TabHabitacionesBIM
+            proyecto={proyectoActual}
+            data={activeData}
+            params={params}
+            onUpdateProyecto={persistProyectoChange}
+          />
         )}
         {activeTab === "presupuesto" && (
           <TabPresupuestoAPU

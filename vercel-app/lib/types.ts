@@ -2,6 +2,7 @@ export type ProjectMode = "bim" | "presupuesto";
 
 export type TabKey =
   | "panel"
+  | "habitaciones"
   | "presupuesto"
   | "contratos"
   | "actas"
@@ -10,6 +11,29 @@ export type TabKey =
   | "curva_s"
   | "insumos"
   | "bitacora";
+
+export type RoomActivityKey =
+  | "plantilla"
+  | "enchape"
+  | "cielorraso"
+  | "mamposteria"
+  | "panete"
+  | "pintura"
+  | "carpinteria"
+  | "cubierta"
+  | "otro";
+
+export interface RoomActivityItem {
+  id: string;
+  room: string;
+  activityKey: RoomActivityKey;
+  activityLabel: string;
+  sourceComment: string;
+  unit: string;
+  quantity: number;
+  unitPrice?: number;
+  pendingVerify?: boolean;
+}
 
 export interface BudgetItem {
   Item: string;
@@ -60,6 +84,7 @@ export interface ProjectConfig {
   modelo_bim: string;
   logo: string;
   ppto_base: BudgetItem[];
+  zonas_bim?: RoomActivityItem[];
   honorarios_consultoria?: HonorariosConfig;
   firma_residente?: string;
   firma_interventor?: string;
