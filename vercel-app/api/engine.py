@@ -16,6 +16,7 @@ import pandas as pd
 from py_engine.calc_engine import (
     consolidar_todo,
     procesar_archivo_presupuesto_bytes,
+    procesar_msproject_excel_bytes,
     procesar_tabla_revit_bytes,
 )
 from py_engine.excel_generator import generar_acta_corte_excel, generar_plantilla_excel_presupuesto
@@ -104,6 +105,17 @@ class handler(BaseHTTPRequestHandler):
                     self._send_json(400, {"ok": False, "error": err})
                     return
                 self._send_json(200, {"ok": True, "items": items})
+                return
+
+            if action == "parse_msproject":
+                filename = data.get("filename", "cronograma.xlsx")
+                b64 = data.get("file_base64", "")
+                raw_file = base64.b64decode(b64)
+                tasks, err = procesar_msproject_excel_bytes(filename, raw_file)
+                if err:
+                    self._send_json(400, {"ok": False, "error": err})
+                    return
+                self._send_json(200, {"ok": True, "tasks": tasks})
                 return
 
             if action == "plantilla_excel":

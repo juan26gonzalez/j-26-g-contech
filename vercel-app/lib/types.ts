@@ -37,6 +37,27 @@ export interface RoomActivityItem {
   pendingVerify?: boolean;
 }
 
+export interface GanttTask {
+  id: string;
+  uid?: string;
+  wbs: string;
+  nombre: string;
+  capitulo?: string;
+  inicio: string;
+  fin: string;
+  duracionDias: number;
+  meta?: number;
+  unidad?: string;
+  pesoPct: number;
+  rutaCritica?: boolean;
+  esResumen?: boolean;
+  esHito?: boolean;
+  predecesoras?: string[];
+  responsable?: string;
+  matchItem?: string;
+  pctManual?: number;
+}
+
 export interface BudgetItem {
   Item: string;
   Capitulo: string;
@@ -87,6 +108,7 @@ export interface ProjectConfig {
   logo: string;
   ppto_base: BudgetItem[];
   zonas_bim?: RoomActivityItem[];
+  gantt_base?: GanttTask[];
   honorarios_consultoria?: HonorariosConfig;
   firma_residente?: string;
   firma_interventor?: string;

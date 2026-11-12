@@ -314,7 +314,13 @@ export default function GerenciaBim5DPage() {
         )}
         {activeTab === "mayores" && <TabMayoresCantidades data={activeData} />}
         {activeTab === "rendimiento" && <TabRendimiento data={activeData} />}
-        {activeTab === "curva_s" && <TabCurvaS data={activeData} />}
+        {activeTab === "curva_s" && (
+          <TabCurvaS
+            proyecto={proyectoActual}
+            data={activeData}
+            onUpdateProyecto={persistProyectoChange}
+          />
+        )}
         {activeTab === "insumos" && (
           <TabInsumosBIM proyecto={proyectoActual} data={activeData} />
         )}

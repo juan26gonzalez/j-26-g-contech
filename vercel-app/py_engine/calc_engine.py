@@ -645,3 +645,158 @@ def procesar_tabla_revit_bytes(filename, raw_bytes):
         return grouped.to_dict(orient="records"), None
     except Exception as e:
         return None, f"Error leyendo tabla Revit: {str(e)}"
+
+
+def _parse_msp_date_py(val):
+    """Convierte fechas exportadas por MS Project (incl. días de la semana en español o datetime) a YYYY-MM-DD."""
+    import re
+    if val is None:
+        return None
+    s = str(val).strip()
+    if not s or s.lower() in ("nan", "nat", "none", "-"):
+        return None
+    # Remover prefijos de día en español/inglés: "jue 15/10/26", "mon 2026-10-15"
+    s = re.sub(r"^[a-záéíóú]+\.?\s+", "", s, flags=re.IGNORECASE).strip()
+    dt = pd.to_datetime(s, dayfirst=True, errors="coerce")
+    if pd.isna(dt):
+        dt = pd.to_datetime(s, errors="coerce")
+    if pd.isna(dt):
+        return None
+    return dt.strftime("%Y-%m-%d")
+
+
+def _parse_msp_duration_days_py(val, start_iso, end_iso):
+    import re
+    s = str(val or "").strip().lower()
+    m = re.search(r"(\d+(?:[.,]\d+)?)\s*(d|dia|días|dias|day|days|h|hr|hrs|sem|wk)", s)
+    if m:
+        num = float(m.group(1).replace(",", "."))
+        unit = m.group(2)
+        if unit.startswith("h"):
+            return max(0, round(num / 8.0))
+        if unit.startswith(("sem", "wk")):
+            return max(1, round(num * 7))
+        return max(0, round(num))
+    if start_iso and end_iso:
+        try:
+            d1 = pd.Timestamp(start_iso)
+            d2 = pd.Timestamp(end_iso)
+            return max(0, int((d2 - d1).days))
+        except Exception:
+            pass
+    return 1
+
+
+def procesar_msproject_excel_bytes(filename, raw_bytes):
+    """Lee cronogramas de MS Project exportados a Excel (.xlsx/.xls) o CSV."""
+    try:
+        name = str(filename or "").lower()
+        if name.endswith(".xlsx") or name.endswith(".xls"):
+            df_raw = pd.read_excel(io.BytesIO(raw_bytes), header=None, dtype=str)
+        else:
+            text = _decode_revit_text(raw_bytes)
+            lines = [ln for ln in text.splitlines() if ln.strip()]
+            sep = ";" if any(";" in ln for ln in lines[:5]) else ("\t" if any("\t" in ln for ln in lines[:5]) else ",")
+            df_raw = pd.read_csv(io.StringIO(text), sep=sep, header=None, dtype=str)
+
+        header_idx = None
+        cols_norm = []
+        for i in range(min(len(df_raw), 15)):
+            row_vals = [normalizar_texto(str(v or "")) for v in df_raw.iloc[i].tolist()]
+            has_name = any(k in v for v in row_vals for k in ["nombre", "task name", "actividad", "name", "tarea"])
+            has_start = any(k in v for v in row_vals for k in ["comienzo", "inicio", "start"])
+            if has_name and has_start:
+                header_idx = i
+                cols_norm = row_vals
+                break
+
+        if header_idx is None:
+            return None, "No se detectaron columnas de MS Project (ej. Nombre, Comienzo/Inicio, Fin)."
+
+        df = df_raw.iloc[header_idx + 1:].copy()
+        df.columns = cols_norm[: len(df.columns)]
+
+        def find_col(patterns):
+            for c in df.columns:
+                if any(p in c for p in patterns):
+                    return c
+            return None
+
+        c_name = find_col(["nombre", "task name", "actividad", "name", "tarea"])
+        c_start = find_col(["comienzo", "inicio", "start"])
+        c_end = find_col(["fin", "finish", "termino"])
+        c_wbs = find_col(["edt", "wbs", "esquema"])
+        c_dur = find_col(["duracion", "duration"])
+        c_pred = find_col(["predecesora", "predecessor"])
+        c_crit = find_col(["critica", "critical"])
+        c_pct = find_col(["% completado", "% completo", "completado", "percent", "avance"])
+        c_resp = find_col(["recurso", "resource", "responsable"])
+        c_id = find_col(["id", "uid"])
+
+        tasks = []
+        for idx, row in df.iterrows():
+            nombre = str(row.get(c_name, "") or "").strip()
+            if not nombre or nombre.lower() in ("nan", "none"):
+                continue
+            inicio = _parse_msp_date_py(row.get(c_start)) if c_start else None
+            fin = _parse_msp_date_py(row.get(c_end)) if c_end else inicio
+            if not inicio:
+                continue
+            if not fin:
+                fin = inicio
+
+            dur = _parse_msp_duration_days_py(row.get(c_dur), inicio, fin) if c_dur else _parse_msp_duration_days_py("", inicio, fin)
+            wbs = str(row.get(c_wbs, "") or "").strip() if c_wbs else ""
+            if not wbs or wbs.lower() == "nan":
+                wbs = str(len(tasks) + 1)
+
+            raw_id = str(row.get(c_id, "") or "").strip() if c_id else ""
+            tid = raw_id if raw_id and raw_id.lower() != "nan" else str(len(tasks) + 1)
+
+            pred_raw = str(row.get(c_pred, "") or "").strip() if c_pred else ""
+            preds = []
+            if pred_raw and pred_raw.lower() != "nan":
+                import re
+                preds = [p.strip() for p in re.split(r"[,;\s]+", pred_raw) if p.strip()]
+
+            crit_raw = normalizar_texto(str(row.get(c_crit, "") or "")) if c_crit else ""
+            is_crit = crit_raw in ("si", "yes", "true", "1", "s")
+            raw_pct_str = str(row.get(c_pct, "0") or "") if c_pct else "0"
+            pct_val = _parse_area_num(raw_pct_str.replace("%", "")) if c_pct else 0.0
+            if np.isnan(pct_val):
+                pct_val = 0.0
+            elif "%" not in raw_pct_str and 0 < pct_val < 1:
+                pct_val = pct_val * 100.0
+            resp = str(row.get(c_resp, "") or "").strip() if c_resp else ""
+            if resp.lower() == "nan":
+                resp = ""
+
+            tasks.append({
+                "id": tid,
+                "uid": tid,
+                "wbs": wbs,
+                "nombre": nombre,
+                "inicio": inicio,
+                "fin": fin,
+                "duracionDias": int(dur),
+                "pesoPct": max(1.0, float(dur)),
+                "rutaCritica": bool(is_crit),
+                "esHito": dur == 0,
+                "predecesoras": preds,
+                "responsable": resp or "MS Project",
+                "pctManual": round(float(pct_val), 1),
+            })
+
+        if not tasks:
+            return None, "No se encontraron tareas con fechas válidas en el archivo Excel/CSV."
+
+        total_w = sum(t["pesoPct"] for t in tasks if not t.get("esHito")) or 1.0
+        for t in tasks:
+            if not t.get("esHito"):
+                t["pesoPct"] = round((t["pesoPct"] / total_w) * 100.0, 2)
+            else:
+                t["pesoPct"] = 0.0
+
+        return tasks, None
+    except Exception as e:
+        return None, f"Error leyendo archivo MS Project: {str(e)}"
