@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   CartesianGrid,
@@ -25,12 +25,14 @@ import {
   parseMsProjectXml,
 } from "../lib/msProjectGantt";
 import { formatCOP, formatNum } from "../lib/projects";
-import { ConsolidationResult, GanttTask, ProjectConfig } from "../lib/types";
+import { ConsolidationResult, GanttTask, ProjectConfig, BitacoraRow } from "../lib/types";
 
 interface TabCurvaSProps {
   proyecto: ProjectConfig;
   data: ConsolidationResult;
   onUpdateProyecto: (updated: ProjectConfig) => void;
+  cloudRows?: BitacoraRow[];
+  onRefreshCloud?: () => Promise<void> | void;
 }
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -51,6 +53,130 @@ const MESES_CORTO = [
   "NOV",
   "DIC",
 ];
+
+export const VBA_MSPROJECT_SYNC_CODE = `' ==============================================================================
+' MÓDULO DE SINCRONIZACIÓN MS PROJECT PROFESIONAL 2021 -> JGM CONTECH CLOUD
+' Sincroniza en tiempo real las tareas con el Centro de Control BIM 4D y Curva S
+' ==============================================================================
+Option Explicit
+
+Public Sub SincronizarJGMConTech()
+    Dim http As Object
+    Dim url As String
+    Dim jsonPayload As String
+    Dim t As Task
+    Dim count As Long
+    Dim wbsStr As String, nameStr As String, startStr As String, finishStr As String
+    Dim durDays As Double, durStr As String, pctVal As Long
+    Dim isCrit As Boolean, isSumm As Boolean, isMile As Boolean
+    Dim critJson As String, summJson As String, mileJson As String
+    Dim predsStr As String, respStr As String
+    Dim responseText As String, statusVal As Long
+    
+    ' URL de la API de producción de JGM ConTech
+    url = "https://jagm2000-jgmcontech.vercel.app/api/msproject-sync"
+    
+    If ActiveProject Is Nothing Then
+        MsgBox "No hay ningún proyecto activo abierto en Microsoft Project.", vbExclamation, "JGM ConTech"
+        Exit Sub
+    End If
+    
+    ' Detección automática del proyecto según el nombre del archivo
+    Dim projId As String, projTitle As String
+    projTitle = ActiveProject.Name
+    If InStr(1, LCase(projTitle), "mendoza") > 0 Or InStr(1, LCase(projTitle), "casa") > 0 Then
+        projId = "casa_mendoza"
+    Else
+        projId = "mezzanine"
+    End If
+    
+    jsonPayload = "{" & vbCrLf
+    jsonPayload = jsonPayload & "  ""projectId"": """ & projId & """," & vbCrLf
+    jsonPayload = jsonPayload & "  ""projectName"": """ & Replace(projTitle, """", "\""") & """," & vbCrLf
+    jsonPayload = jsonPayload & "  ""source"": ""MS_PROJECT_PROFESSIONAL_2021""," & vbCrLf
+    jsonPayload = jsonPayload & "  ""tasks"": [" & vbCrLf
+    
+    count = 0
+    For Each t In ActiveProject.Tasks
+        If Not t Is Nothing Then
+            count = count + 1
+            wbsStr = t.WBS
+            If wbsStr = "" Then wbsStr = CStr(t.ID)
+            
+            nameStr = Replace(t.Name, """", "\""")
+            nameStr = Replace(nameStr, vbCrLf, " ")
+            nameStr = Replace(nameStr, vbCr, " ")
+            nameStr = Replace(nameStr, vbLf, " ")
+            
+            startStr = Format(t.Start, "yyyy-mm-dd")
+            finishStr = Format(t.Finish, "yyyy-mm-dd")
+            
+            ' 480 minutos laborables = 1 día en MS Project
+            durDays = Round(t.Duration / 480, 2)
+            durStr = Replace(CStr(durDays), ",", ".")
+            
+            pctVal = CLng(t.PercentComplete)
+            isCrit = t.Critical
+            isSumm = t.Summary
+            isMile = t.Milestone
+            critJson = IIf(isCrit, "true", "false")
+            summJson = IIf(isSumm, "true", "false")
+            mileJson = IIf(isMile, "true", "false")
+            predsStr = Replace(t.Predecessors, """", "\""")
+            respStr = Replace(t.ResourceNames, """", "\""")
+            
+            If count > 1 Then jsonPayload = jsonPayload & "," & vbCrLf
+            
+            jsonPayload = jsonPayload & "    {"
+            jsonPayload = jsonPayload & """id"": """ & t.ID & """, "
+            jsonPayload = jsonPayload & """uid"": """ & t.UniqueID & """, "
+            jsonPayload = jsonPayload & """wbs"": """ & wbsStr & """, "
+            jsonPayload = jsonPayload & """nombre"": """ & nameStr & """, "
+            jsonPayload = jsonPayload & """inicio"": """ & startStr & """, "
+            jsonPayload = jsonPayload & """fin"": """ & finishStr & """, "
+            jsonPayload = jsonPayload & """duracionDias"": " & durStr & ", "
+            jsonPayload = jsonPayload & """pctReal"": " & pctVal & ", "
+            jsonPayload = jsonPayload & """rutaCritica"": " & critJson & ", "
+            jsonPayload = jsonPayload & """esResumen"": " & summJson & ", "
+            jsonPayload = jsonPayload & """esHito"": " & mileJson & ", "
+            jsonPayload = jsonPayload & """predecesoras"": """ & predsStr & """, "
+            jsonPayload = jsonPayload & """responsable"": """ & respStr & """"
+            jsonPayload = jsonPayload & "}"
+        End If
+    Next t
+    
+    jsonPayload = jsonPayload & vbCrLf & "  ]" & vbCrLf & "}"
+    
+    ' Envío HTTP POST seguro
+    On Error Resume Next
+    Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
+    If http Is Nothing Then Set http = CreateObject("MSXML2.XMLHTTP")
+    If http Is Nothing Then Set http = CreateObject("WinHttp.WinHttpRequest.5.1")
+    On Error GoTo ErrorHandler
+    
+    http.Open "POST", url, False
+    http.setRequestHeader "Content-Type", "application/json; charset=utf-8"
+    http.send jsonPayload
+    
+    statusVal = http.Status
+    responseText = http.responseText
+    
+    If statusVal = 200 Or statusVal = 201 Then
+        MsgBox "✅ ¡Cronograma sincronizado con éxito!" & vbCrLf & vbCrLf & _
+               "• Proyecto: " & projId & " (" & projTitle & ")" & vbCrLf & _
+               "• Tareas procesadas: " & count & vbCrLf & _
+               "• Reflejado en JGM ConTech Curva S & Plazo 4D en tiempo real.", _
+               vbInformation, "JGM ConTech 4D Sync"
+    Else
+        MsgBox "⚠️ Error HTTP " & statusVal & ":" & vbCrLf & responseText, _
+               vbCritical, "JGM ConTech 4D Sync"
+    End If
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "❌ Error de conexión al sincronizar con JGM ConTech:" & vbCrLf & Err.Description, _
+           vbCritical, "JGM ConTech"
+End Sub`;
 
 function formatShortDateEs(iso: string): string {
   const clean = String(iso || "").slice(0, 10);
@@ -84,6 +210,8 @@ export default function TabCurvaS({
   proyecto,
   data,
   onUpdateProyecto,
+  cloudRows = [],
+  onRefreshCloud,
 }: TabCurvaSProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -104,6 +232,14 @@ export default function TabCurvaS({
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
+  // Estados del modal y sincronización de API MS Project 2021
+  const [showApiModal, setShowApiModal] = useState<boolean>(false);
+  const [activeApiTab, setActiveApiTab] = useState<"vba" | "instrucciones" | "prueba">("vba");
+  const [testingApi, setTestingApi] = useState<boolean>(false);
+  const [testApiResult, setTestApiResult] = useState<{ ok: boolean; message: string; details?: any } | null>(null);
+  const [copiedVba, setCopiedVba] = useState<boolean>(false);
+  const [refreshingLive, setRefreshingLive] = useState<boolean>(false);
+
   // Formulario rápido de nueva tarea MS Project
   const [newNombre, setNewNombre] = useState<string>("");
   const [newWbs, setNewWbs] = useState<string>("");
@@ -113,16 +249,156 @@ export default function TabCurvaS({
   const [newPred, setNewPred] = useState<string>("");
   const [newMatchItem, setNewMatchItem] = useState<string>("");
 
-  // Cronograma base activo: custom MS Project guardado en proyecto o generado del presupuesto APU
+  // Extracción automática del último cronograma sincronizado vía API desde MS Project Profesional 2021
+  const syncedMsProjectInfo = useMemo(() => {
+    if (!cloudRows || cloudRows.length === 0) return null;
+    const proyId = (proyecto.id || "casa_mendoza").toLowerCase();
+    const tag = `[msproject_sync] [${proyId}]`;
+    const found = cloudRows.find((r) => {
+      const act = String(r.actividad || "").toLowerCase();
+      return act.includes(tag) || (act.includes("msproject_sync") && act.includes(proyId));
+    });
+    if (!found) return null;
+    try {
+      const raw = String(found.actividad || "");
+      const idxSecond = raw.indexOf("]", raw.indexOf("]") + 1);
+      const jsonStr =
+        idxSecond > -1
+          ? raw.slice(idxSecond + 1).trim()
+          : raw.replace(/\[msproject_sync\]\s*\[\w+\]\s*/i, "").trim();
+      const tasks = JSON.parse(jsonStr) as GanttTask[];
+      if (Array.isArray(tasks) && tasks.length > 0) {
+        return {
+          id: found.id,
+          fecha: found.fecha,
+          created_at: found.created_at,
+          count: tasks.length,
+          tasks,
+        };
+      }
+    } catch {
+      // Ignorar error de parsing
+    }
+    return null;
+  }, [cloudRows, proyecto.id]);
+
+  // Polling automático cada 8 segundos mientras la pestaña de Curva S esté activa
+  useEffect(() => {
+    if (!onRefreshCloud) return;
+    const interval = setInterval(() => {
+      onRefreshCloud();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [onRefreshCloud]);
+
+  // Refrescar manualmente el cronograma en vivo
+  const handleManualLiveRefresh = async () => {
+    if (!onRefreshCloud) return;
+    setRefreshingLive(true);
+    try {
+      await onRefreshCloud();
+      setStatusBanner({
+        type: "ok",
+        text: "Sincronización en vivo verificada con Supabase y MS Project.",
+      });
+    } catch {
+      setStatusBanner({
+        type: "error",
+        text: "No se pudo actualizar el estado en vivo de la nube.",
+      });
+    } finally {
+      setRefreshingLive(false);
+    }
+  };
+
+  // Enviar prueba a la API desde el navegador para verificar la tubería
+  const handleTestApi = async () => {
+    setTestingApi(true);
+    setTestApiResult(null);
+    try {
+      const sampleTasks: GanttTask[] = [
+        {
+          id: "1",
+          uid: "1",
+          wbs: "1.1",
+          nombre: "Localización, replanteo y niveles (Prueba API MS Project)",
+          capitulo: "1. PRELIMINARES",
+          inicio: getTodayIso(),
+          fin: addDaysIso(getTodayIso(), 4),
+          duracionDias: 4,
+          pesoPct: 4.0,
+          rutaCritica: true,
+          responsable: "Topógrafo / Residente",
+        },
+        {
+          id: "2",
+          uid: "2",
+          wbs: "1.2",
+          nombre: "Demolición y retiro de escombros (Prueba API MS Project)",
+          capitulo: "1. PRELIMINARES",
+          inicio: addDaysIso(getTodayIso(), 3),
+          fin: addDaysIso(getTodayIso(), 8),
+          duracionDias: 5,
+          pesoPct: 5.0,
+          rutaCritica: true,
+          predecesoras: ["1"],
+          responsable: "Cuadrilla Obra",
+        },
+      ];
+
+      const res = await fetch("/api/msproject-sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: proyecto.id || "casa_mendoza",
+          projectName: proyecto.nombre || "Casa Mendoza",
+          source: "MS_PROJECT_PROFESSIONAL_2021_TEST",
+          tasks: sampleTasks,
+        }),
+      });
+
+      const dataRes = await res.json();
+      if (!res.ok || !dataRes.ok) {
+        setTestApiResult({
+          ok: false,
+          message: dataRes.error || `HTTP ${res.status}: Fallo en la API`,
+        });
+      } else {
+        setTestApiResult({
+          ok: true,
+          message: `¡Prueba de sincronización exitosa! Se guardaron ${dataRes.tasksCount} tareas en Supabase para ${dataRes.projectId}.`,
+          details: dataRes,
+        });
+        if (onRefreshCloud) {
+          await onRefreshCloud();
+        }
+      }
+    } catch (err) {
+      setTestApiResult({
+        ok: false,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setTestingApi(false);
+    }
+  };
+
+  // Cronograma base activo:
+  // 1. Prioridad: Sincronización directa vía API desde MS Project Profesional 2021
+  // 2. Custom guardado en el proyecto
+  // 3. Fallback: Línea base automática derivada del presupuesto APU
   const rawTasks: GanttTask[] = useMemo(() => {
+    if (syncedMsProjectInfo && syncedMsProjectInfo.tasks.length > 0) {
+      return syncedMsProjectInfo.tasks;
+    }
     if (proyecto.gantt_base && proyecto.gantt_base.length > 0) {
       return proyecto.gantt_base;
     }
     return buildDefaultGanttFromBudget(proyecto);
-  }, [proyecto]);
+  }, [syncedMsProjectInfo, proyecto]);
 
   const isCustomSchedule = Boolean(
-    proyecto.gantt_base && proyecto.gantt_base.length > 0
+    syncedMsProjectInfo || (proyecto.gantt_base && proyecto.gantt_base.length > 0)
   );
 
   // Tareas enriquecidas con ejecución real de Supabase Bitácora + % programado a fechaCorte
@@ -553,9 +829,58 @@ export default function TabCurvaS({
               <span className="font-semibold text-slate-700">Bitácora Cloud</span> para{" "}
               <span className="font-semibold text-slate-700">{proyecto.nombre}</span>.
             </p>
+
+            {/* Estado de sincronización en tiempo real con MS Project Profesional 2021 */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+              {syncedMsProjectInfo ? (
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-[11px] font-bold text-emerald-800 shadow-sm">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
+                  </span>
+                  <span>MS Project Profesional 2021: En Línea</span>
+                  <span className="text-emerald-700 font-medium">
+                    ({syncedMsProjectInfo.count} tareas •{" "}
+                    {syncedMsProjectInfo.created_at
+                      ? new Date(syncedMsProjectInfo.created_at).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })
+                      : syncedMsProjectInfo.fecha}
+                    )
+                  </span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-300 text-[11px] font-semibold text-slate-700">
+                  <span className="h-2 w-2 rounded-full bg-slate-400"></span>
+                  <span>MS Project API: Listo para recibir sincronización</span>
+                </div>
+              )}
+              {onRefreshCloud && (
+                <button
+                  type="button"
+                  onClick={handleManualLiveRefresh}
+                  disabled={refreshingLive}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 transition"
+                  title="Comprobar actualizaciones en vivo en Supabase"
+                >
+                  <span className={refreshingLive ? "animate-spin" : ""}>↻</span>
+                  <span>{refreshingLive ? "Verificando..." : "Sincronizar ahora"}</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowApiModal(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer transition"
+              title="API en Tiempo Real para Microsoft Project Desktop 2021"
+            >
+              <span>⚡</span>
+              <span>API MS Project 2021</span>
+            </button>
             <input
               ref={fileInputRef}
               type="file"
@@ -1504,6 +1829,220 @@ export default function TabCurvaS({
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* MODAL API & MACRO VBA MICROSOFT PROJECT PROFESIONAL 2021 */}
+      {showApiModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            {/* Cabecera del Modal */}
+            <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">⚡</span>
+                <div>
+                  <h3 className="text-base font-extrabold tracking-tight">
+                    API en Tiempo Real · Microsoft Project Profesional 2021
+                  </h3>
+                  <p className="text-xs text-slate-300">
+                    Sincronización instantánea de tu cronograma de escritorio con la Curva S y Plazo 4D
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowApiModal(false)}
+                className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center text-sm font-bold transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Pestañas del Modal */}
+            <div className="flex border-b border-slate-200 bg-slate-50 px-5 pt-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setActiveApiTab("vba")}
+                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer ${
+                  activeApiTab === "vba"
+                    ? "border-indigo-600 text-indigo-700 bg-white"
+                    : "border-transparent text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                💻 Código Macro VBA (MS Project)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveApiTab("instrucciones")}
+                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer ${
+                  activeApiTab === "instrucciones"
+                    ? "border-indigo-600 text-indigo-700 bg-white"
+                    : "border-transparent text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                📋 Guía Paso a Paso (Alt + F11)
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveApiTab("prueba")}
+                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer ${
+                  activeApiTab === "prueba"
+                    ? "border-indigo-600 text-indigo-700 bg-white"
+                    : "border-transparent text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                🧪 Probar API en Vivo
+              </button>
+            </div>
+
+            {/* Contenido de Pestañas */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-4 text-xs text-slate-700">
+              {activeApiTab === "vba" && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-slate-900 text-sm">
+                        Macro VBA para Microsoft Project Profesional 2021
+                      </p>
+                      <p className="text-slate-500">
+                        Pégalo en tu proyecto de MS Project. Detecta automáticamente si es Casa Mendoza o Mezzanine.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard.writeText(VBA_MSPROJECT_SYNC_CODE);
+                        setCopiedVba(true);
+                        setTimeout(() => setCopiedVba(false), 2500);
+                      }}
+                      className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <span>{copiedVba ? "✓" : "📋"}</span>
+                      <span>{copiedVba ? "¡Copiado!" : "Copiar Código VBA"}</span>
+                    </button>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 font-mono text-[11px] text-emerald-300 overflow-x-auto max-h-[380px] shadow-inner">
+                    <pre>{VBA_MSPROJECT_SYNC_CODE}</pre>
+                  </div>
+                </div>
+              )}
+
+              {activeApiTab === "instrucciones" && (
+                <div className="space-y-4">
+                  <h4 className="font-extrabold text-slate-900 text-sm">
+                    Cómo instalar el sincronizador en Microsoft Project 2021 en 3 pasos:
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
+                        1
+                      </div>
+                      <h5 className="font-bold text-slate-900">Abrir Editor VBA</h5>
+                      <p className="text-slate-600">
+                        En Microsoft Project Profesional 2021 con tu proyecto abierto, presiona en tu teclado{" "}
+                        <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">
+                          Alt + F11
+                        </kbd>
+                        .
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
+                        2
+                      </div>
+                      <h5 className="font-bold text-slate-900">Insertar Módulo</h5>
+                      <p className="text-slate-600">
+                        En la barra de menús ve a <strong>Insertar → Módulo</strong>. Se abrirá una ventana en blanco; pega allí el código VBA copiado.
+                      </p>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                      <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
+                        3
+                      </div>
+                      <h5 className="font-bold text-slate-900">Guardar y Ejecutar</h5>
+                      <p className="text-slate-600">
+                        Cierra el editor (<kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px]">Alt + Q</kbd>). Presiona{" "}
+                        <kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">Alt + F8</kbd>
+                        , selecciona <code>SincronizarJGMConTech</code> y haz clic en <strong>Ejecutar</strong>.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 space-y-1.5">
+                    <p className="font-bold text-indigo-950">
+                      💡 Tip Profesional: Botón de 1 Clic en la Cinta de Opciones de MS Project
+                    </p>
+                    <p className="text-indigo-900 leading-relaxed">
+                      Haz clic derecho sobre cualquier pestaña de MS Project → <em>Personalizar la cinta de opciones</em> → Crea un botón con el icono de rayo o calendario apuntando a la macro <code>SincronizarJGMConTech</code>. ¡Cada vez que hagas un cambio en tus fechas o tareas, le das un clic y tu Curva S en la web se actualiza al instante!
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {activeApiTab === "prueba" && (
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900">Endpoint Oficial de la API:</span>
+                      <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold font-mono text-[10px]">
+                        POST · REST
+                      </span>
+                    </div>
+                    <code className="block p-2 rounded bg-white border border-slate-200 font-mono text-slate-800 text-[11px] select-all">
+                      https://jagm2000-jgmcontech.vercel.app/api/msproject-sync
+                    </code>
+                    <p className="text-slate-500 text-[11px]">
+                      Proyecto objetivo actual: <strong>{proyecto.nombre}</strong> (<code>{proyecto.id}</code>)
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={handleTestApi}
+                      disabled={testingApi}
+                      className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition flex items-center gap-2 disabled:opacity-60 cursor-pointer shadow-sm"
+                    >
+                      <span>{testingApi ? "⏳" : "🧪"}</span>
+                      <span>{testingApi ? "Enviando prueba a Supabase..." : "Simular Sincronización de MS Project"}</span>
+                    </button>
+                    {testApiResult && (
+                      <span
+                        className={`font-bold text-xs ${
+                          testApiResult.ok ? "text-emerald-700" : "text-rose-700"
+                        }`}
+                      >
+                        {testApiResult.ok ? "✅" : "⚠️"} {testApiResult.message}
+                      </span>
+                    )}
+                  </div>
+
+                  {testApiResult?.details && (
+                    <div className="rounded-xl border border-slate-200 bg-slate-900 text-emerald-400 p-3 font-mono text-[11px] overflow-x-auto">
+                      <pre>{JSON.stringify(testApiResult.details, null, 2)}</pre>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Pie del Modal */}
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+              <span>
+                Microsoft Office Project Profesional 2021 • Compilación 14334.20522
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowApiModal(false)}
+                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold transition cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

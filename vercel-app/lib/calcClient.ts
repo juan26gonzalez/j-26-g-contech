@@ -33,6 +33,11 @@ export function filtrarBitacoraPorProyecto(
     const actRaw = String(row.actividad || "");
     const actTxt = normalizarTexto(actRaw);
 
+    // Ignorar cargas maestras de cronograma MS Project (no son volúmenes ejecutados)
+    if (actTxt.includes("msproject_sync")) {
+      continue;
+    }
+
     if (actTxt.includes("bim_takeoff") || actTxt.includes("takeoff")) {
       if (proyId === "casa_mendoza" && !esSoloPpto) {
         validos.push(row);

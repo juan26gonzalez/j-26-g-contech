@@ -319,6 +319,8 @@ export default function GerenciaBim5DPage() {
             proyecto={proyectoActual}
             data={activeData}
             onUpdateProyecto={persistProyectoChange}
+            cloudRows={cloudRows}
+            onRefreshCloud={syncCloud}
           />
         )}
         {activeTab === "insumos" && (

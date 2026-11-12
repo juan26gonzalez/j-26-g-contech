@@ -32,6 +32,10 @@ def filtrar_bitacora_por_proyecto(df_bitacora, proyecto_actual):
         act_raw = str(row.get("actividad", ""))
         act_txt = normalizar_texto(act_raw)
 
+        # 0. Sincronizaciones maestras de MS Project no son avances de obra
+        if "msproject_sync" in act_txt:
+            continue
+
         # 1. Metrados BIM ([BIM_TAKEOFF]) exclusivos para Casa Mendoza (modo BIM)
         if "bim_takeoff" in act_txt or "takeoff" in act_txt:
             if proy_id == "casa_mendoza" and not es_solo_ppto:
