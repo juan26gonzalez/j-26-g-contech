@@ -70,7 +70,7 @@ Public Sub SincronizarJGMConTech()
     Dim durDays As Double, durStr As String, pctVal As Long
     Dim isCrit As Boolean, isSumm As Boolean, isMile As Boolean
     Dim critJson As String, summJson As String, mileJson As String
-    Dim predsStr As String, respStr As String
+    Dim predsStr As String, respStr As String, costStr As String
     Dim responseText As String, statusVal As Long
     
     ' URL de la API de producción de JGM ConTech
@@ -124,6 +124,7 @@ Public Sub SincronizarJGMConTech()
             mileJson = IIf(isMile, "true", "false")
             predsStr = Replace(t.Predecessors, """", "\""")
             respStr = Replace(t.ResourceNames, """", "\""")
+            costStr = Replace(CStr(Round(t.Cost, 2)), ",", ".")
             
             If count > 1 Then jsonPayload = jsonPayload & "," & vbCrLf
             
@@ -135,6 +136,7 @@ Public Sub SincronizarJGMConTech()
             jsonPayload = jsonPayload & """inicio"": """ & startStr & """, "
             jsonPayload = jsonPayload & """fin"": """ & finishStr & """, "
             jsonPayload = jsonPayload & """duracionDias"": " & durStr & ", "
+            jsonPayload = jsonPayload & """costo"": " & costStr & ", "
             jsonPayload = jsonPayload & """pctReal"": " & pctVal & ", "
             jsonPayload = jsonPayload & """rutaCritica"": " & critJson & ", "
             jsonPayload = jsonPayload & """esResumen"": " & summJson & ", "
@@ -2028,17 +2030,26 @@ export default function TabCurvaS({
             </div>
 
             {/* Pie del Modal */}
-            <div className="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+            <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
               <span>
                 Microsoft Office Project Profesional 2021 • Compilación 14334.20522
               </span>
-              <button
-                type="button"
-                onClick={() => setShowApiModal(false)}
-                className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold transition cursor-pointer"
-              >
-                Cerrar
-              </button>
+              <div className="flex items-center gap-2">
+                <a
+                  href="/Cronograma_Prueba_Casa_Mendoza.xml"
+                  download="Cronograma_Prueba_Casa_Mendoza.xml"
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition"
+                >
+                  📥 Descargar XML Prueba Casa Mendoza
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setShowApiModal(false)}
+                  className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         </div>

@@ -63,7 +63,7 @@ function cleanIsoDate(val?: string): string {
 function normalizeIncomingTasks(rawList: RawTaskInput[]): GanttTask[] {
   if (!Array.isArray(rawList)) return [];
 
-  return rawList
+  const preliminary = rawList
     .filter((t) => Boolean(t && (t.nombre || t.name)))
     .map((t, idx) => {
       const id = String(t.id || t.uid || idx + 1);
@@ -88,11 +88,11 @@ function normalizeIncomingTasks(rawList: RawTaskInput[]): GanttTask[] {
 
       let preds: string[] | undefined = undefined;
       if (Array.isArray(t.predecesoras)) {
-        preds = t.predecesoras.map(String).filter(Boolean);
+        preds = t.predecesoras.map((s) => String(s).trim().replace(/^(\d+).*$/, "$1")).filter(Boolean);
       } else if (typeof t.predecesoras === "string" && t.predecesoras.trim().length > 0) {
         preds = t.predecesoras
           .split(/[,;]/)
-          .map((s) => s.trim())
+          .map((s) => s.trim().replace(/^(\d+).*$/, "$1"))
           .filter(Boolean);
       }
 
@@ -103,25 +103,47 @@ function normalizeIncomingTasks(rawList: RawTaskInput[]): GanttTask[] {
           ? t.percentComplete
           : undefined;
 
+      const costVal = typeof t.costo === "number" ? Math.max(0, t.costo) : 0;
+
       return {
-        id,
-        uid,
-        wbs,
-        nombre,
-        capitulo: t.capitulo || (esResumen ? nombre : "PROGRAMACIÓN 4D"),
-        inicio,
-        fin: fin < inicio ? inicio : fin,
-        duracionDias,
-        pesoPct: typeof t.pesoPct === "number" ? t.pesoPct : esResumen ? 0 : 3.0,
-        rutaCritica,
-        esResumen,
-        esHito,
-        predecesoras: preds && preds.length > 0 ? preds : undefined,
-        responsable: t.responsable || "Dirección de Obra",
-        matchItem: t.matchItem || undefined,
-        pctManual: pctReal,
+        costVal,
+        explicitPeso: typeof t.pesoPct === "number" ? t.pesoPct : undefined,
+        task: {
+          id,
+          uid,
+          wbs,
+          nombre,
+          capitulo: t.capitulo || (esResumen ? nombre : "PROGRAMACIÓN 4D"),
+          inicio,
+          fin: fin < inicio ? inicio : fin,
+          duracionDias,
+          pesoPct: 0,
+          rutaCritica,
+          esResumen,
+          esHito,
+          predecesoras: preds && preds.length > 0 ? preds : undefined,
+          responsable: t.responsable || "Dirección de Obra",
+          matchItem: t.matchItem || undefined,
+          pctManual: pctReal,
+        } satisfies GanttTask,
       };
     });
+
+  const hojas = preliminary.filter((x) => !x.task.esResumen && !x.task.esHito);
+  const totalCost = hojas.reduce((s, x) => s + x.costVal, 0);
+  const totalDur = hojas.reduce((s, x) => s + Math.max(1, x.task.duracionDias), 0) || 1;
+
+  return preliminary.map(({ costVal, explicitPeso, task }) => ({
+    ...task,
+    pesoPct:
+      explicitPeso !== undefined
+        ? explicitPeso
+        : task.esResumen || task.esHito
+        ? 0
+        : totalCost > 0
+        ? Number(((costVal / totalCost) * 100).toFixed(2))
+        : Number(((Math.max(1, task.duracionDias) / totalDur) * 100).toFixed(2)),
+  }));
 }
 
 /**

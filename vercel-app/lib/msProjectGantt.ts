@@ -712,23 +712,23 @@ export function enrichGanttWithExecution(
       const tNorm = normalizarTexto(task.nombre);
       matchedRow = (data.df_5d || []).find((r) => {
         const aNorm = normalizarTexto(r.Actividad);
-        return (
-          aNorm.includes(tNorm) ||
-          tNorm.includes(aNorm) ||
-          (tNorm.includes("plantilla") && aNorm.includes("plantilla")) ||
-          (tNorm.includes("porcelanato") && (aNorm.includes("porcelanato") || aNorm.includes("enchape"))) ||
-          (tNorm.includes("enchape") && (aNorm.includes("enchape") || aNorm.includes("porcelanato"))) ||
-          (tNorm.includes("frescasa") && aNorm.includes("frescasa")) ||
-          (tNorm.includes("cielo raso") && !tNorm.includes("frescasa") && aNorm.includes("cielo") && !aNorm.includes("frescasa")) ||
-          (tNorm.includes("zapata") && aNorm.includes("zapata")) ||
-          (tNorm.includes("viga") && aNorm.includes("viga")) ||
-          (tNorm.includes("pedestal") && aNorm.includes("pedestal")) ||
-          (tNorm.includes("columna") && (aNorm.includes("columna") || aNorm.includes("pedestal"))) ||
-          (tNorm.includes("muro") && aNorm.includes("muro")) ||
-          (tNorm.includes("panete") && aNorm.includes("panete")) ||
-          (tNorm.includes("pintura") && aNorm.includes("pintura")) ||
-          (tNorm.includes("cubierta") && aNorm.includes("cubierta"))
-        );
+        if (aNorm.includes(tNorm) || tNorm.includes(aNorm)) return true;
+        if (tNorm.includes("frescasa") && aNorm.includes("frescasa")) return true;
+        if (tNorm.includes("cielo") && !tNorm.includes("frescasa") && aNorm.includes("cielo") && !aNorm.includes("frescasa")) return true;
+        if (tNorm.includes("panete") || tNorm.includes("revoco")) return aNorm.includes("panete") || aNorm.includes("revoco");
+        if (tNorm.includes("estuco") || tNorm.includes("pintura")) return aNorm.includes("estuco") || aNorm.includes("pintura");
+        if (tNorm.includes("plantilla")) return aNorm.includes("plantilla");
+        if (tNorm.includes("porcelanato") || tNorm.includes("enchape")) return aNorm.includes("porcelanato") || aNorm.includes("enchape");
+        if (tNorm.includes("puerta")) return aNorm.includes("puerta");
+        if (tNorm.includes("ventana")) return aNorm.includes("ventana");
+        if (tNorm.includes("cubierta") || tNorm.includes("eternit")) return aNorm.includes("cubierta") || aNorm.includes("eternit");
+        if (tNorm.includes("zapata")) return aNorm.includes("zapata");
+        if (tNorm.includes("viga")) return aNorm.includes("viga");
+        if (tNorm.includes("pedestal") || tNorm.includes("columna")) return aNorm.includes("pedestal") || aNorm.includes("columna");
+        if ((tNorm.includes("mamposteria") || tNorm.includes("bloque") || tNorm.includes("muro")) && !tNorm.includes("panete") && !tNorm.includes("estuco") && !tNorm.includes("pintura")) {
+          return (aNorm.includes("mamposteria") || aNorm.includes("bloque") || aNorm.includes("muro")) && !aNorm.includes("panete") && !aNorm.includes("estuco") && !aNorm.includes("pintura");
+        }
+        return false;
       });
     }
 
