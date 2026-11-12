@@ -96,19 +96,41 @@ export function calcularConsolidacionLocal(
     desperdicios[item.Item] = [];
   }
 
+  const findBestItemMatch = (actTxt: string): string | null => {
+    let bestItem: string | null = null;
+    let bestScore = 0;
+    const isFrescasa =
+      actTxt.includes("frescasa") ||
+      actTxt.includes("aislamiento") ||
+      actTxt.includes("aislante") ||
+      actTxt.includes("fibra de vidrio");
+
+    for (const item of listaPpto) {
+      const keys = item.match_keys || [];
+      if (isFrescasa && (item.Item === "3.1" || normalizarTexto(item.Actividad).includes("cielo raso suspendido"))) {
+        continue;
+      }
+      let score = 0;
+      for (const k of keys) {
+        if (actTxt.includes(k)) score += Math.max(k.length, 3);
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestItem = item.Item;
+      }
+    }
+    return bestItem;
+  };
+
   if (proyecto.tipo !== "presupuesto" && proyecto.id === "casa_mendoza") {
     for (const row of obraActiva) {
       const actTxt = normalizarTexto(String(row.actividad || ""));
       if (actTxt.includes("bim_takeoff") || actTxt.includes("takeoff")) {
         const cantBim = Number(row.cantidad || 0);
         if (cantBim > 0) {
-          for (const item of listaPpto) {
-            const keys = item.match_keys || [];
-            if (keys.some((k) => actTxt.includes(k))) {
-              item.Cantidad_Contratada = cantBim;
-              break;
-            }
-          }
+          const matchedCode = findBestItemMatch(actTxt);
+          const matched = listaPpto.find((it) => it.Item === matchedCode);
+          if (matched) matched.Cantidad_Contratada = cantBim;
         }
       }
     }
@@ -120,14 +142,7 @@ export function calcularConsolidacionLocal(
     const cant = Number(row.cantidad || 0) || 0;
     const desp = Number(row.desperdicio || 0) || 0;
 
-    let matchedItem: string | null = null;
-    for (const item of listaPpto) {
-      const keys = item.match_keys || [];
-      if (keys.some((k) => actTxt.includes(k))) {
-        matchedItem = item.Item;
-        break;
-      }
-    }
+    const matchedItem = findBestItemMatch(actTxt);
     if (matchedItem && matchedItem in acumulados) {
       acumulados[matchedItem] += cant;
       if (desp > 0) desperdicios[matchedItem].push(desp);
@@ -225,6 +240,8 @@ export function calcularConsolidacionLocal(
     estuco: { meta_dia: 30.0, und: "m²/día", cuadrilla: "Cuadrilla Pintura: 2 Pintores" },
     pintura: { meta_dia: 30.0, und: "m²/día", cuadrilla: "Cuadrilla Pintura: 2 Pintores" },
     cielo: { meta_dia: 15.0, und: "m²/día", cuadrilla: "Cuadrilla Liviana: 1 Of + 1 Ayud" },
+    frescasa: { meta_dia: 28.0, und: "m²/día", cuadrilla: "Cuadrilla Aislamiento: 1 Of + 1 Ayud" },
+    aislamiento: { meta_dia: 28.0, und: "m²/día", cuadrilla: "Cuadrilla Aislamiento: 1 Of + 1 Ayud" },
     cubierta: { meta_dia: 25.0, und: "m²/día", cuadrilla: "Cuadrilla Metálica: 2 Montadores" },
     acero: { meta_dia: 250.0, und: "kg/día", cuadrilla: "Cuadrilla Armadores: 2 Oficiales" },
   };
@@ -297,6 +314,16 @@ export function calcularConsolidacionLocal(
       } else if (actN.includes("estuco") || actN.includes("pintura") || it === "4.1") {
         list.push({ Actividad: r.Actividad, Insumo: "Estuco Plástico Blanco (Cuñetes 28kg)", Unidad: "Cuñetes", Total_Teorico: cCalc * 0.045 });
         list.push({ Actividad: r.Actividad, Insumo: "Pintura Vinílica Tipo 1 (Cuñetes 5 Gal)", Unidad: "Cuñetes", Total_Teorico: cCalc * 0.015 });
+      } else if (
+        actN.includes("frescasa") ||
+        actN.includes("aislamiento") ||
+        actN.includes("aislante") ||
+        actN.includes("fibra de vidrio") ||
+        it === "3.2"
+      ) {
+        const areaDesp = cCalc * 1.05;
+        list.push({ Actividad: r.Actividad, Insumo: "Rollo Frescasa Eco 2-1/2\" (7.62×1.22m = 9.30 m², +5% desp.)", Unidad: "Rollos", Total_Teorico: areaDesp / 9.2964 });
+        list.push({ Actividad: r.Actividad, Insumo: "Aislamiento Fibra de Vidrio Frescasa Eco (Área c/ 5% desp.)", Unidad: "m²", Total_Teorico: areaDesp });
       } else if (actN.includes("cielo raso") || actN.includes("cielorraso") || it === "3.1") {
         list.push({ Actividad: r.Actividad, Insumo: "Lámina Drywall / PVC 1.22x2.44m", Unidad: "Láminas", Total_Teorico: cCalc / 2.9768 });
         list.push({ Actividad: r.Actividad, Insumo: "Perfilería Galvanizada (Omegas/Viguetas)", Unidad: "ml", Total_Teorico: cCalc * 3.1 });

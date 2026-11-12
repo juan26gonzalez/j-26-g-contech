@@ -18,6 +18,7 @@ export type RoomActivityKey =
   | "enchape"
   | "enchape_pared"
   | "cielorraso"
+  | "frescasa"
   | "mamposteria"
   | "panete"
   | "pintura"

@@ -78,6 +78,21 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="m
     acumulados = {str(item.get("Item", "")): 0.0 for item in lista_ppto}
     desperdicios = {str(item.get("Item", "")): [] for item in lista_ppto}
 
+    def _find_best_item(act_txt):
+        best_item = None
+        best_score = 0
+        is_frescasa = any(w in act_txt for w in ["frescasa", "aislamiento", "aislante", "fibra de vidrio"])
+        for item in lista_ppto:
+            it_code = str(item.get("Item", ""))
+            if is_frescasa and (it_code == "3.1" or "cielo raso suspendido" in normalizar_texto(str(item.get("Actividad", "")))):
+                continue
+            keys = item.get("match_keys", [])
+            score = sum(max(len(k), 3) for k in keys if k in act_txt)
+            if score > best_score:
+                best_score = score
+                best_item = item
+        return best_item
+
     if df_bitacora is not None and not df_bitacora.empty and "actividad" in df_bitacora.columns and "cantidad" in df_bitacora.columns:
         # 1. Sincronización de metrado BIM ([BIM_TAKEOFF]) solo para Casa Mendoza BIM
         if tipo_proyecto != "presupuesto" and proyecto_id == "casa_mendoza":
@@ -89,11 +104,9 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="m
                     except Exception:
                         cant_bim = 0.0
                     if cant_bim > 0:
-                        for item in lista_ppto:
-                            keys = item.get("match_keys", [])
-                            if any(k in act_txt for k in keys):
-                                item["Cantidad_Contratada"] = cant_bim
-                                break
+                        matched = _find_best_item(act_txt)
+                        if matched is not None:
+                            matched["Cantidad_Contratada"] = cant_bim
 
         # 2. Acumulación de avance ejecutado
         for _, row in df_bitacora.iterrows():
@@ -110,12 +123,8 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="m
             except Exception:
                 desp = 0.0
 
-            matched_item = None
-            for item in lista_ppto:
-                keys = item.get("match_keys", [])
-                if any(k in act_txt for k in keys):
-                    matched_item = str(item.get("Item", ""))
-                    break
+            matched_obj = _find_best_item(act_txt)
+            matched_item = str(matched_obj.get("Item", "")) if matched_obj else None
 
             if matched_item and matched_item in acumulados:
                 acumulados[matched_item] += cant
@@ -204,6 +213,10 @@ def _calcular_insumos_desde_df(df_5d, campo_cant):
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Porcelanato / Cerámica 51x51 cm (5% desp.)", "Unidad": "m²", "Total_Teorico": c_calc * 1.05})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pegacor Cerámico (Bultos 25kg)", "Unidad": "Bultos", "Total_Teorico": c_calc * 0.25})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Boquilla para Junta", "Unidad": "kg", "Total_Teorico": c_calc * 0.35})
+        elif "frescasa" in act_n or "aislamiento" in act_n or "aislante" in act_n or "fibra de vidrio" in act_n or it == "3.2":
+            area_desp = c_calc * 1.05
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Rollo Frescasa Eco 2-1/2\" (7.62×1.22m = 9.30 m², +5% desp.)", "Unidad": "Rollos", "Total_Teorico": area_desp / 9.2964})
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Aislamiento Fibra de Vidrio Frescasa Eco (Área c/ 5% desp.)", "Unidad": "m²", "Total_Teorico": area_desp})
         elif "cielorraso" in act_n or "cielo raso" in act_n or it == "3.1":
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Panel de Cielorraso Suspendido", "Unidad": "m²", "Total_Teorico": c_calc * 1.05})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Perfilería Angular y Perfiles Omega", "Unidad": "ml", "Total_Teorico": c_calc * 1.8})
@@ -248,6 +261,8 @@ def _calcular_rendimientos_df(df_obra_activa):
         "bloque": {"meta_dia": 12.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
         "panete": {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
         "piso": {"meta_dia": 14.0, "und": "m²/día", "cuadrilla": "Cuadrilla Acabados: 1 Oficial"},
+        "frescasa": {"meta_dia": 28.0, "und": "m²/día", "cuadrilla": "Cuadrilla Aislamiento: 1 Of + 1 Ayud"},
+        "aislamiento": {"meta_dia": 28.0, "und": "m²/día", "cuadrilla": "Cuadrilla Aislamiento: 1 Of + 1 Ayud"},
         "cubierta": {"meta_dia": 25.0, "und": "m²/día", "cuadrilla": "Cuadrilla Metálica: 2 Montadores"},
         "acero": {"meta_dia": 250.0, "und": "kg/día", "cuadrilla": "Cuadrilla Armadores: 2 Oficiales"},
     }
@@ -507,6 +522,9 @@ def _classify_revit_row_py(raw_comment, raw_family=""):
     elif "enchape" in combined or "porcelanato" in combined or "piso " in combined:
         act_key = "enchape"
         act_label = "Enchape piso porcelanato baño 51x51" if "bano" in combined else "Enchape piso porcelanato 51x51"
+    elif any(k in combined for k in ["frescasa", "aislamiento", "aislante", "fibra de vidrio", "termoacustico"]):
+        act_key = "frescasa"
+        act_label = 'Frescasa Eco 2-1/2" (sobre cielo raso)'
     elif "cielo raso" in combined or "cielorraso" in combined or "ceiling" in combined:
         act_key = "cielorraso"
         act_label = "Cielo raso"
@@ -530,6 +548,11 @@ def _classify_revit_row_py(raw_comment, raw_family=""):
         "plantilla de concreto 7cm",
         "plantilla de concreto 7 cm",
         "plantilla de concreto",
+        "frescasa eco 2-1/2",
+        "frescasa eco",
+        "frescasa",
+        "aislamiento termoacustico",
+        "aislamiento",
         "enchape de pared",
         "enchape pared",
         "enchape de muro",

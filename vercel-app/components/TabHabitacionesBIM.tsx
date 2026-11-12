@@ -35,6 +35,7 @@ const ACTIVITY_LABELS: Record<RoomActivityKey, string> = {
   enchape: "Enchape piso porcelanato 51x51",
   enchape_pared: "Enchape pared cerámica / porcelanato",
   cielorraso: "Cielo raso",
+  frescasa: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
   mamposteria: "Muros mampostería bloque No. 12",
   panete: "Pañete muros",
   pintura: "Estuco y pintura",
@@ -166,6 +167,7 @@ export default function TabHabitacionesBIM({
       enchape: { label: "Enchape piso porcelanato", m2: 0, valor: 0 },
       enchape_pared: { label: "Enchape pared cerámica", m2: 0, valor: 0 },
       cielorraso: { label: "Cielo raso", m2: 0, valor: 0 },
+      frescasa: { label: "Frescasa Eco 2-1/2\"", m2: 0, valor: 0 },
     };
     let otrosValor = 0;
     let totalDirecto = 0;
@@ -514,8 +516,8 @@ export default function TabHabitacionesBIM({
               Usar precios del Presupuesto 5D
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-            {(["plantilla", "enchape", "enchape_pared", "cielorraso"] as RoomActivityKey[]).map((key) => {
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+            {(["plantilla", "enchape", "enchape_pared", "cielorraso", "frescasa"] as RoomActivityKey[]).map((key) => {
               const current = resolveUnitPriceForRoomItem(
                 {
                   id: key,
@@ -547,6 +549,11 @@ export default function TabHabitacionesBIM({
                     }
                     className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 font-mono font-bold text-slate-900"
                   />
+                  {key === "frescasa" && (
+                    <p className="text-[10px] text-slate-500 mt-1">
+                      Ref. Homecenter: $112.900/rollo (9.30 m² = $12.140/m² mat. + desp./MO).
+                    </p>
+                  )}
                 </div>
               );
             })}
@@ -554,7 +561,7 @@ export default function TabHabitacionesBIM({
         </div>
       )}
 
-      {/* Resumen Total de las 3 actividades priorizadas */}
+      {/* Resumen Total de las actividades priorizadas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3.5">
         <div className="bento-card border-l-4 border-l-slate-800">
           <div className="text-[11px] font-bold uppercase text-slate-500">
@@ -589,13 +596,22 @@ export default function TabHabitacionesBIM({
 
         <div className="bento-card border-l-4 border-l-slate-600">
           <div className="text-[11px] font-bold uppercase text-slate-500">
-            ☁️ Total Cielos Rasos
+            ☁️ Cielos Rasos + Frescasa Eco
           </div>
           <div className="kpi-num text-xl font-extrabold text-slate-900 mt-1">
-            {formatCOP(resumenGlobalPorActividad.byKey.cielorraso.valor * aiuFactor)}
+            {formatCOP(
+              (resumenGlobalPorActividad.byKey.cielorraso.valor +
+                resumenGlobalPorActividad.byKey.frescasa.valor) *
+                aiuFactor
+            )}
           </div>
           <div className="text-[11px] text-slate-600 font-mono mt-0.5">
-            {formatNum(resumenGlobalPorActividad.byKey.cielorraso.m2)} m² (Grand total Revit: 87 m²)
+            Cielo: {formatNum(resumenGlobalPorActividad.byKey.cielorraso.m2)} m²
+            {resumenGlobalPorActividad.byKey.frescasa.m2 > 0
+              ? ` • Frescasa: ${formatNum(resumenGlobalPorActividad.byKey.frescasa.m2)} m² (~${Math.ceil(
+                  (resumenGlobalPorActividad.byKey.frescasa.m2 * 1.05) / 9.2964
+                )} rollos)`
+              : ""}
           </div>
         </div>
 
@@ -726,6 +742,7 @@ export default function TabHabitacionesBIM({
               { key: "enchape" as const, label: "🪩 Enchape Piso" },
               { key: "enchape_pared" as const, label: "🪵 Enchape Pared" },
               { key: "cielorraso" as const, label: "☁️ Cielo Raso" },
+              { key: "frescasa" as const, label: "🌡️ Frescasa Eco" },
             ].map((f) => (
               <button
                 key={f.key}
@@ -764,6 +781,13 @@ export default function TabHabitacionesBIM({
               className="px-2.5 py-1.5 rounded-lg font-bold border border-slate-300 bg-white hover:bg-slate-100 text-slate-700"
             >
               Marcar Enchapes
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSelectByActivity("frescasa")}
+              className="px-2.5 py-1.5 rounded-lg font-bold border border-slate-300 bg-white hover:bg-slate-100 text-slate-700"
+            >
+              Marcar Frescasa
             </button>
             <button
               type="button"

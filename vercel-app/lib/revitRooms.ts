@@ -57,6 +57,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     unit: "m²",
     quantity: 12,
   },
+  {
+    id: "cm-hmom-frescasa",
+    room: "Habitación Mamá",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco H Mom",
+    unit: "m²",
+    quantity: 12,
+  },
 
   // Habitación Esteban
   {
@@ -83,6 +92,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     activityKey: "cielorraso",
     activityLabel: "Cielo raso",
     sourceComment: "Cielo raso H Esteban",
+    unit: "m²",
+    quantity: 8,
+  },
+  {
+    id: "cm-hesteban-frescasa",
+    room: "Habitación Esteban",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco H Esteban",
     unit: "m²",
     quantity: 8,
   },
@@ -115,6 +133,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     unit: "m²",
     quantity: 10,
   },
+  {
+    id: "cm-hnany-frescasa",
+    room: "Habitación Nan & I",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco H Nan & I",
+    unit: "m²",
+    quantity: 10,
+  },
 
   // Habitación Abuelos
   {
@@ -141,6 +168,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     activityKey: "cielorraso",
     activityLabel: "Cielo raso",
     sourceComment: "Cielo raso H Abuelos",
+    unit: "m²",
+    quantity: 7,
+  },
+  {
+    id: "cm-habuelos-frescasa",
+    room: "Habitación Abuelos",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco H Abuelos",
     unit: "m²",
     quantity: 7,
   },
@@ -173,6 +209,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     unit: "m²",
     quantity: 10,
   },
+  {
+    id: "cm-hlisbeth-frescasa",
+    room: "Habitación Lisbeth",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco H Lisbeth",
+    unit: "m²",
+    quantity: 10,
+  },
 
   // Habitación Huésped
   {
@@ -199,6 +244,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     activityKey: "cielorraso",
     activityLabel: "Cielo raso",
     sourceComment: "Cielo raso Huesped",
+    unit: "m²",
+    quantity: 5,
+  },
+  {
+    id: "cm-hhuesped-frescasa",
+    room: "Habitación Huésped",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco Huesped",
     unit: "m²",
     quantity: 5,
   },
@@ -336,6 +390,7 @@ const DEFAULT_ACTIVITY_PRICES: Record<RoomActivityKey, number> = {
   enchape: 58000,
   enchape_pared: 58000,
   cielorraso: 38000,
+  frescasa: 17500,
   mamposteria: 47500,
   panete: 24000,
   pintura: 16500,
@@ -359,6 +414,7 @@ const ACTIVITY_MATCH_HINTS: Record<RoomActivityKey, string[]> = {
     "pared cocina",
   ],
   cielorraso: ["cielo", "cielorraso", "ceiling"],
+  frescasa: ["frescasa", "aislamiento", "aislante", "fibra de vidrio", "termoacustico"],
   mamposteria: ["mamposteria", "bloque", "bloques"],
   panete: ["panete", "revoco"],
   pintura: ["estuco", "pintura", "vinilica"],
@@ -451,6 +507,15 @@ export function classifyRevitActivityAndRoom(
       ? "Enchape piso porcelanato baño 51x51"
       : "Enchape piso porcelanato 51x51";
   } else if (
+    combined.includes("frescasa") ||
+    combined.includes("aislamiento") ||
+    combined.includes("aislante") ||
+    combined.includes("fibra de vidrio") ||
+    combined.includes("termoacustico")
+  ) {
+    activityKey = "frescasa";
+    activityLabel = 'Frescasa Eco 2-1/2" (sobre cielo raso)';
+  } else if (
     combined.includes("cielo raso") ||
     combined.includes("cielorraso") ||
     combined.includes("ceiling")
@@ -481,7 +546,7 @@ export function classifyRevitActivityAndRoom(
   // Remueve el prefijo de actividad del Comment de Revit para aislar la habitación
   const stripped = rawComment
     .replace(
-      /^\s*(plantilla\s+de\s+concreto(\s+7\s*cm)?|enchape\s+de\s+pared|enchape\s+pared|enchape\s+de\s+muro|enchape\s+muro|ceramica\s+pared|azulejo|enchape\s+piso|enchape|cielo\s*raso|mamposteria\s+bloque|muros?|panete|pintura)\s*/i,
+      /^\s*(plantilla\s+de\s+concreto(\s+7\s*cm)?|frescasa(\s+eco)?(\s+2[- ]1\/2["”]?|\s+sobre\s+cielo\s*raso)?|aislamiento(\s+termoac[uú]stico)?|enchape\s+de\s+pared|enchape\s+pared|enchape\s+de\s+muro|enchape\s+muro|ceramica\s+pared|azulejo|enchape\s+piso|enchape|cielo\s*raso|mamposteria\s+bloque|muros?|panete|pintura)\s*/i,
       ""
     )
     .trim();
@@ -656,6 +721,12 @@ export function computeExecutedByRoomItem(
       ) {
         continue;
       }
+      if (
+        item.activityKey === "cielorraso" &&
+        (actNorm.includes("frescasa") || actNorm.includes("aislamiento") || actNorm.includes("aislante") || actNorm.includes("fibra de vidrio"))
+      ) {
+        continue;
+      }
       if (item.activityKey === "mamposteria" && actNorm.includes("enchape")) {
         continue;
       }
@@ -710,6 +781,10 @@ export function computeMaterialsForRoomSelection(
       case "cielorraso":
         add("Panel de Cielorraso Suspendido (inc. 5% desp.)", "m²", q * 1.05);
         add("Perfilería Angular y Perfiles Omega", "ml", q * 1.8);
+        break;
+      case "frescasa":
+        add("Rollo Frescasa Eco 2-1/2\" (7.62×1.22m = 9.30 m², inc. 5% desp.)", "Rollos", (q * 1.05) / 9.2964);
+        add("Aislamiento Fibra de Vidrio Frescasa Eco (Área c/ 5% desp.)", "m²", q * 1.05);
         break;
       case "mamposteria":
         add("Bloque de Concreto No. 12 (40x20x12)", "Und", q * 12.5);

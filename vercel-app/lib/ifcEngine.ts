@@ -537,7 +537,8 @@ function findBestBudgetRowMatch(
     const actNorm = normalizarTexto(row.Actividad);
     if (actNorm.includes("plantilla") && txt.includes("plantilla")) score += 4;
     if (actNorm.includes("porcelanato") && (txt.includes("porcelanato") || txt.includes("enchape"))) score += 4;
-    if (actNorm.includes("cielo raso") && (txt.includes("cielo") || meta.ifcType === "IFCCOVERING")) score += 4;
+    if (actNorm.includes("frescasa") && (txt.includes("frescasa") || txt.includes("aislamiento") || txt.includes("fibra"))) score += 6;
+    if (actNorm.includes("cielo raso") && !actNorm.includes("frescasa") && (txt.includes("cielo") || meta.ifcType === "IFCCOVERING")) score += 4;
 
     if (score > bestScore) {
       bestScore = score;

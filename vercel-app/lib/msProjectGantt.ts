@@ -718,7 +718,8 @@ export function enrichGanttWithExecution(
           (tNorm.includes("plantilla") && aNorm.includes("plantilla")) ||
           (tNorm.includes("porcelanato") && (aNorm.includes("porcelanato") || aNorm.includes("enchape"))) ||
           (tNorm.includes("enchape") && (aNorm.includes("enchape") || aNorm.includes("porcelanato"))) ||
-          (tNorm.includes("cielo raso") && aNorm.includes("cielo")) ||
+          (tNorm.includes("frescasa") && aNorm.includes("frescasa")) ||
+          (tNorm.includes("cielo raso") && !tNorm.includes("frescasa") && aNorm.includes("cielo") && !aNorm.includes("frescasa")) ||
           (tNorm.includes("zapata") && aNorm.includes("zapata")) ||
           (tNorm.includes("viga") && aNorm.includes("viga")) ||
           (tNorm.includes("pedestal") && aNorm.includes("pedestal")) ||
