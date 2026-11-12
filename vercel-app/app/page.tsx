@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import LoginGate from "../components/LoginGate";
 import NewProjectModal from "../components/NewProjectModal";
 import Sidebar from "../components/Sidebar";
 import TabActasCorte from "../components/TabActasCorte";
@@ -15,6 +16,11 @@ import TabPresupuestoAPU from "../components/TabPresupuestoAPU";
 import TabRendimiento from "../components/TabRendimiento";
 import TabVisor3DBIM from "../components/TabVisor3DBIM";
 import TopHeader from "../components/TopHeader";
+import {
+  AuthSession,
+  restoreAndValidateSession,
+  signOutSession,
+} from "../lib/auth";
 import { calcularConsolidacionLocal, callPythonJson } from "../lib/calcClient";
 import {
   fetchBitacoraCloud,
@@ -42,6 +48,8 @@ export default function GerenciaBim5DPage() {
   const [syncing, setSyncing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [newModalOpen, setNewModalOpen] = useState(false);
+  const [session, setSession] = useState<AuthSession | null>(null);
+  const [loadingAuth, setLoadingAuth] = useState(true);
 
   const [engineStatus, setEngineStatus] = useState<"pandas" | "client-ts" | "checking">(
     "checking"
@@ -105,8 +113,31 @@ export default function GerenciaBim5DPage() {
   }, []);
 
   useEffect(() => {
+    let mounted = true;
+    restoreAndValidateSession()
+      .then((restored) => {
+        if (mounted) setSession(restored);
+      })
+      .finally(() => {
+        if (mounted) setLoadingAuth(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLogout = useCallback(async () => {
+    if (window.confirm("¿Deseas cerrar tu sesión en Gerencia BIM 5D?")) {
+      await signOutSession(session);
+      setSession(null);
+      setCloudRows([]);
+    }
+  }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
     syncCloud();
-  }, [syncCloud]);
+  }, [session, syncCloud]);
 
   // Instant TS calculation + Python Pandas Serverless consolidation
   const clientFallbackData = useMemo(
@@ -115,6 +146,7 @@ export default function GerenciaBim5DPage() {
   );
 
   useEffect(() => {
+    if (!session) return;
     let cancelled = false;
     setEngineStatus("checking");
 
@@ -141,7 +173,7 @@ export default function GerenciaBim5DPage() {
     return () => {
       cancelled = true;
     };
-  }, [proyectoActual, cloudRows]);
+  }, [session, proyectoActual, cloudRows]);
 
   const activeData = pythonData || clientFallbackData;
 
@@ -241,6 +273,30 @@ export default function GerenciaBim5DPage() {
     }
   };
 
+  if (loadingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="steel-panel-dark rounded-2xl px-8 py-6 text-center text-white border border-slate-500/60 shadow-2xl">
+          <img
+            src="/logo-mark.png"
+            alt="JGM ConTech"
+            className="w-14 h-14 rounded-xl border border-slate-400/60 mx-auto mb-3 animate-pulse"
+          />
+          <p className="text-sm font-bold tracking-wide">
+            Verificando sesión JGM ConTech...
+          </p>
+          <p className="text-[11px] text-slate-300 mt-1">
+            Gerencia BIM 5D • Supabase Auth
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return <LoginGate onAuthenticated={(newSession) => setSession(newSession)} />;
+  }
+
   return (
     <div className="min-h-screen flex bg-transparent">
       <Sidebar
@@ -269,6 +325,8 @@ export default function GerenciaBim5DPage() {
           onChangeTab={setActiveTab}
           onOpenMenuMobile={() => setMobileMenuOpen(true)}
           engineSource={activeData.engine}
+          userEmail={session.user.email}
+          onLogout={handleLogout}
         />
 
         {activeTab === "panel" && (

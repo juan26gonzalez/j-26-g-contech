@@ -11,6 +11,8 @@ interface TopHeaderProps {
   onChangeTab: (tab: TabKey) => void;
   onOpenMenuMobile: () => void;
   engineSource: "pandas" | "client-ts";
+  userEmail?: string;
+  onLogout?: () => void;
 }
 
 const TABS: { key: TabKey; label: string }[] = [
@@ -34,6 +36,8 @@ export default function TopHeader({
   onChangeTab,
   onOpenMenuMobile,
   engineSource,
+  userEmail,
+  onLogout,
 }: TopHeaderProps) {
   return (
     <div className="space-y-4">
@@ -63,6 +67,24 @@ export default function TopHeader({
               >
                 📱 Ir a Bitácora App ↗
               </a>
+              {userEmail && (
+                <span
+                  title={userEmail}
+                  className="bg-slate-900/50 border border-slate-400/35 text-slate-200 text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                >
+                  👤 {userEmail.split("@")[0]}
+                </span>
+              )}
+              {onLogout && (
+                <button
+                  type="button"
+                  onClick={onLogout}
+                  title="Cerrar sesión en Gerencia BIM 5D"
+                  className="bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-rose-100 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
+                >
+                  🚪 Salir
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-3 pt-1">
