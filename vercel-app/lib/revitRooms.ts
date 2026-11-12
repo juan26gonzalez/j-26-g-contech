@@ -285,6 +285,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     unit: "m²",
     quantity: 19,
   },
+  {
+    id: "cm-sala-frescasa",
+    room: "Sala",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco Sala",
+    unit: "m²",
+    quantity: 19,
+  },
 
   // Cocina
   {
@@ -314,6 +323,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     unit: "m²",
     quantity: 14,
   },
+  {
+    id: "cm-cocina-frescasa",
+    room: "Cocina",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco Cocina",
+    unit: "m²",
+    quantity: 14,
+  },
 
   // Baño 1
   {
@@ -340,6 +358,15 @@ export const CASA_MENDOZA_ROOMS_BASE: RoomActivityItem[] = [
     activityKey: "cielorraso",
     activityLabel: "Cielo raso",
     sourceComment: "Cielo raso Baño 1",
+    unit: "m²",
+    quantity: 3,
+  },
+  {
+    id: "cm-bano1-frescasa",
+    room: "Baño 1",
+    activityKey: "frescasa",
+    activityLabel: "Frescasa Eco 2-1/2\" (sobre cielo raso)",
+    sourceComment: "Frescasa Eco Baño 1",
     unit: "m²",
     quantity: 3,
   },
