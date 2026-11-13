@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
+import { AppPreferencesProvider } from "../lib/i18n";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -23,9 +24,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "JGM ConTech | Centro de Mando Gerencial BIM 5D",
+  title: "JGM ConTech | BIM 5D Construction & Project Controls Platform",
   description:
-    "Plataforma de Gerencia de Construcción BIM 5D, Control de Costos, Presupuesto APU, Consultoría Técnica y Contratos de Obra en Colombia.",
+    "Plataforma ejecutiva BIM 3D/4D/5D (ISO 19650, OpenBIM IFC, MS Project 4D, Earned Value Management & Supabase Cloud) creada por Ing. Juan González Mendoza.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -50,7 +51,7 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${plusJakarta.variable} ${jetBrainsMono.variable}`}>
       <body className="font-sans bg-[#cbd5e1] text-slate-900 min-h-screen">
-        {children}
+        <AppPreferencesProvider>{children}</AppPreferencesProvider>
       </body>
     </html>
   );

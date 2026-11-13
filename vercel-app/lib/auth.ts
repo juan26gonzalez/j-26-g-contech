@@ -15,6 +15,24 @@ export interface AuthSession {
   refresh_token: string;
   expires_at: number; // Unix seconds
   user: AuthUser;
+  isDemo?: boolean;
+}
+
+export function createDemoSession(): AuthSession {
+  return {
+    access_token: "demo-readonly-sandbox",
+    refresh_token: "",
+    expires_at: Math.floor(Date.now() / 1000) + 86400,
+    user: {
+      id: "demo-visitor",
+      email: "guest.demo@jgmcontech.com",
+      user_metadata: {
+        full_name: "LinkedIn Showcase Guest",
+        role: "viewer",
+      },
+    },
+    isDemo: true,
+  };
 }
 
 const SESSION_STORAGE_KEY = "jgm_contech_bim5d_session_v1";

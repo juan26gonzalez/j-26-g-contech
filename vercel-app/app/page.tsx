@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import LoginGate from "../components/LoginGate";
 import NewProjectModal from "../components/NewProjectModal";
 import Sidebar from "../components/Sidebar";
@@ -23,6 +23,11 @@ import {
 } from "../lib/auth";
 import { calcularConsolidacionLocal, callPythonJson } from "../lib/calcClient";
 import {
+  DEMO_SHOWCASE_PROJECT_ID,
+  getDemoBitacoraRows,
+  getDemoShowcaseProject,
+} from "../lib/demoData";
+import {
   fetchBitacoraCloud,
   loadCustomProjects,
   PROYECTOS_BASE,
@@ -38,6 +43,23 @@ import {
 
 const CUSTOM_OVERRIDES_KEY = "jgm_contech_project_overrides_v1";
 
+function loadFullRealPortfolio(): Record<string, ProjectConfig> {
+  if (typeof window === "undefined") return { ...PROYECTOS_BASE };
+  const custom = loadCustomProjects();
+  let overrides: Record<string, ProjectConfig> = {};
+  try {
+    const rawOv = window.localStorage.getItem(CUSTOM_OVERRIDES_KEY);
+    if (rawOv) overrides = JSON.parse(rawOv);
+  } catch {
+    // Ignorar error local
+  }
+  return {
+    ...PROYECTOS_BASE,
+    ...overrides,
+    ...custom,
+  };
+}
+
 export default function GerenciaBim5DPage() {
   const [proyectos, setProyectos] = useState<Record<string, ProjectConfig>>(
     PROYECTOS_BASE
@@ -47,9 +69,13 @@ export default function GerenciaBim5DPage() {
   const [cloudRows, setCloudRows] = useState<BitacoraRow[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [newModalOpen, setNewModalOpen] = useState(false);
   const [session, setSession] = useState<AuthSession | null>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
+  const wasDemoRef = useRef(false);
+
+  const isDemo = Boolean(session?.isDemo);
 
   const [engineStatus, setEngineStatus] = useState<"pandas" | "client-ts" | "checking">(
     "checking"
@@ -57,7 +83,10 @@ export default function GerenciaBim5DPage() {
   const [pythonData, setPythonData] = useState<ConsolidationResult | null>(null);
 
   const proyectoActual = useMemo(
-    () => proyectos[proyectoActivoId] || PROYECTOS_BASE.casa_mendoza,
+    () =>
+      proyectos[proyectoActivoId] ||
+      Object.values(proyectos)[0] ||
+      PROYECTOS_BASE.casa_mendoza,
     [proyectos, proyectoActivoId]
   );
 
@@ -69,22 +98,44 @@ export default function GerenciaBim5DPage() {
     pct_garantia: PROYECTOS_BASE.casa_mendoza.gar_def,
   });
 
-  // Hydrate custom projects & local edits after mount
+  // Synchronize portfolio isolation between Demo Sandbox and Real Authenticated Account
   useEffect(() => {
-    const custom = loadCustomProjects();
-    let overrides: Record<string, ProjectConfig> = {};
-    try {
-      const rawOv = window.localStorage.getItem(CUSTOM_OVERRIDES_KEY);
-      if (rawOv) overrides = JSON.parse(rawOv);
-    } catch {
-      // Ignorar error local
+    if (!session) {
+      setProyectos(loadFullRealPortfolio());
+      return;
     }
-    setProyectos({
-      ...PROYECTOS_BASE,
-      ...overrides,
-      ...custom,
-    });
-  }, []);
+    if (session.isDemo) {
+      wasDemoRef.current = true;
+      const demoProj = getDemoShowcaseProject();
+      setProyectos({ [DEMO_SHOWCASE_PROJECT_ID]: demoProj });
+      setProyectoActivoId(DEMO_SHOWCASE_PROJECT_ID);
+      setParams({
+        pct_a: demoProj.a_def,
+        pct_i: demoProj.i_def,
+        pct_u: demoProj.u_def,
+        pct_anticipo: demoProj.ant_def,
+        pct_garantia: demoProj.gar_def,
+      });
+      setPythonData(null);
+    } else {
+      const realPortfolio = loadFullRealPortfolio();
+      setProyectos(realPortfolio);
+      if (wasDemoRef.current) {
+        wasDemoRef.current = false;
+        const p = realPortfolio.casa_mendoza || Object.values(realPortfolio)[0];
+        setProyectoActivoId(p.id);
+        setParams({
+          pct_a: p.a_def ?? 8.0,
+          pct_i: p.i_def ?? 2.0,
+          pct_u: p.u_def ?? 5.0,
+          pct_anticipo: p.ant_def ?? 15.0,
+          pct_garantia: p.gar_def ?? 5.0,
+        });
+        setActiveTab("panel");
+      }
+      setPythonData(null);
+    }
+  }, [session]);
 
   // Update AIU defaults when switching project
   const handleSelectProyecto = useCallback(
@@ -107,10 +158,15 @@ export default function GerenciaBim5DPage() {
 
   const syncCloud = useCallback(async () => {
     setSyncing(true);
+    if (session?.isDemo) {
+      setCloudRows(getDemoBitacoraRows());
+      setSyncing(false);
+      return;
+    }
     const rows = await fetchBitacoraCloud();
     setCloudRows(rows);
     setSyncing(false);
-  }, []);
+  }, [session?.isDemo]);
 
   useEffect(() => {
     let mounted = true;
@@ -127,10 +183,18 @@ export default function GerenciaBim5DPage() {
   }, []);
 
   const handleLogout = useCallback(async () => {
+    if (session?.isDemo) {
+      await signOutSession(session);
+      setSession(null);
+      setCloudRows([]);
+      setActiveTab("panel");
+      return;
+    }
     if (window.confirm("¿Deseas cerrar tu sesión en Gerencia BIM 5D?")) {
       await signOutSession(session);
       setSession(null);
       setCloudRows([]);
+      setActiveTab("panel");
     }
   }, [session]);
 
@@ -181,6 +245,8 @@ export default function GerenciaBim5DPage() {
     const nextMap = { ...proyectos, [updated.id]: updated };
     setProyectos(nextMap);
 
+    if (session?.isDemo) return;
+
     if (updated.isCustom) {
       const customOnly: Record<string, ProjectConfig> = {};
       Object.values(nextMap).forEach((p) => {
@@ -200,6 +266,7 @@ export default function GerenciaBim5DPage() {
   };
 
   const handleSaveNewProject = (newProy: ProjectConfig) => {
+    if (session?.isDemo) return;
     persistProyectoChange(newProy);
     setProyectoActivoId(newProy.id);
     setParams({
@@ -213,6 +280,7 @@ export default function GerenciaBim5DPage() {
   };
 
   const handleDeleteCustomProject = (id: string) => {
+    if (session?.isDemo) return;
     const target = proyectos[id];
     if (!target?.isCustom) return;
     const nextMap = { ...proyectos };
@@ -246,6 +314,7 @@ export default function GerenciaBim5DPage() {
   };
 
   const handleImportBackup = async (file: File) => {
+    if (session?.isDemo) return;
     try {
       const txt = await file.text();
       const parsed = JSON.parse(txt);
@@ -315,6 +384,8 @@ export default function GerenciaBim5DPage() {
         onChangeParams={setParams}
         mobileOpen={mobileMenuOpen}
         onCloseMobile={() => setMobileMenuOpen(false)}
+        collapsed={sidebarCollapsed}
+        isDemo={isDemo}
       />
 
       <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-7 max-w-[1440px] mx-auto w-full space-y-5">
@@ -324,8 +395,11 @@ export default function GerenciaBim5DPage() {
           activeTab={activeTab}
           onChangeTab={setActiveTab}
           onOpenMenuMobile={() => setMobileMenuOpen(true)}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebarDesktop={() => setSidebarCollapsed((p) => !p)}
           engineSource={activeData.engine}
           userEmail={session.user.email}
+          isDemo={isDemo}
           onLogout={handleLogout}
         />
 
@@ -346,6 +420,7 @@ export default function GerenciaBim5DPage() {
             data={activeData}
             params={params}
             onNavigateTab={setActiveTab}
+            isDemo={isDemo}
           />
         )}
         {activeTab === "presupuesto" && (
@@ -390,11 +465,12 @@ export default function GerenciaBim5DPage() {
             data={activeData}
             allCloudRows={cloudRows}
             onSyncedReload={syncCloud}
+            isDemo={isDemo}
           />
         )}
 
         <footer className="pt-4 pb-2 text-center text-[11px] text-slate-600 font-semibold">
-          JGM ConTech • Gerencia BIM 5D Cloud (Next.js + Python Pandas + ReportLab + Supabase)
+          JGM ConTech • ISO 19650 • BIM 3D / 4D / 5D • Project Controls • Ing. Juan González Mendoza (Next.js + Python Pandas + Supabase)
         </footer>
       </main>
 

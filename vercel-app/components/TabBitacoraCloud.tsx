@@ -14,6 +14,7 @@ interface TabBitacoraCloudProps {
   data: ConsolidationResult;
   allCloudRows: BitacoraRow[];
   onSyncedReload: () => Promise<void>;
+  isDemo?: boolean;
 }
 
 export default function TabBitacoraCloud({
@@ -21,6 +22,7 @@ export default function TabBitacoraCloud({
   data,
   allCloudRows,
   onSyncedReload,
+  isDemo = false,
 }: TabBitacoraCloudProps) {
   const [actSeleccionada, setActSeleccionada] = useState(
     proyecto.ppto_base[0]?.Actividad || "Avance General de Obra"
@@ -44,6 +46,12 @@ export default function TabBitacoraCloud({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isDemo) {
+      setStatusMsg(
+        "ℹ️ Modo Demo LinkedIn (Solo lectura): la base de datos en la nube está protegida contra escritura."
+      );
+      return;
+    }
     if (cantidad <= 0) {
       setStatusMsg("❌ La cantidad debe ser mayor a 0.");
       return;
@@ -161,10 +169,13 @@ export default function TabBitacoraCloud({
           <div className="md:col-span-2">
             <button
               type="submit"
-              disabled={submitting}
-              className="w-full steel-btn-primary font-extrabold py-2.5 px-3 rounded-xl"
+              disabled={submitting || isDemo}
+              title={isDemo ? "Modo Demo de solo lectura" : undefined}
+              className={`w-full steel-btn-primary font-extrabold py-2.5 px-3 rounded-xl ${
+                isDemo ? "opacity-55 cursor-not-allowed" : ""
+              }`}
             >
-              {submitting ? "⏳..." : "🚀 Enviar Cloud"}
+              {submitting ? "⏳..." : isDemo ? "🔒 Solo Lectura" : "🚀 Enviar Cloud"}
             </button>
           </div>
         </div>

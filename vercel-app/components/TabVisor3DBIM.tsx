@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { normalizarTexto } from "../lib/calcClient";
+import { buildShowcaseIfcModel, DEMO_SHOWCASE_PROJECT_ID } from "../lib/demoData";
 import {
   deleteIfcFromIndexedDb,
   ElementMatchResult,
@@ -26,6 +27,7 @@ interface TabVisor3DBIMProps {
   data: ConsolidationResult;
   params: LiquidationParams;
   onNavigateTab: (tab: TabKey) => void;
+  isDemo?: boolean;
 }
 
 type ViewerMode = "semaforo" | "foco" | "caja3d" | "original";
@@ -70,6 +72,7 @@ export default function TabVisor3DBIM({
   data,
   params,
   onNavigateTab,
+  isDemo = false,
 }: TabVisor3DBIMProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -120,6 +123,14 @@ export default function TabVisor3DBIM({
         const cached = await loadIfcFromIndexedDb(proyecto.id);
         if (cancelled) return;
         if (!cached) {
+          if (proyecto.id === DEMO_SHOWCASE_PROJECT_ID || isDemo) {
+            const showcase = buildShowcaseIfcModel(proyecto.nombre);
+            setParsedModel((prev) => {
+              disposeModelGeometries(prev);
+              return showcase;
+            });
+            return;
+          }
           setParsedModel((prev) => {
             disposeModelGeometries(prev);
             return null;
@@ -148,7 +159,21 @@ export default function TabVisor3DBIM({
     return () => {
       cancelled = true;
     };
-  }, [proyecto.id]);
+  }, [proyecto.id, proyecto.nombre, isDemo]);
+
+  const handleLoadShowcaseModel = useCallback(() => {
+    setIfcError(null);
+    setLoadingIfc(true);
+    try {
+      const showcase = buildShowcaseIfcModel(proyecto.nombre);
+      setParsedModel((prev) => {
+        disposeModelGeometries(prev);
+        return showcase;
+      });
+    } finally {
+      setLoadingIfc(false);
+    }
+  }, [proyecto.nombre]);
 
   // Cruce reactivo: Elemento IFC <-> Partida APU <-> Habitación <-> Avance real de Bitácora
   const matchMap = useMemo(() => {
@@ -917,19 +942,28 @@ export default function TabVisor3DBIM({
                       2. Marca <b>Export Revit property sets</b> (y <i>IFC2x3 Coordination View 2.0</i>) para que viajen los parámetros <code>Comments</code> y materiales.
                     </div>
                   </div>
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-5 py-2.5 text-xs font-extrabold text-slate-950 shadow-lg transition">
-                    📂 Seleccionar Archivo .IFC
-                    <input
-                      type="file"
-                      accept=".ifc"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) handleLoadIfcFile(f);
-                        e.target.value = "";
-                      }}
-                      className="hidden"
-                    />
-                  </label>
+                  <div className="flex flex-wrap items-center justify-center gap-2.5">
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-5 py-2.5 text-xs font-extrabold text-slate-950 shadow-lg transition">
+                      📂 Seleccionar Archivo .IFC
+                      <input
+                        type="file"
+                        accept=".ifc"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleLoadIfcFile(f);
+                          e.target.value = "";
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleLoadShowcaseModel}
+                      className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-500 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg transition"
+                    >
+                      🏢 Cargar Modelo Demo 3D (OpenBIM)
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

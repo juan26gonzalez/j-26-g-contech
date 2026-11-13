@@ -3,19 +3,24 @@
 import React, { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  Compass,
   Eye,
   EyeOff,
+  Globe,
   Lock,
   Mail,
   ShieldCheck,
+  Smartphone,
 } from "lucide-react";
 import {
   AuthSession,
+  createDemoSession,
   loadRememberedEmail,
   saveRememberedEmail,
   sendPasswordRecovery,
   signInWithPassword,
 } from "../lib/auth";
+import { useAppPreferences } from "../lib/i18n";
 import { BITACORA_APP_URL } from "../lib/projects";
 
 interface LoginGateProps {
@@ -23,6 +28,7 @@ interface LoginGateProps {
 }
 
 export default function LoginGate({ onAuthenticated }: LoginGateProps) {
+  const { lang, setLang, tr } = useAppPreferences();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -50,7 +56,9 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
       if (recoveryMode) {
         await sendPasswordRecovery(email);
         setSuccessMsg(
-          "Se envió un correo con instrucciones para restablecer tu contraseña."
+          lang === "en"
+            ? "Recovery instructions sent to your email address."
+            : "Se envió un correo con instrucciones para restablecer tu contraseña."
         );
       } else {
         const session = await signInWithPassword(email, password);
@@ -70,14 +78,43 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
     <main className="min-h-screen flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-md bento-card !p-0 overflow-hidden shadow-2xl border border-slate-400/75">
         {/* Cabecera Ejecutiva Gunmetal CNC */}
-        <div className="steel-panel-dark px-6 py-6 text-center text-white border-b border-slate-600/80">
-          <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
-            <span className="bg-white/10 border border-white/20 text-slate-200 text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full">
-              REVIT 2027 BIM 5D
-            </span>
-            <span className="inline-flex items-center gap-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
-              <ShieldCheck className="w-3 h-3" /> SUPABASE AUTH
-            </span>
+        <div className="steel-panel-dark px-6 py-6 text-center text-white border-b border-slate-600/80 relative">
+          {/* Language Switcher ES / EN */}
+          <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="bg-white/10 border border-white/20 text-slate-200 text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full">
+                ISO 19650 • BIM 5D
+              </span>
+              <span className="inline-flex items-center gap-1 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                <ShieldCheck className="w-3 h-3" /> {tr.login.securityBadge}
+              </span>
+            </div>
+
+            <div className="inline-flex items-center rounded-full bg-slate-900/70 border border-slate-500/50 p-0.5 text-[10px] font-bold">
+              <Globe className="w-3 h-3 text-slate-300 ml-1.5 mr-1" />
+              <button
+                type="button"
+                onClick={() => setLang("es")}
+                className={`px-2 py-0.5 rounded-full transition-colors ${
+                  lang === "es"
+                    ? "bg-white text-slate-900"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                ES
+              </button>
+              <button
+                type="button"
+                onClick={() => setLang("en")}
+                className={`px-2 py-0.5 rounded-full transition-colors ${
+                  lang === "en"
+                    ? "bg-white text-slate-900"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                EN
+              </button>
+            </div>
           </div>
 
           <img
@@ -90,16 +127,40 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
             JGM ConTech
           </h1>
           <p className="text-xs sm:text-sm font-medium text-slate-300 mt-1">
-            Gerencia BIM 5D • Acceso Seguro
+            {tr.login.subtitle}
           </p>
         </div>
 
         {/* Formulario */}
         <div className="p-6 sm:p-7 bg-gradient-to-b from-white to-slate-50/90">
-          <p className="text-xs text-slate-600 font-medium text-center mb-5 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2">
-            {recoveryMode
-              ? "Ingresa tu correo registrado para recibir el enlace de recuperación."
-              : "Inicia sesión con tus mismas credenciales de Bitácora de Obra."}
+          {/* Botón Destacado Modo Demo LinkedIn */}
+          <div className="mb-5 rounded-2xl bg-slate-900 text-white p-3.5 shadow-md border border-slate-700">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 mb-1.5 text-center">
+              {tr.login.demoDivider}
+            </div>
+            <button
+              type="button"
+              onClick={() => onAuthenticated(createDemoSession())}
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs py-2.5 px-3 transition-colors shadow"
+            >
+              <Compass className="w-4 h-4" />
+              <span>{tr.login.demoBtn}</span>
+            </button>
+            <p className="text-[10px] text-slate-300 text-center mt-1.5 leading-snug">
+              {tr.login.demoHint}
+            </p>
+          </div>
+
+          <div className="relative flex py-1 items-center mb-4">
+            <div className="flex-grow border-t border-slate-200" />
+            <span className="flex-shrink mx-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {lang === "en" ? "Client / Team Access" : "Acceso Corporativo"}
+            </span>
+            <div className="flex-grow border-t border-slate-200" />
+          </div>
+
+          <p className="text-xs text-slate-600 font-medium text-center mb-4 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2">
+            {recoveryMode ? tr.login.helperRecovery : tr.login.helperLogin}
           </p>
 
           {errorMsg && (
@@ -120,7 +181,7 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
                 htmlFor="bim-login-email"
                 className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
               >
-                Correo Electrónico
+                {tr.login.emailLabel}
               </label>
               <div className="relative">
                 <Mail className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -143,7 +204,7 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
                   htmlFor="bim-login-password"
                   className="block text-[11px] font-bold uppercase tracking-wider text-slate-700 mb-1.5"
                 >
-                  Contraseña
+                  {tr.login.passwordLabel}
                 </label>
                 <div className="relative">
                   <Lock className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -184,7 +245,7 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
                     onChange={(e) => setRememberEmail(e.target.checked)}
                     className="rounded border-slate-300 text-slate-800 focus:ring-slate-700"
                   />
-                  Recordar correo
+                  {tr.login.rememberEmail}
                 </label>
 
                 <button
@@ -196,7 +257,7 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
                   }}
                   className="font-semibold text-slate-600 hover:text-slate-900 underline underline-offset-2"
                 >
-                  ¿Olvidaste tu clave?
+                  {tr.login.forgotPassword}
                 </button>
               </div>
             )}
@@ -206,13 +267,16 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
               disabled={submitting}
               className="w-full steel-btn-primary rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed mt-2"
             >
-              {submitting
-                ? recoveryMode
-                  ? "Enviando enlace..."
-                  : "Verificando credenciales..."
-                : recoveryMode
-                ? "Enviar Enlace de Recuperación"
-                : "🔒 Iniciar Sesión en Gerencia BIM 5D"}
+              <Lock className="w-4 h-4" />
+              <span>
+                {submitting
+                  ? recoveryMode
+                    ? tr.login.sendingRecoveryBtn
+                    : tr.login.signingInBtn
+                  : recoveryMode
+                  ? tr.login.sendRecoveryBtn
+                  : tr.login.signInBtn}
+              </span>
             </button>
 
             {recoveryMode && (
@@ -225,7 +289,7 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
                 }}
                 className="w-full inline-flex items-center justify-center gap-1.5 text-xs font-bold text-slate-600 hover:text-slate-900 py-1.5"
               >
-                <ArrowLeft className="w-3.5 h-3.5" /> Volver al inicio de sesión
+                <ArrowLeft className="w-3.5 h-3.5" /> {tr.login.backToLogin}
               </button>
             )}
           </form>
@@ -235,12 +299,13 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
               href={BITACORA_APP_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-bold text-slate-700 hover:text-slate-950 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-slate-950 transition-colors"
             >
-              📱 Ir a Bitácora de Campo App ↗
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>{tr.login.openBitacoraLink}</span>
             </a>
             <p className="text-[11px] text-slate-500 font-medium">
-              JGM ConTech • Control Financiero 5D &amp; Cronograma 4D • Barranquilla
+              {tr.login.footerNote}
             </p>
           </div>
         </div>

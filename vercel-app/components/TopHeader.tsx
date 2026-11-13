@@ -1,7 +1,32 @@
 "use client";
 
 import React from "react";
-import { BITACORA_APP_URL, formatCOP } from "../lib/projects";
+import {
+  AlertTriangle,
+  Box,
+  Calculator,
+  Compass,
+  ExternalLink,
+  FileText,
+  GanttChart,
+  Globe,
+  LayoutDashboard,
+  LayoutGrid,
+  LogOut,
+  Menu,
+  Moon,
+  Package,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Radio,
+  Receipt,
+  Smartphone,
+  Sun,
+  User,
+  Users,
+} from "lucide-react";
+import { AppCurrency, useAppPreferences } from "../lib/i18n";
+import { BITACORA_APP_URL } from "../lib/projects";
 import { ConsolidationTotals, ProjectConfig, TabKey } from "../lib/types";
 
 interface TopHeaderProps {
@@ -10,49 +35,40 @@ interface TopHeaderProps {
   activeTab: TabKey;
   onChangeTab: (tab: TabKey) => void;
   onOpenMenuMobile: () => void;
+  sidebarCollapsed?: boolean;
+  onToggleSidebarDesktop?: () => void;
   engineSource: "pandas" | "client-ts";
   userEmail?: string;
+  isDemo?: boolean;
   onLogout?: () => void;
 }
 
+const TAB_ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
+  panel: LayoutDashboard,
+  visor3d: Box,
+  habitaciones: LayoutGrid,
+  presupuesto: Calculator,
+  curva_s: GanttChart,
+  insumos: Package,
+  contratos: FileText,
+  bitacora: Radio,
+  rendimiento: Users,
+  mayores: AlertTriangle,
+  actas: Receipt,
+};
+
 const TAB_GROUPS: {
-  group: string;
-  items: { key: TabKey; label: string }[];
+  groupKey: "direction" | "bim3d" | "planning4d5d" | "field" | "controlBilling";
+  keys: TabKey[];
 }[] = [
+  { groupKey: "direction", keys: ["panel"] },
+  { groupKey: "bim3d", keys: ["visor3d", "habitaciones"] },
   {
-    group: "1. Dirección",
-    items: [{ key: "panel", label: "🏠 Panel Ejecutivo" }],
+    groupKey: "planning4d5d",
+    keys: ["presupuesto", "curva_s", "insumos", "contratos"],
   },
-  {
-    group: "2. BIM 3D",
-    items: [
-      { key: "visor3d", label: "🧊 Visor 3D BIM" },
-      { key: "habitaciones", label: "📐 Habitaciones & Caja" },
-    ],
-  },
-  {
-    group: "3. Planeación 4D/5D",
-    items: [
-      { key: "presupuesto", label: "💰 Presupuesto 5D (APU)" },
-      { key: "curva_s", label: "📈 Curva S & Plazo 4D" },
-      { key: "insumos", label: "🧱 Insumos BIM" },
-      { key: "contratos", label: "📜 Contratos PDF" },
-    ],
-  },
-  {
-    group: "4. Campo",
-    items: [
-      { key: "bitacora", label: "📡 Bitácora Cloud" },
-      { key: "rendimiento", label: "👥 Rendimiento & Cuadrillas" },
-    ],
-  },
-  {
-    group: "5. Control & Cobro",
-    items: [
-      { key: "mayores", label: "⚠️ Mayores Cant. & Adicionales" },
-      { key: "actas", label: "📑 Actas de Corte & Cobro" },
-    ],
-  },
+  { groupKey: "field", keys: ["bitacora", "rendimiento"] },
+  { groupKey: "controlBilling", keys: ["mayores", "actas"] },
 ];
 
 export default function TopHeader({
@@ -61,100 +77,214 @@ export default function TopHeader({
   activeTab,
   onChangeTab,
   onOpenMenuMobile,
+  sidebarCollapsed = false,
+  onToggleSidebarDesktop,
   engineSource,
   userEmail,
+  isDemo = false,
   onLogout,
 }: TopHeaderProps) {
+  const {
+    lang,
+    setLang,
+    currency,
+    setCurrency,
+    darkTheme,
+    setDarkTheme,
+    formatMoney,
+    tr,
+  } = useAppPreferences();
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3.5">
       {/* Executive Header Banner */}
-      <div className="steel-panel-dark relative overflow-hidden rounded-2xl text-white p-5 sm:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
+      <div className="steel-panel-dark relative overflow-hidden rounded-2xl text-white p-4 sm:p-6">
+        <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+          <div className="space-y-2.5 min-w-0">
+            {/* Top Controls & Status Bar */}
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={onOpenMenuMobile}
                 className="lg:hidden inline-flex items-center gap-1.5 bg-white/15 hover:bg-white/25 px-2.5 py-1 rounded-lg text-xs font-bold border border-white/20"
               >
-                ☰ Menú
+                <Menu className="w-3.5 h-3.5" />
+                <span>{tr.menuMobile}</span>
               </button>
-              <span className="bg-slate-200/15 border border-slate-300/40 text-slate-100 text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full">
+
+              {onToggleSidebarDesktop && (
+                <button
+                  type="button"
+                  onClick={onToggleSidebarDesktop}
+                  title={
+                    sidebarCollapsed
+                      ? tr.toggleSidebarShow
+                      : tr.toggleSidebarHide
+                  }
+                  className="hidden lg:inline-flex items-center gap-1.5 bg-slate-200/15 hover:bg-slate-200/25 border border-slate-300/35 text-slate-100 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
+                >
+                  {sidebarCollapsed ? (
+                    <PanelLeftOpen className="w-3.5 h-3.5" />
+                  ) : (
+                    <PanelLeftClose className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              )}
+
+              <span className="bg-slate-200/15 border border-slate-300/40 text-slate-100 text-[10px] sm:text-[11px] font-bold tracking-wider uppercase px-2.5 py-1 rounded-full">
                 {proyecto.badge}
               </span>
-              <span className="bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[11px] font-bold px-2.5 py-1 rounded-full">
-                ● EN LÍNEA • {engineSource === "pandas" ? "PANDAS ENGINE" : "FAST SYNC"}
-              </span>
+
+              {isDemo ? (
+                <span className="inline-flex items-center gap-1 bg-amber-400/20 border border-amber-300/50 text-amber-200 text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full">
+                  <Compass className="w-3 h-3" />
+                  <span>{tr.demoSandboxBadge}</span>
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>
+                    {tr.online} •{" "}
+                    {engineSource === "pandas" ? "PANDAS ENGINE" : "FAST SYNC"}
+                  </span>
+                </span>
+              )}
+
               <a
                 href={BITACORA_APP_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="bg-slate-100/15 hover:bg-slate-100/25 border border-slate-300/35 text-slate-50 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
+                className="inline-flex items-center gap-1 bg-slate-100/15 hover:bg-slate-100/25 border border-slate-300/35 text-slate-50 text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
               >
-                📱 Ir a Bitácora App ↗
+                <Smartphone className="w-3 h-3" />
+                <span>{tr.openBitacora}</span>
+                <ExternalLink className="w-2.5 h-2.5 opacity-80" />
               </a>
-              {userEmail && (
+
+              {/* International Switchers: Language + Currency + Theme */}
+              <div className="inline-flex items-center rounded-full bg-slate-900/65 border border-slate-400/35 p-0.5 text-[10px] font-bold">
+                <Globe className="w-3 h-3 text-slate-300 ml-1.5 mr-1" />
+                {(["es", "en"] as const).map((code) => (
+                  <button
+                    key={code}
+                    type="button"
+                    onClick={() => setLang(code)}
+                    className={`px-2 py-0.5 rounded-full uppercase transition-colors ${
+                      lang === code
+                        ? "bg-white text-slate-900"
+                        : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    {code}
+                  </button>
+                ))}
+              </div>
+
+              <div className="inline-flex items-center rounded-full bg-slate-900/65 border border-slate-400/35 p-0.5 text-[10px] font-bold">
+                {(["COP", "USD", "EUR"] as AppCurrency[]).map((curr) => (
+                  <button
+                    key={curr}
+                    type="button"
+                    onClick={() => setCurrency(curr)}
+                    className={`px-2 py-0.5 rounded-full transition-colors ${
+                      currency === curr
+                        ? "bg-emerald-400 text-slate-950 font-extrabold"
+                        : "text-slate-300 hover:text-white"
+                    }`}
+                  >
+                    {curr}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setDarkTheme(!darkTheme)}
+                title={
+                  darkTheme
+                    ? "Switch to Brushed Steel Light"
+                    : "Switch to Dark Engineering Studio"
+                }
+                className="inline-flex items-center gap-1 bg-slate-900/65 hover:bg-slate-800 border border-slate-400/35 text-slate-200 text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
+              >
+                {darkTheme ? (
+                  <Sun className="w-3 h-3 text-amber-300" />
+                ) : (
+                  <Moon className="w-3 h-3 text-sky-300" />
+                )}
+              </button>
+
+              {userEmail && !isDemo && (
                 <span
                   title={userEmail}
-                  className="bg-slate-900/50 border border-slate-400/35 text-slate-200 text-[11px] font-semibold px-2.5 py-1 rounded-full"
+                  className="inline-flex items-center gap-1 bg-slate-900/50 border border-slate-400/35 text-slate-200 text-[10px] sm:text-[11px] font-semibold px-2.5 py-1 rounded-full"
                 >
-                  👤 {userEmail.split("@")[0]}
+                  <User className="w-3 h-3" />
+                  <span>{userEmail.split("@")[0]}</span>
                 </span>
               )}
+
               {onLogout && (
                 <button
                   type="button"
                   onClick={onLogout}
-                  title="Cerrar sesión en Gerencia BIM 5D"
-                  className="bg-rose-500/20 hover:bg-rose-500/35 border border-rose-400/40 text-rose-100 text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors"
+                  title={isDemo ? tr.enterRealAccount : tr.signOut}
+                  className={`inline-flex items-center gap-1 border text-[10px] sm:text-[11px] font-bold px-2.5 py-1 rounded-full transition-colors ${
+                    isDemo
+                      ? "bg-white/15 hover:bg-white/25 border-white/35 text-white"
+                      : "bg-rose-500/20 hover:bg-rose-500/35 border-rose-400/40 text-rose-100"
+                  }`}
                 >
-                  🚪 Salir
+                  <LogOut className="w-3 h-3" />
+                  <span>{isDemo ? tr.enterRealAccount : tr.signOut}</span>
                 </button>
               )}
             </div>
 
-            <div className="flex items-center gap-3 pt-1">
+            {/* Project Title Row */}
+            <div className="flex items-center gap-3 pt-0.5">
               <img
                 src="/logo-mark.png"
                 alt="JGM ConTech"
                 className="hidden sm:block w-12 h-12 rounded-xl border border-slate-300/50 shadow-md shrink-0"
               />
-              <div>
-                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-snug text-white">
-                  {proyecto.logo} {proyecto.nombre}
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-snug text-white truncate">
+                  {proyecto.nombre}
                 </h1>
                 <p className="text-xs sm:text-sm text-slate-300 mt-0.5">
-                  Contratante: <b>{proyecto.contratante}</b> &nbsp;|&nbsp; Dir. Técnica:{" "}
-                  <b>{proyecto.contratista}</b> &nbsp;|&nbsp; Modelo:{" "}
-                  <b>{proyecto.modelo_bim}</b>
+                  {tr.clientLabel}: <b>{proyecto.contratante}</b> &nbsp;|&nbsp;{" "}
+                  {tr.directorLabel}: <b>{proyecto.contratista}</b> &nbsp;|&nbsp;{" "}
+                  {tr.modelLabel}: <b>{proyecto.modelo_bim}</b>
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-stretch gap-3 shrink-0">
-            <div className="bg-gradient-to-br from-slate-200/15 to-slate-400/10 backdrop-blur-md border border-slate-300/30 rounded-xl px-4 py-2.5 text-center min-w-[125px] shadow-inner">
+          {/* Right Executive KPI Pills */}
+          <div className="flex flex-wrap sm:flex-nowrap items-stretch gap-3 shrink-0">
+            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-xl px-4 py-2.5 text-center min-w-[140px]">
               <div className="text-[10px] font-bold uppercase tracking-wider text-slate-300">
-                Avance Físico Pond.
+                {tr.weightedProgress}
               </div>
               <div className="text-xl sm:text-2xl font-extrabold font-mono text-white mt-0.5">
                 {totals.avance_fisico_ponderado.toFixed(1)}%
               </div>
             </div>
 
-            <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-400/35 rounded-xl px-4 py-2.5 text-center min-w-[155px]">
+            <div className="bg-emerald-500/20 backdrop-blur-md border border-emerald-400/35 rounded-xl px-4 py-2.5 text-center min-w-[165px]">
               <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-200">
-                Costo Causado (Dir.)
+                {tr.earnedCostDirect}
               </div>
               <div className="text-lg sm:text-xl font-extrabold font-mono text-emerald-300 mt-0.5">
-                {formatCOP(totals.total_costo_ejecutado)}
+                {formatMoney(totals.total_costo_ejecutado)}
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Navigation Ribbon Jerárquica (11 módulos organizados por ciclo de vida BIM 5D) */}
+      {/* Navigation Ribbon Jerárquica Enterprise */}
       <nav
         aria-label="Módulos gerenciales BIM 5D"
         className="bento-card !p-2"
@@ -162,27 +292,29 @@ export default function TopHeader({
         <div className="flex flex-wrap items-stretch gap-2">
           {TAB_GROUPS.map((grp) => (
             <div
-              key={grp.group}
+              key={grp.groupKey}
               className="steel-subcard rounded-xl px-1.5 py-1 flex flex-col gap-1"
             >
               <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 px-1.5 leading-none pt-0.5">
-                {grp.group}
+                {tr.groups[grp.groupKey]}
               </span>
               <div className="flex flex-wrap items-center gap-1">
-                {grp.items.map((t) => {
-                  const active = activeTab === t.key;
+                {grp.keys.map((key) => {
+                  const active = activeTab === key;
+                  const Icon = TAB_ICONS[key];
                   return (
                     <button
-                      key={t.key}
+                      key={key}
                       type="button"
-                      onClick={() => onChangeTab(t.key)}
-                      className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
+                      onClick={() => onChangeTab(key)}
+                      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
                         active
                           ? "steel-btn-primary text-white shadow-sm"
                           : "text-slate-700 hover:text-slate-950 hover:bg-slate-300/60"
                       }`}
                     >
-                      {t.label}
+                      <Icon className="w-3.5 h-3.5 shrink-0" />
+                      <span>{tr.tabs[key]}</span>
                     </button>
                   );
                 })}
