@@ -89,11 +89,22 @@ export default function TopHeader({
     setLang,
     currency,
     setCurrency,
+    unitSystem,
+    rates,
+    fxLive,
+    fxSource,
     darkTheme,
     setDarkTheme,
     formatMoney,
     tr,
   } = useAppPreferences();
+
+  const fxChipText =
+    currency === "COP"
+      ? `USD ${Math.round(rates.USD).toLocaleString("en-US")}`
+      : currency === "USD"
+      ? `1 USD = ${Math.round(rates.USD).toLocaleString("en-US")} COP`
+      : `1 EUR = ${Math.round(rates.EUR).toLocaleString("en-US")} COP`;
 
   return (
     <div className="space-y-3.5">
@@ -161,8 +172,15 @@ export default function TopHeader({
                 <ExternalLink className="w-2.5 h-2.5 opacity-80" />
               </a>
 
-              {/* International Switchers: Language + Currency + Theme */}
-              <div className="inline-flex items-center rounded-full bg-slate-900/65 border border-slate-400/35 p-0.5 text-[10px] font-bold">
+              {/* International Switchers: Language + Units + Live FX Currency + Theme */}
+              <div
+                className="inline-flex items-center rounded-full bg-slate-900/65 border border-slate-400/35 p-0.5 text-[10px] font-bold"
+                title={
+                  lang === "en"
+                    ? "Language: English • Measurement System: Imperial (ft², yd³, ft, lb)"
+                    : "Idioma: Español • Sistema de Medidas: Métrico SI (m², m³, ml, kg)"
+                }
+              >
                 <Globe className="w-3 h-3 text-slate-300 ml-1.5 mr-1" />
                 {(["es", "en"] as const).map((code) => (
                   <button
@@ -178,9 +196,15 @@ export default function TopHeader({
                     {code}
                   </button>
                 ))}
+                <span className="px-1.5 text-[9px] font-mono text-sky-300 border-l border-slate-600/70 ml-0.5">
+                  {unitSystem === "imperial" ? "IMP" : "SI"}
+                </span>
               </div>
 
-              <div className="inline-flex items-center rounded-full bg-slate-900/65 border border-slate-400/35 p-0.5 text-[10px] font-bold">
+              <div
+                className="inline-flex items-center rounded-full bg-slate-900/65 border border-slate-400/35 p-0.5 text-[10px] font-bold"
+                title={`${fxSource} • 1 USD = ${rates.USD.toLocaleString("en-US")} COP • 1 EUR = ${rates.EUR.toLocaleString("en-US")} COP`}
+              >
                 {(["COP", "USD", "EUR"] as AppCurrency[]).map((curr) => (
                   <button
                     key={curr}
@@ -195,6 +219,14 @@ export default function TopHeader({
                     {curr}
                   </button>
                 ))}
+                <span className="hidden sm:inline-flex items-center gap-1 pl-1.5 pr-2 text-[9px] font-mono text-emerald-200/90 border-l border-slate-600/70 ml-0.5">
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      fxLive ? "bg-emerald-400" : "bg-amber-300"
+                    }`}
+                  />
+                  {fxChipText}
+                </span>
               </div>
 
               <button

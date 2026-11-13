@@ -153,13 +153,13 @@ def consolidar_presupuesto_y_ejecucion(df_ppto_base, df_bitacora, proyecto_id="m
         sobrecosto_cop = round(mayor_cantidad * pu, 2)
 
         if ejecutado == 0:
-            estado = "⚪ Sin Iniciar"
+            estado = "Sin Iniciar"
         elif 99.0 <= pct_avance <= 100.0:
-            estado = "🟢 Completado"
+            estado = "Completado"
         elif pct_avance > 100.0:
-            estado = "🔴 Mayor Cantidad"
+            estado = "Mayor Cantidad"
         else:
-            estado = "🔵 En Curso"
+            estado = "En Curso"
 
         filas.append({
             "Item": it,
@@ -397,11 +397,11 @@ def _calcular_rendimientos_df(df_obra_activa):
         eficiencia = round((prom / meta * 100), 1) if meta > 0 else 100.0
 
         if eficiencia >= 105.0:
-            desempeno = "🟢 Alto Rendimiento"
+            desempeno = "Alto Rendimiento"
         elif eficiencia >= 90.0:
-            desempeno = "🔵 En Rango APU"
+            desempeno = "En Rango APU"
         else:
-            desempeno = "🔴 Rendimiento Bajo"
+            desempeno = "Rendimiento Bajo"
 
         rendimientos.append({
             "Actividad": g["display"],

@@ -128,6 +128,8 @@ class handler(BaseHTTPRequestHandler):
                 )
                 return
 
+            doc_opts = data.get("doc_opts") or {}
+
             if action == "presupuesto_pdf":
                 proy = data.get("proyecto_actual") or {}
                 buf = generar_presupuesto_pdf(
@@ -135,6 +137,7 @@ class handler(BaseHTTPRequestHandler):
                     data.get("params_liquidacion") or {},
                     proy,
                     cfg_honorarios=data.get("cfg_honorarios"),
+                    doc_opts=doc_opts,
                 )
                 self._send_binary(
                     200,
@@ -152,6 +155,7 @@ class handler(BaseHTTPRequestHandler):
                     data.get("params_liquidacion") or {},
                     proy,
                     cfg,
+                    doc_opts=doc_opts,
                 )
                 self._send_binary(
                     200,
@@ -168,6 +172,7 @@ class handler(BaseHTTPRequestHandler):
                     data.get("df_items_sub") or [],
                     proy,
                     cfg,
+                    doc_opts=doc_opts,
                 )
                 self._send_binary(
                     200,
@@ -185,6 +190,7 @@ class handler(BaseHTTPRequestHandler):
                     num_acta,
                     data.get("params_liquidacion") or {},
                     proy,
+                    doc_opts=doc_opts,
                 )
                 self._send_binary(
                     200,

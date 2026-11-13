@@ -3,6 +3,28 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowUpRight,
+  Box,
+  Building2,
+  Crosshair,
+  DollarSign,
+  DoorOpen,
+  FolderOpen,
+  Home,
+  Lightbulb,
+  Loader2,
+  Package,
+  Palette,
+  Radio,
+  Search,
+  Sparkles,
+  Trash2,
+  Wallet,
+  Zap,
+} from "lucide-react";
 import { normalizarTexto } from "../lib/calcClient";
 import { buildShowcaseIfcModel, DEMO_SHOWCASE_PROJECT_ID } from "../lib/demoData";
 import {
@@ -14,13 +36,15 @@ import {
   parseIfcFileBuffer,
   saveIfcToIndexedDb,
 } from "../lib/ifcEngine";
-import { BITACORA_APP_URL, formatCOP, formatNum } from "../lib/projects";
+import { useAppPreferences } from "../lib/i18n";
+import { BITACORA_APP_URL } from "../lib/projects";
 import {
   CASA_MENDOZA_ROOM_ORDER,
   getInitialRoomItemsForProject,
   resolveUnitPriceForRoomItem,
 } from "../lib/revitRooms";
 import { ConsolidationResult, LiquidationParams, ProjectConfig, TabKey } from "../lib/types";
+import { localizeActivity, localizeBitacoraObservacion, localizeTerm } from "../lib/units";
 
 interface TabVisor3DBIMProps {
   proyecto: ProjectConfig;
@@ -32,6 +56,37 @@ interface TabVisor3DBIMProps {
 
 type ViewerMode = "semaforo" | "foco" | "caja3d" | "original";
 type InspectorTab = "actividades" | "habitaciones" | "elemento";
+
+function localizeRoomName(room: string, lang: "es" | "en"): string {
+  if (lang === "es") return room;
+  const fixed: Record<string, string> = {
+    "Habitación Mamá": "Master Suite / Mom's Bedroom",
+    "Habitacion Mama": "Master Suite / Mom's Bedroom",
+    "Habitación Principal": "Primary Bedroom",
+    "Habitación 1": "Bedroom 1",
+    "Habitación 2": "Bedroom 2",
+    "Sala": "Living Room",
+    "Comedor": "Dining Room",
+    "Sala / Comedor": "Living / Dining Area",
+    "Cocina": "Kitchen",
+    "Baño 1": "Bathroom 1",
+    "Baño 2": "Bathroom 2",
+    "Entrada / Puerta 1": "Main Entry / Door 1",
+    "Pasillo": "Hallway",
+    "Patio": "Patio / Courtyard",
+    "Cubierta": "Roof Deck",
+    "Zona A — Pórticos & Cimentación": "Zone A — Foundations & Structural Frame",
+    "Zona B — Envolvente & Acabados": "Zone B — Envelope & Architectural Finishes",
+    "Zona C — Cubierta & Carpintería": "Zone C — Roofing & Glazing",
+  };
+  return fixed[room] || localizeTerm(room, lang);
+}
+
+function formatLocalizedActivityTag(raw: string, lang: "es" | "en"): string {
+  const m = /^(\[[^\]]+\]\s*)(.*)$/.exec(raw || "");
+  if (m) return `${m[1]}${localizeActivity(m[2], lang)}`;
+  return localizeActivity(localizeBitacoraObservacion(raw || "", lang), lang);
+}
 
 function disposeModelGeometries(model: ParsedIfcModel | null) {
   if (!model) return;
@@ -74,6 +129,12 @@ export default function TabVisor3DBIM({
   onNavigateTab,
   isDemo = false,
 }: TabVisor3DBIMProps) {
+  const { lang, currency, unitSystem, rates, formatMoney, formatQty, unitLabel } =
+    useAppPreferences();
+  const isEn = lang === "en";
+  const fxRate = rates[currency] ?? 1;
+  const moneyDecimals = currency === "COP" ? 0 : 2;
+
   const containerRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -83,11 +144,12 @@ export default function TabVisor3DBIM({
   const gridRef = useRef<THREE.GridHelper | null>(null);
   const clipPlaneRef = useRef<THREE.Plane>(new THREE.Plane(new THREE.Vector3(0, -1, 0), 100));
 
-  // Mapa de expressID -> mallas Three.js activas en escena
-  const meshMapRef = useRef<Map<number, { mesh: THREE.Mesh; originalColor: THREE.Color; originalOpacity: number }[]>>(
-    new Map()
-  );
+  const meshMapRef = useRef<
+    Map<number, { mesh: THREE.Mesh; originalColor: THREE.Color; originalOpacity: number }[]>
+  >(new Map());
   const highlightedIdsRef = useRef<Set<number>>(new Set());
+  const lastProjectIdRef = useRef<string | null>(null);
+  const lastFittedSigRef = useRef<string>("");
 
   const [parsedModel, setParsedModel] = useState<ParsedIfcModel | null>(null);
   const [loadingIfc, setLoadingIfc] = useState<boolean>(false);
@@ -101,21 +163,24 @@ export default function TabVisor3DBIM({
   const [selectedExpressId, setSelectedExpressId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
 
-  // Simulador rápido de caja dentro del 3D
-  const [cashBudget, setCashBudget] = useState<number>(3000000);
+  // Quick 3D cashflow simulator stored in COP
+  const [cashBudget, setCashBudget] = useState<number>(3_000_000);
   const [cashRoomIds, setCashRoomIds] = useState<Record<string, boolean>>({});
 
-  // Plano de corte horizontal (Section Cut) para ver interiores y losas bajo la cubierta
+  // Section Cut Z plane
   const [clipEnabled, setClipEnabled] = useState<boolean>(false);
   const [clipHeight, setClipHeight] = useState<number>(3.0);
 
-  // Cargar modelo .IFC cacheado en IndexedDB al abrir o cambiar de proyecto
+  // Load cached IFC model (or rebuild localized OpenBIM demo showcase on language toggle)
   useEffect(() => {
     let cancelled = false;
-    setSelectedBudgetItem(null);
-    setSelectedRoom(null);
-    setSelectedExpressId(null);
-    setIfcError(null);
+    if (lastProjectIdRef.current !== proyecto.id) {
+      setSelectedBudgetItem(null);
+      setSelectedRoom(null);
+      setSelectedExpressId(null);
+      setIfcError(null);
+      lastProjectIdRef.current = proyecto.id;
+    }
 
     const loadCached = async () => {
       setLoadingIfc(true);
@@ -124,7 +189,7 @@ export default function TabVisor3DBIM({
         if (cancelled) return;
         if (!cached) {
           if (proyecto.id === DEMO_SHOWCASE_PROJECT_ID || isDemo) {
-            const showcase = buildShowcaseIfcModel(proyecto.nombre);
+            const showcase = buildShowcaseIfcModel(proyecto.nombre, lang);
             setParsedModel((prev) => {
               disposeModelGeometries(prev);
               return showcase;
@@ -159,13 +224,14 @@ export default function TabVisor3DBIM({
     return () => {
       cancelled = true;
     };
-  }, [proyecto.id, proyecto.nombre, isDemo]);
+  }, [proyecto.id, proyecto.nombre, isDemo, lang]);
 
   const handleLoadShowcaseModel = useCallback(() => {
     setIfcError(null);
     setLoadingIfc(true);
     try {
-      const showcase = buildShowcaseIfcModel(proyecto.nombre);
+      const showcase = buildShowcaseIfcModel(proyecto.nombre, lang);
+      lastFittedSigRef.current = "";
       setParsedModel((prev) => {
         disposeModelGeometries(prev);
         return showcase;
@@ -173,15 +239,13 @@ export default function TabVisor3DBIM({
     } finally {
       setLoadingIfc(false);
     }
-  }, [proyecto.nombre]);
+  }, [proyecto.nombre, lang]);
 
-  // Cruce reactivo: Elemento IFC <-> Partida APU <-> Habitación <-> Avance real de Bitácora
   const matchMap = useMemo(() => {
     if (!parsedModel) return new Map<number, ElementMatchResult>();
     return matchIfcElementsToProject(parsedModel.elements, proyecto, data);
   }, [parsedModel, proyecto, data]);
 
-  // Habitaciones configuradas en el proyecto (Casa Mendoza Revit 1.1 o importadas)
   const roomItems = useMemo(() => getInitialRoomItemsForProject(proyecto), [proyecto]);
   const aiuFactor = 1 + (params.pct_a + params.pct_i + params.pct_u) / 100;
 
@@ -202,7 +266,6 @@ export default function TabVisor3DBIM({
     });
   }, [roomItems, proyecto.ppto_base, aiuFactor]);
 
-  // Conteo de elementos 3D asociados por ítem de presupuesto
   const countByBudgetItem = useMemo(() => {
     const counts = new Map<string, number>();
     matchMap.forEach((m) => {
@@ -213,7 +276,6 @@ export default function TabVisor3DBIM({
     return counts;
   }, [matchMap]);
 
-  // Último registro activo en Bitácora para reacción inmediata
   const latestBitacoraEntry = useMemo(() => {
     for (const row of data.obra_activa || []) {
       const n = normalizarTexto(row.actividad);
@@ -223,7 +285,6 @@ export default function TabVisor3DBIM({
     return null;
   }, [data.obra_activa]);
 
-  // IDs resaltados según el modo activo, actividad o habitación seleccionada
   const { activeHighlightIds, statsSemaforo } = useMemo(() => {
     const hl = new Set<number>();
     let done = 0;
@@ -306,6 +367,7 @@ export default function TabVisor3DBIM({
         uploadedAt: new Date().toISOString(),
         buffer,
       });
+      lastFittedSigRef.current = "";
       setParsedModel((prev) => {
         disposeModelGeometries(prev);
         return model;
@@ -322,6 +384,7 @@ export default function TabVisor3DBIM({
 
   const handleClearIfcModel = async () => {
     await deleteIfcFromIndexedDb(proyecto.id);
+    lastFittedSigRef.current = "";
     setParsedModel((prev) => {
       disposeModelGeometries(prev);
       return null;
@@ -350,7 +413,7 @@ export default function TabVisor3DBIM({
     }
   }, []);
 
-  // Inicializar escena Three.js una vez montado el canvas
+  // Init Three.js WebGL scene
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -396,7 +459,6 @@ export default function TabVisor3DBIM({
     modelGroupRef.current = modelGroup;
     gridRef.current = grid;
 
-    // Selección de elemento con clic sin arrastrar
     const raycaster = new THREE.Raycaster();
     const pointerDownPos = { x: 0, y: 0 };
     const onPointerDown = (ev: PointerEvent) => {
@@ -474,7 +536,7 @@ export default function TabVisor3DBIM({
     };
   }, []);
 
-  // Reconstruir mallas en escena cuando cambia el modelo IFC parseado
+  // Rebuild meshes when parsed IFC model changes
   useEffect(() => {
     const group = modelGroupRef.current;
     const cam = cameraRef.current;
@@ -515,16 +577,18 @@ export default function TabVisor3DBIM({
       meshMapRef.current.set(el.expressID, entries);
     }
 
-    if (!parsedModel.boundingBox.isEmpty()) {
+    const sig = `${proyecto.id}::${parsedModel.filename}`;
+    if (!parsedModel.boundingBox.isEmpty() && lastFittedSigRef.current !== sig) {
+      lastFittedSigRef.current = sig;
       if (grid) {
         grid.position.y = parsedModel.boundingBox.min.y - 0.02;
       }
       setClipHeight(Number((parsedModel.boundingBox.max.y + 0.05).toFixed(2)));
       fitCameraToBox(parsedModel.boundingBox, cam, ctrl);
     }
-  }, [parsedModel]);
+  }, [parsedModel, proyecto.id]);
 
-  // Actualizar materiales y plano de corte reactivamente según Bitácora / Selección / Modo
+  // Reactive materials & section clipping
   useEffect(() => {
     if (!parsedModel) return;
     clipPlaneRef.current.constant = clipHeight;
@@ -566,7 +630,6 @@ export default function TabVisor3DBIM({
             mat.opacity = 1;
             mat.depthWrite = true;
           } else {
-            // Modo rayos X para ver interiores a través de muros y techos
             mat.color.setHex(0x475569);
             mat.emissive.setHex(0x000000);
             mat.emissiveIntensity = 0;
@@ -582,7 +645,6 @@ export default function TabVisor3DBIM({
           mat.opacity = originalOpacity;
           mat.depthWrite = originalOpacity >= 0.99;
         } else {
-          // Semáforo en vivo desde Supabase / Bitácora
           if (match?.status === "done") {
             mat.color.setHex(0x10b981);
             mat.emissive.setHex(0x047857);
@@ -666,7 +728,6 @@ export default function TabVisor3DBIM({
     if (!latestBitacoraEntry || !parsedModel) return;
     const actNorm = normalizarTexto(latestBitacoraEntry.actividad);
 
-    // 1. Intentar por habitación si el registro trae tag [Habitación ...]
     for (const grp of groupedRooms) {
       const rNorm = normalizarTexto(grp.room);
       if (actNorm.includes(`[${rNorm}]`) || actNorm.includes(rNorm)) {
@@ -676,7 +737,6 @@ export default function TabVisor3DBIM({
       }
     }
 
-    // 2. Fallback por partida APU en df_5d / ppto_base
     for (const row of proyecto.ppto_base) {
       const keys = row.match_keys || [];
       if (keys.some((k) => actNorm.includes(normalizarTexto(k)))) {
@@ -731,29 +791,61 @@ export default function TabVisor3DBIM({
     };
   }, [parsedModel]);
 
+  const clipDisplayLabel =
+    unitSystem === "imperial"
+      ? `${(clipHeight * 3.28084).toFixed(1)} ft`
+      : `${clipHeight.toFixed(2)} m`;
+  const displayCashInput = Math.round(cashBudget / fxRate);
+
   return (
     <div className="space-y-4">
-      {/* Cabecera & Controles de Archivo IFC */}
+      {/* Header & IFC Controls */}
       <div className="bento-card flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
-          <h2 className="text-base font-extrabold text-slate-900">
-            🧊 Visor 3D BIM Reactivo (.IFC Autodesk Revit)
+          <h2 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+            <Box className="w-4 h-4 text-slate-800 shrink-0" />
+            <span>
+              {isEn
+                ? "Reactive 3D BIM Digital Twin (.IFC OpenBIM / Revit)"
+                : "Visor 3D BIM Reactivo (.IFC Autodesk Revit)"}
+            </span>
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            El modelo 3D reacciona automáticamente a <b>Bitácora Cloud</b>, ilumina actividades del <b>Presupuesto 5D</b> y proyecta tu <b>Simulador de Caja</b> sobre las habitaciones.
+            {isEn ? (
+              <>
+                The 3D twin updates live from <b>Cloud Field Logs</b>, highlights <b>5D BOQ</b> items, and projects your <b>Cashflow Simulator</b> directly onto building zones.
+              </>
+            ) : (
+              <>
+                El modelo 3D reacciona automáticamente a <b>Bitácora Cloud</b>, ilumina actividades del <b>Presupuesto 5D</b> y proyecta tu <b>Simulador de Caja</b> sobre las habitaciones.
+              </>
+            )}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {parsedModel && (
-            <span className="px-2.5 py-1.5 rounded-lg bg-slate-200/80 border border-slate-300 text-[11px] font-bold text-slate-800">
-              📦 {parsedModel.filename} ({(parsedModel.sizeBytes / 1024).toFixed(0)} KB •{" "}
-              {parsedModel.elements.length} elem.)
+            <span className="px-2.5 py-1.5 rounded-lg bg-slate-200/80 border border-slate-300 text-[11px] font-bold text-slate-800 inline-flex items-center gap-1.5">
+              <Package className="w-3.5 h-3.5 text-slate-600" />
+              <span>
+                {parsedModel.filename} ({(parsedModel.sizeBytes / 1024).toFixed(0)} KB •{" "}
+                {parsedModel.elements.length} {isEn ? "elem." : "elem."})
+              </span>
             </span>
           )}
 
           <label className="cursor-pointer steel-btn-primary px-3.5 py-2 rounded-xl text-xs font-extrabold inline-flex items-center gap-1.5">
-            {loadingIfc ? "⏳ Cargando IFC..." : "📂 Cargar .IFC de Revit"}
+            {loadingIfc ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>{isEn ? "Loading IFC..." : "Cargando IFC..."}</span>
+              </>
+            ) : (
+              <>
+                <FolderOpen className="w-3.5 h-3.5" />
+                <span>{isEn ? "Upload Revit .IFC" : "Cargar .IFC de Revit"}</span>
+              </>
+            )}
             <input
               type="file"
               accept=".ifc"
@@ -771,24 +863,29 @@ export default function TabVisor3DBIM({
             <button
               type="button"
               onClick={handleClearIfcModel}
-              className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-300 bg-white hover:bg-rose-50 hover:text-rose-700 text-slate-700"
+              className="px-3 py-2 rounded-xl text-xs font-bold border border-slate-300 bg-white hover:bg-rose-50 hover:text-rose-700 text-slate-700 inline-flex items-center gap-1.5"
             >
-              🗑️ Quitar
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>{isEn ? "Remove" : "Quitar"}</span>
             </button>
           )}
         </div>
       </div>
 
-      {/* Banner de Reacción Instantánea al Último Reporte en Bitácora */}
+      {/* Live Field Log Banner */}
       {latestBitacoraEntry && (
         <div className="steel-panel-dark rounded-2xl px-4 py-2.5 text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="text-xs">
-            <span className="inline-block px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold mr-2 border border-emerald-400/30">
-              📡 Último Avance en Vivo
+          <div className="text-xs flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-400/30">
+              <Radio className="w-3 h-3" />
+              <span>{isEn ? "Latest Field Progress" : "Último Avance en Vivo"}</span>
             </span>
-            <span className="font-semibold text-slate-100">{latestBitacoraEntry.actividad}</span>
-            <span className="ml-2 font-mono text-emerald-300">
-              ({latestBitacoraEntry.cantidad} {latestBitacoraEntry.unidad || "m²"})
+            <span className="font-semibold text-slate-100">
+              {formatLocalizedActivityTag(latestBitacoraEntry.actividad, lang)}
+            </span>
+            <span className="font-mono text-emerald-300">
+              ({formatQty(latestBitacoraEntry.cantidad, latestBitacoraEntry.unidad || "m²", 1)}{" "}
+              {unitLabel(latestBitacoraEntry.unidad || "m²")})
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -796,40 +893,59 @@ export default function TabVisor3DBIM({
               type="button"
               onClick={handleIluminarUltimoAvance}
               disabled={!parsedModel}
-              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40 transition"
+              className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-extrabold disabled:opacity-40 transition inline-flex items-center gap-1.5"
             >
-              ⚡ Iluminar en 3D
+              <Zap className="w-3.5 h-3.5" />
+              <span>{isEn ? "Highlight in 3D" : "Iluminar en 3D"}</span>
             </button>
             <a
               href={BITACORA_APP_URL}
               target="_blank"
               rel="noreferrer"
-              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition"
+              className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-bold transition inline-flex items-center gap-1"
             >
-              Abrir Bitácora ↗
+              <span>{isEn ? "Field App" : "Abrir Bitácora"}</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
             </a>
           </div>
         </div>
       )}
 
       {ifcError && (
-        <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-800">
-          ⚠️ {ifcError}
+        <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-2.5 text-xs font-bold text-rose-800 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 shrink-0" />
+          <span>{ifcError}</span>
         </div>
       )}
 
-      {/* Layout Principal: Viewport 3D + Panel Reactivo BIM 5D */}
+      {/* Main Split: 3D Viewport + Interactive BIM 5D Panel */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4">
-        {/* COLUMNA 3D CANVAS */}
+        {/* 3D CANVAS COLUMN */}
         <div className="xl:col-span-8 space-y-3">
-          {/* Toolbar de Modos, Cámara y Corte */}
+          {/* Toolbar */}
           <div className="bento-card !p-3 flex flex-wrap items-center justify-between gap-2 text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
               {[
-                { key: "semaforo" as const, label: "🚦 Semáforo Avance" },
-                { key: "foco" as const, label: "🔦 Foco Selección" },
-                { key: "caja3d" as const, label: "✨ Caja 3D" },
-                { key: "original" as const, label: "🎨 Revit Original" },
+                {
+                  key: "semaforo" as const,
+                  label: isEn ? "Status Heatmap" : "Semáforo Avance",
+                  icon: <Activity className="w-3.5 h-3.5" />,
+                },
+                {
+                  key: "foco" as const,
+                  label: isEn ? "Isolate Focus" : "Foco Selección",
+                  icon: <Crosshair className="w-3.5 h-3.5" />,
+                },
+                {
+                  key: "caja3d" as const,
+                  label: isEn ? "3D Cashflow" : "Caja 3D",
+                  icon: <Sparkles className="w-3.5 h-3.5" />,
+                },
+                {
+                  key: "original" as const,
+                  label: isEn ? "Revit Materials" : "Revit Original",
+                  icon: <Palette className="w-3.5 h-3.5" />,
+                },
               ].map((m) => (
                 <button
                   key={m.key}
@@ -841,13 +957,14 @@ export default function TabVisor3DBIM({
                       setSelectedRoom(null);
                     }
                   }}
-                  className={`px-2.5 py-1.5 rounded-lg font-bold transition ${
+                  className={`px-2.5 py-1.5 rounded-lg font-bold transition inline-flex items-center gap-1.5 ${
                     viewerMode === m.key
                       ? "steel-btn-primary text-white"
                       : "bg-slate-200/75 text-slate-700 hover:bg-slate-200"
                   }`}
                 >
-                  {m.label}
+                  {m.icon}
+                  <span>{m.label}</span>
                 </button>
               ))}
             </div>
@@ -864,9 +981,15 @@ export default function TabVisor3DBIM({
                   {preset === "iso"
                     ? "Iso"
                     : preset === "top"
-                    ? "Planta"
+                    ? isEn
+                      ? "Top"
+                      : "Planta"
                     : preset === "front"
-                    ? "Frente"
+                    ? isEn
+                      ? "Front"
+                      : "Frente"
+                    : isEn
+                    ? "Side"
                     : "Lateral"}
                 </button>
               ))}
@@ -879,25 +1002,34 @@ export default function TabVisor3DBIM({
                   onChange={(e) => setClipEnabled(e.target.checked)}
                   className="accent-slate-900"
                 />
-                Corte Z
+                {isEn ? "Section Z" : "Corte Z"}
               </label>
 
               {clipEnabled && parsedModel && (
-                <input
-                  type="range"
-                  min={clipBounds.min}
-                  max={clipBounds.max}
-                  step={0.05}
-                  value={clipHeight}
-                  onChange={(e) => setClipHeight(Number(e.target.value))}
-                  className="w-24 accent-slate-900"
-                  title={`Altura de corte: ${clipHeight.toFixed(2)} m`}
-                />
+                <div className="inline-flex items-center gap-1.5">
+                  <input
+                    type="range"
+                    min={clipBounds.min}
+                    max={clipBounds.max}
+                    step={0.05}
+                    value={clipHeight}
+                    onChange={(e) => setClipHeight(Number(e.target.value))}
+                    className="w-24 accent-slate-900"
+                    title={
+                      isEn
+                        ? `Section elevation: ${clipDisplayLabel}`
+                        : `Altura de corte: ${clipDisplayLabel}`
+                    }
+                  />
+                  <span className="font-mono text-[10px] font-bold text-slate-600">
+                    {clipDisplayLabel}
+                  </span>
+                </div>
               )}
             </div>
           </div>
 
-          {/* Contenedor WebGL + Zona Drop IFC */}
+          {/* WebGL Viewport + Dropzone */}
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -918,33 +1050,46 @@ export default function TabVisor3DBIM({
           >
             <div ref={containerRef} className="w-full h-full cursor-grab active:cursor-grabbing" />
 
-            {/* Overlay cuando aún no se ha cargado el .IFC */}
+            {/* Empty Overlay */}
             {!parsedModel && !loadingIfc && (
               <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-6 text-center">
                 <div className="max-w-lg space-y-4">
-                  <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 border border-slate-600 text-3xl">
-                    🧊
+                  <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 border border-slate-600 text-emerald-400">
+                    <Box className="w-7 h-7" />
                   </div>
                   <h3 className="text-lg font-extrabold text-white">
-                    Arrastra aquí tu modelo `.IFC` de {proyecto.nombre}
+                    {isEn
+                      ? `Drag & drop your .IFC model for ${proyecto.nombre}`
+                      : `Arrastra aquí tu modelo .IFC de ${proyecto.nombre}`}
                   </h3>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Tu modelo se procesará 100% en tu navegador y quedará guardado en caché local (`IndexedDB`) para abrir instantáneamente cada vez que entres.
+                    {isEn
+                      ? "Your IFC file runs 100% locally in your browser and stays cached in IndexedDB for instant reopening."
+                      : "Tu modelo se procesará 100% en tu navegador y quedará guardado en caché local (IndexedDB) para abrir instantáneamente."}
                   </p>
                   <div className="rounded-xl bg-slate-900/90 border border-slate-700 p-3 text-left text-[11px] text-slate-300 space-y-1">
-                    <div className="font-bold text-emerald-300">
-                      💡 Tip en Autodesk Revit 2027 para incluir habitaciones (`Comments`):
+                    <div className="font-bold text-emerald-300 flex items-center gap-1.5">
+                      <Lightbulb className="w-3.5 h-3.5 shrink-0" />
+                      <span>
+                        {isEn
+                          ? "Autodesk Revit Tip for Zone Mapping (Comments):"
+                          : "Tip en Autodesk Revit 2027 para incluir habitaciones (Comments):"}
+                      </span>
                     </div>
                     <div>
                       1. <b>File → Export → IFC → Modify Setup… → Property Sets</b>
                     </div>
                     <div>
-                      2. Marca <b>Export Revit property sets</b> (y <i>IFC2x3 Coordination View 2.0</i>) para que viajen los parámetros <code>Comments</code> y materiales.
+                      2.{" "}
+                      {isEn
+                        ? "Enable Export Revit property sets (IFC2x3 Coordination View 2.0) to stream Comments & Materials."
+                        : "Marca Export Revit property sets (y IFC2x3 Coordination View 2.0) para que viajen Comments y materiales."}
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center justify-center gap-2.5">
                     <label className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 px-5 py-2.5 text-xs font-extrabold text-slate-950 shadow-lg transition">
-                      📂 Seleccionar Archivo .IFC
+                      <FolderOpen className="w-4 h-4" />
+                      <span>{isEn ? "Select .IFC File" : "Seleccionar Archivo .IFC"}</span>
                       <input
                         type="file"
                         accept=".ifc"
@@ -961,73 +1106,92 @@ export default function TabVisor3DBIM({
                       onClick={handleLoadShowcaseModel}
                       className="inline-flex cursor-pointer items-center gap-2 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-500 px-4 py-2.5 text-xs font-extrabold text-white shadow-lg transition"
                     >
-                      🏢 Cargar Modelo Demo 3D (OpenBIM)
+                      <Building2 className="w-4 h-4" />
+                      <span>
+                        {isEn
+                          ? "Load OpenBIM 3D Demo Twin"
+                          : "Cargar Modelo Demo 3D (OpenBIM)"}
+                      </span>
                     </button>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* Leyenda flotante en vivo sobre el 3D */}
+            {/* Floating Legend */}
             {parsedModel && (
               <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-950/80 backdrop-blur px-3 py-1.5 text-[10px] font-bold text-slate-200 border border-slate-700/70">
                 <span className="inline-flex items-center gap-1">
                   <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  100% Ejec. ({statsSemaforo.done})
+                  {isEn ? "100% Built" : "100% Ejec."} ({statsSemaforo.done})
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                  En Curso ({statsSemaforo.partial})
+                  {isEn ? "In Progress" : "En Curso"} ({statsSemaforo.partial})
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  Pendiente ({statsSemaforo.pending})
+                  {isEn ? "Pending" : "Pendiente"} ({statsSemaforo.pending})
                 </span>
-                <span className="text-slate-400">• Arrastra: rotar | Rueda: zoom | Clic: inspeccionar</span>
+                <span className="text-slate-400">
+                  {isEn
+                    ? "• Drag: orbit | Wheel: zoom | Click: inspect"
+                    : "• Arrastra: rotar | Rueda: zoom | Clic: inspeccionar"}
+                </span>
               </div>
             )}
           </div>
         </div>
 
-        {/* PANEL LATERAL REACTIVO (APU / HABITACIONES / INSPECTOR ELEMENTO) */}
+        {/* REACTIVE SIDE INSPECTOR */}
         <div className="xl:col-span-4 bento-card !p-4 flex flex-col gap-3 max-h-[572px]">
           <div className="grid grid-cols-3 gap-1 bg-slate-200/70 p-1 rounded-xl text-[11px] font-bold">
             <button
               type="button"
               onClick={() => setInspectorTab("actividades")}
-              className={`py-1.5 rounded-lg transition ${
+              className={`py-1.5 rounded-lg transition inline-flex items-center justify-center gap-1 ${
                 inspectorTab === "actividades" ? "steel-btn-primary text-white" : "text-slate-700"
               }`}
             >
-              💰 APU ({data.df_5d.length})
+              <DollarSign className="w-3.5 h-3.5" />
+              <span>{isEn ? `BOQ (${data.df_5d.length})` : `APU (${data.df_5d.length})`}</span>
             </button>
             <button
               type="button"
               onClick={() => setInspectorTab("habitaciones")}
-              className={`py-1.5 rounded-lg transition ${
+              className={`py-1.5 rounded-lg transition inline-flex items-center justify-center gap-1 ${
                 inspectorTab === "habitaciones" ? "steel-btn-primary text-white" : "text-slate-700"
               }`}
             >
-              🏠 Zonas ({groupedRooms.length})
+              <Home className="w-3.5 h-3.5" />
+              <span>{isEn ? `Zones (${groupedRooms.length})` : `Zonas (${groupedRooms.length})`}</span>
             </button>
             <button
               type="button"
               onClick={() => setInspectorTab("elemento")}
-              className={`py-1.5 rounded-lg transition ${
+              className={`py-1.5 rounded-lg transition inline-flex items-center justify-center gap-1 ${
                 inspectorTab === "elemento" ? "steel-btn-primary text-white" : "text-slate-700"
               }`}
             >
-              🔍 Elemento
+              <Search className="w-3.5 h-3.5" />
+              <span>{isEn ? "Element" : "Elemento"}</span>
             </button>
           </div>
 
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="🔦 Filtrar en 3D (ej. Porcelanato, Mamá, Muro)..."
-            className="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900"
-          />
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={
+                isEn
+                  ? "Filter in 3D (e.g. Slab, Wall, Roof)..."
+                  : "Filtrar en 3D (ej. Porcelanato, Mamá, Muro)..."
+              }
+              className="w-full rounded-lg border border-slate-300 bg-white pl-8 pr-2.5 py-1.5 text-xs text-slate-900"
+            />
+          </div>
 
           <div className="flex-1 overflow-y-auto space-y-2 pr-1">
             {inspectorTab === "actividades" &&
@@ -1047,7 +1211,7 @@ export default function TabVisor3DBIM({
                   >
                     <div className="flex items-start justify-between gap-2">
                       <span className="font-extrabold leading-snug">
-                        {row.Item}. {row.Actividad}
+                        {row.Item}. {localizeActivity(row.Actividad, lang)}
                       </span>
                       <span
                         className={`px-1.5 py-0.5 rounded font-mono text-[10px] shrink-0 ${
@@ -1059,11 +1223,10 @@ export default function TabVisor3DBIM({
                     </div>
                     <div className="mt-1.5 flex items-center justify-between text-[11px] opacity-90">
                       <span className="font-mono">
-                        {formatNum(row.Cantidad_Ejecutada)} / {formatNum(row.Cantidad_Contratada)} {row.Unidad}
+                        {formatQty(row.Cantidad_Ejecutada, row.Unidad, 1)} /{" "}
+                        {formatQty(row.Cantidad_Contratada, row.Unidad, 1)} {unitLabel(row.Unidad)}
                       </span>
-                      <span className="font-bold">
-                        {row["Avance_%"].toFixed(1)}%
-                      </span>
+                      <span className="font-bold">{row["Avance_%"].toFixed(1)}%</span>
                     </div>
                   </button>
                 );
@@ -1073,13 +1236,21 @@ export default function TabVisor3DBIM({
               <>
                 <div className="steel-subcard rounded-xl p-2.5 space-y-2">
                   <div className="flex items-center justify-between gap-2 text-xs">
-                    <span className="font-bold text-slate-700">💵 Caja hoy ($ COP):</span>
+                    <span className="font-bold text-slate-700 inline-flex items-center gap-1.5">
+                      <Wallet className="w-3.5 h-3.5 text-emerald-700" />
+                      <span>
+                        {isEn ? `Cash today (${currency}):` : `Caja hoy (${currency}):`}
+                      </span>
+                    </span>
                     <input
                       type="number"
                       min={0}
-                      step={250000}
-                      value={cashBudget}
-                      onChange={(e) => setCashBudget(Math.max(0, Number(e.target.value) || 0))}
+                      step={currency === "COP" ? 250000 : 100}
+                      value={displayCashInput}
+                      onChange={(e) => {
+                        const val = Math.max(0, Number(e.target.value) || 0);
+                        setCashBudget(fxRate > 0 ? val * fxRate : val);
+                      }}
                       className="w-32 rounded border border-slate-300 bg-white px-2 py-1 text-right font-mono font-bold text-slate-900"
                     />
                   </div>
@@ -1087,21 +1258,26 @@ export default function TabVisor3DBIM({
                     type="button"
                     onClick={handleAutoSugerirCaja3D}
                     disabled={groupedRooms.length === 0}
-                    className="w-full steel-btn-primary py-1.5 rounded-lg text-xs font-extrabold disabled:opacity-40"
+                    className="w-full steel-btn-primary py-1.5 rounded-lg text-xs font-extrabold disabled:opacity-40 inline-flex items-center justify-center gap-1.5"
                   >
-                    ✨ Iluminar en 3D qué alcanza con esta caja
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>
+                      {isEn
+                        ? "Highlight in 3D what fits this budget"
+                        : "Iluminar en 3D qué alcanza con esta caja"}
+                    </span>
                   </button>
                 </div>
 
                 {groupedRooms.length === 0 ? (
                   <div className="text-center py-6 text-xs text-slate-500">
-                    Este proyecto aún no tiene habitaciones configuradas. Puedes importarlas en{" "}
+                    {isEn ? "No zones configured yet. Import them in " : "Este proyecto aún no tiene habitaciones configuradas. Puedes importarlas en "}
                     <button
                       type="button"
                       onClick={() => onNavigateTab("habitaciones")}
                       className="font-bold text-slate-800 underline"
                     >
-                      Habitaciones & Caja
+                      {isEn ? "Zones & Cashflow" : "Habitaciones & Caja"}
                     </button>
                     .
                   </div>
@@ -1119,14 +1295,26 @@ export default function TabVisor3DBIM({
                             : "steel-subcard hover:bg-white text-slate-800"
                         }`}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-extrabold">🚪 {grp.room}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="font-extrabold inline-flex items-center gap-1.5">
+                            <DoorOpen className="w-3.5 h-3.5 shrink-0 opacity-80" />
+                            <span>{localizeRoomName(grp.room, lang)}</span>
+                          </span>
                           <span className="font-mono font-bold">
-                            {formatCOP(grp.totalAiu)}
+                            {formatMoney(grp.totalAiu, moneyDecimals)}
                           </span>
                         </div>
                         <div className="mt-1 text-[10px] opacity-80">
-                          {grp.items.map((it) => `${it.activityLabel}: ${it.quantity} ${it.unit}`).join(" • ")}
+                          {grp.items
+                            .map(
+                              (it) =>
+                                `${localizeActivity(it.activityLabel, lang)}: ${formatQty(
+                                  it.quantity,
+                                  it.unit,
+                                  1
+                                )} ${unitLabel(it.unit)}`
+                            )
+                            .join(" • ")}
                         </div>
                       </button>
                     );
@@ -1139,7 +1327,9 @@ export default function TabVisor3DBIM({
               <>
                 {!selectedElement ? (
                   <div className="steel-subcard rounded-xl p-6 text-center text-xs text-slate-500">
-                    Haz clic sobre cualquier piso, muro, cielo raso, columna o viga en el visor 3D para inspeccionar sus parámetros IFC de Revit y su estado en el Presupuesto 5D.
+                    {isEn
+                      ? "Click any slab, wall, ceiling, column, roof, or beam in the 3D viewport to inspect its OpenBIM IFC parameters and 5D BOQ execution state."
+                      : "Haz clic sobre cualquier piso, muro, cielo raso, columna o viga en el visor 3D para inspeccionar sus parámetros IFC de Revit y su estado en el Presupuesto 5D."}
                   </div>
                 ) : (
                   <div className="steel-subcard rounded-xl p-3 space-y-2.5 text-xs">
@@ -1156,41 +1346,49 @@ export default function TabVisor3DBIM({
                             : "bg-slate-200 text-slate-700"
                         }`}
                       >
-                        {selectedElementMatch?.executionPct ?? 0}% ejec.
+                        {selectedElementMatch?.executionPct ?? 0}% {isEn ? "built" : "ejec."}
                       </span>
                     </div>
 
                     <div className="space-y-1 text-[11px]">
                       <div>
-                        <b>Nombre:</b> {selectedElement.meta.name || "—"}
+                        <b>{isEn ? "Name:" : "Nombre:"}</b> {selectedElement.meta.name || "—"}
                       </div>
                       <div>
-                        <b>Tipo / Familia:</b> {selectedElement.meta.objectType || "—"}
+                        <b>{isEn ? "Type / Family:" : "Tipo / Familia:"}</b>{" "}
+                        {selectedElement.meta.objectType || "—"}
                       </div>
                       <div>
-                        <b>Comments (Revit):</b>{" "}
+                        <b>{isEn ? "Comments (Revit):" : "Comments (Revit):"}</b>{" "}
                         <span className="font-mono text-emerald-800 font-bold">
-                          {selectedElement.meta.comments || "No incluido en IFC"}
+                          {selectedElement.meta.comments ||
+                            (isEn ? "Not included in IFC" : "No incluido en IFC")}
                         </span>
                       </div>
                       <div>
-                        <b>Nivel:</b> {selectedElement.meta.level || "—"}
+                        <b>{isEn ? "Level:" : "Nivel:"}</b> {selectedElement.meta.level || "—"}
                       </div>
                       <div>
-                        <b>Materiales:</b>{" "}
+                        <b>{isEn ? "Materials:" : "Materiales:"}</b>{" "}
                         {selectedElement.meta.materialNames.length > 0
                           ? selectedElement.meta.materialNames.join(", ")
                           : "—"}
                       </div>
                       <div>
-                        <b>Partida APU:</b>{" "}
+                        <b>{isEn ? "5D BOQ Item:" : "Partida APU:"}</b>{" "}
                         {selectedElementMatch?.matchedBudgetName
-                          ? `${selectedElementMatch.matchedBudgetItem}. ${selectedElementMatch.matchedBudgetName}`
+                          ? `${selectedElementMatch.matchedBudgetItem}. ${localizeActivity(
+                              selectedElementMatch.matchedBudgetName,
+                              lang
+                            )}`
+                          : isEn
+                          ? "Unmatched"
                           : "Sin cruce automático"}
                       </div>
                       {selectedElementMatch?.matchedRoom && (
                         <div>
-                          <b>Habitación vinculada:</b> {selectedElementMatch.matchedRoom}
+                          <b>{isEn ? "Linked Zone:" : "Habitación vinculada:"}</b>{" "}
+                          {localizeRoomName(selectedElementMatch.matchedRoom, lang)}
                         </div>
                       )}
                     </div>
@@ -1198,7 +1396,7 @@ export default function TabVisor3DBIM({
                     {Object.keys(selectedElement.meta.rawProps).length > 0 && (
                       <div className="pt-2 border-t border-slate-200">
                         <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">
-                          Propiedades IFC detectadas
+                          {isEn ? "Detected IFC Properties" : "Propiedades IFC detectadas"}
                         </div>
                         <div className="max-h-36 overflow-y-auto space-y-0.5 font-mono text-[10px] text-slate-600">
                           {Object.entries(selectedElement.meta.rawProps)

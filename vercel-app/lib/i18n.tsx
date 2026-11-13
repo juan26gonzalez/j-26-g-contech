@@ -2,15 +2,22 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { TabKey } from "./types";
+import {
+  convertQty,
+  convertUnitLabel,
+  convertUnitPriceCopToDisplay,
+  getUnitSystem,
+  UnitSystem,
+} from "./units";
 
 export type AppLang = "es" | "en";
 export type AppCurrency = "COP" | "USD" | "EUR";
 
-// Tasas referenciales para visualización ejecutiva internacional
+// Tasas base de respaldo si la consulta de mercado en tiempo real no responde
 export const EXCHANGE_RATES_COP: Record<AppCurrency, number> = {
   COP: 1,
-  USD: 4150,
-  EUR: 4480,
+  USD: 4350,
+  EUR: 4680,
 };
 
 const PREFS_STORAGE_KEY = "jgm_contech_ui_prefs_v1";
@@ -20,11 +27,29 @@ interface AppPreferencesValue {
   setLang: (lang: AppLang) => void;
   currency: AppCurrency;
   setCurrency: (currency: AppCurrency) => void;
+  unitSystem: UnitSystem;
+  rates: Record<AppCurrency, number>;
+  fxLive: boolean;
+  fxSource: string;
+  fxUpdatedAt: string;
   darkTheme: boolean;
   setDarkTheme: (dark: boolean) => void;
-  formatMoney: (amountCop: number) => string;
+  formatMoney: (amountCop: number, decimals?: number) => string;
+  formatConvertedMoney: (amountInActiveCurrency: number, decimals?: number) => string;
+  formatUnitMoney: (priceCopPerMetricUnit: number, metricUnit?: string) => string;
+  formatQty: (qtyMetric: number, metricUnit?: string, decimals?: number) => string;
+  convertQtyValue: (qtyMetric: number, metricUnit?: string) => number;
+  unitLabel: (metricUnit?: string) => string;
   formatCompactChartMoney: (amountCop: number) => number;
   chartUnitSuffix: string;
+  docOpts: {
+    lang: AppLang;
+    currency: AppCurrency;
+    unit_system: UnitSystem;
+    fx_rate: number;
+    cop_per_usd: number;
+    cop_per_eur: number;
+  };
   tr: Translations;
 }
 
@@ -349,6 +374,51 @@ export function AppPreferencesProvider({
   const [lang, setLangState] = useState<AppLang>("es");
   const [currency, setCurrencyState] = useState<AppCurrency>("COP");
   const [darkTheme, setDarkThemeState] = useState<boolean>(false);
+  const [rates, setRates] = useState<Record<AppCurrency, number>>(EXCHANGE_RATES_COP);
+  const [fxLive, setFxLive] = useState<boolean>(false);
+  const [fxSource, setFxSource] = useState<string>("reference");
+  const [fxUpdatedAt, setFxUpdatedAt] = useState<string>("");
+
+  useEffect(() => {
+    let active = true;
+    const pullFx = async () => {
+      try {
+        const res = await fetch("/api/fx-rates", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          ok?: boolean;
+          copPerUsd?: number;
+          copPerEur?: number;
+          source?: string;
+          updatedAt?: string;
+        };
+        if (!active) return;
+        if (
+          typeof data.copPerUsd === "number" &&
+          data.copPerUsd > 1000 &&
+          typeof data.copPerEur === "number" &&
+          data.copPerEur > 1000
+        ) {
+          setRates({
+            COP: 1,
+            USD: data.copPerUsd,
+            EUR: data.copPerEur,
+          });
+          setFxLive(Boolean(data.ok));
+          setFxSource(data.source || "live");
+          setFxUpdatedAt(data.updatedAt || "");
+        }
+      } catch {
+        // Mantener tasa de respaldo si falla la red
+      }
+    };
+    pullFx();
+    const interval = setInterval(pullFx, 15 * 60 * 1000);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   useEffect(() => {
     try {
@@ -391,33 +461,67 @@ export function AppPreferencesProvider({
   }, [lang, currency, darkTheme]);
 
   const value = useMemo<AppPreferencesValue>(() => {
-    const rate = EXCHANGE_RATES_COP[currency] || 1;
+    const rate = rates[currency] || 1;
+    const unitSystem = getUnitSystem(lang);
 
-    const formatMoney = (amountCop: number): string => {
-      const raw = Number.isFinite(amountCop) ? amountCop : 0;
-      const converted = raw / rate;
+    const formatConvertedMoney = (amountInCurr: number, decimals?: number): string => {
+      const val = Number.isFinite(amountInCurr) ? amountInCurr : 0;
+      const frac = decimals !== undefined ? decimals : currency === "COP" ? 0 : 0;
       if (currency === "COP") {
         return new Intl.NumberFormat("en-US", {
           style: "currency",
           currency: "USD",
-          maximumFractionDigits: 0,
+          minimumFractionDigits: frac,
+          maximumFractionDigits: frac,
         })
-          .format(converted)
+          .format(val)
           .replace("$", "$ ");
       }
       if (currency === "USD") {
         return `US${new Intl.NumberFormat("en-US", {
           style: "currency",
           currency: "USD",
-          maximumFractionDigits: 0,
-        }).format(converted)}`;
+          minimumFractionDigits: frac,
+          maximumFractionDigits: frac,
+        }).format(val)}`;
       }
-      return new Intl.NumberFormat("de-DE", {
+      return new Intl.NumberFormat("en-IE", {
         style: "currency",
         currency: "EUR",
-        maximumFractionDigits: 0,
-      }).format(converted);
+        minimumFractionDigits: frac,
+        maximumFractionDigits: frac,
+      }).format(val);
     };
+
+    const formatMoney = (amountCop: number, decimals?: number): string => {
+      const raw = Number.isFinite(amountCop) ? amountCop : 0;
+      const frac = decimals !== undefined ? decimals : currency === "COP" ? 0 : 2;
+      return formatConvertedMoney(raw / rate, currency === "COP" ? 0 : Math.abs(raw / rate) >= 1000 && decimals === undefined ? 0 : frac);
+    };
+
+    const formatUnitMoney = (priceCopPerMetricUnit: number, metricUnit?: string): string => {
+      const converted = convertUnitPriceCopToDisplay(
+        priceCopPerMetricUnit,
+        metricUnit,
+        currency,
+        rates,
+        lang
+      );
+      return formatConvertedMoney(converted, currency === "COP" ? 0 : 2);
+    };
+
+    const formatQty = (qtyMetric: number, metricUnit?: string, decimals = 2): string => {
+      const q = convertQty(qtyMetric, metricUnit, lang);
+      return q.toLocaleString("en-US", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      });
+    };
+
+    const convertQtyValue = (qtyMetric: number, metricUnit?: string): number =>
+      convertQty(qtyMetric, metricUnit, lang);
+
+    const unitLabel = (metricUnit?: string): string => convertUnitLabel(metricUnit, lang);
 
     const formatCompactChartMoney = (amountCop: number): number => {
       const converted = (Number.isFinite(amountCop) ? amountCop : 0) / rate;
@@ -433,14 +537,32 @@ export function AppPreferencesProvider({
       setLang: setLangState,
       currency,
       setCurrency: setCurrencyState,
+      unitSystem,
+      rates,
+      fxLive,
+      fxSource,
+      fxUpdatedAt,
       darkTheme,
       setDarkTheme: setDarkThemeState,
       formatMoney,
+      formatConvertedMoney,
+      formatUnitMoney,
+      formatQty,
+      convertQtyValue,
+      unitLabel,
       formatCompactChartMoney,
       chartUnitSuffix,
+      docOpts: {
+        lang,
+        currency,
+        unit_system: unitSystem,
+        fx_rate: rate,
+        cop_per_usd: rates.USD,
+        cop_per_eur: rates.EUR,
+      },
       tr: lang === "en" ? EN_TR : ES_TR,
     };
-  }, [lang, currency, darkTheme]);
+  }, [lang, currency, darkTheme, rates, fxLive, fxSource, fxUpdatedAt]);
 
   return (
     <AppPreferencesContext.Provider value={value}>
@@ -452,24 +574,43 @@ export function AppPreferencesProvider({
 export function useAppPreferences(): AppPreferencesValue {
   const ctx = useContext(AppPreferencesContext);
   if (!ctx) {
+    const fallbackFormat = (v: number) =>
+      new Intl.NumberFormat("en-US", {
+        style: "currency",
+        currency: "USD",
+        maximumFractionDigits: 0,
+      })
+        .format(Number.isFinite(v) ? v : 0)
+        .replace("$", "$ ");
     return {
       lang: "es",
       setLang: () => {},
       currency: "COP",
       setCurrency: () => {},
+      unitSystem: "metric",
+      rates: EXCHANGE_RATES_COP,
+      fxLive: false,
+      fxSource: "reference",
+      fxUpdatedAt: "",
       darkTheme: false,
       setDarkTheme: () => {},
-      formatMoney: (v: number) =>
-        new Intl.NumberFormat("en-US", {
-          style: "currency",
-          currency: "USD",
-          maximumFractionDigits: 0,
-        })
-          .format(Number.isFinite(v) ? v : 0)
-          .replace("$", "$ "),
+      formatMoney: fallbackFormat,
+      formatConvertedMoney: fallbackFormat,
+      formatUnitMoney: (p: number) => fallbackFormat(p),
+      formatQty: (q: number) => Number(q || 0).toFixed(2),
+      convertQtyValue: (q: number) => Number(q || 0),
+      unitLabel: (u?: string) => u || "und",
       formatCompactChartMoney: (v: number) =>
         Math.round(((Number.isFinite(v) ? v : 0) / 1_000_000) * 100) / 100,
       chartUnitSuffix: "M COP",
+      docOpts: {
+        lang: "es",
+        currency: "COP",
+        unit_system: "metric",
+        fx_rate: 1,
+        cop_per_usd: EXCHANGE_RATES_COP.USD,
+        cop_per_eur: EXCHANGE_RATES_COP.EUR,
+      },
       tr: ES_TR,
     };
   }

@@ -429,6 +429,7 @@ export default function GerenciaBim5DPage() {
             data={activeData}
             params={params}
             onUpdateProyecto={persistProyectoChange}
+            isDemo={isDemo}
           />
         )}
         {activeTab === "contratos" && (
@@ -436,6 +437,7 @@ export default function GerenciaBim5DPage() {
             proyecto={proyectoActual}
             data={activeData}
             params={params}
+            isDemo={isDemo}
           />
         )}
         {activeTab === "actas" && (
@@ -443,6 +445,7 @@ export default function GerenciaBim5DPage() {
             proyecto={proyectoActual}
             data={activeData}
             params={params}
+            isDemo={isDemo}
           />
         )}
         {activeTab === "mayores" && <TabMayoresCantidades data={activeData} />}

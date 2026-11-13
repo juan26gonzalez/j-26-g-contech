@@ -20,7 +20,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { EXCHANGE_RATES_COP, useAppPreferences } from "../lib/i18n";
+import { useAppPreferences } from "../lib/i18n";
+import { localizeChapter } from "../lib/units";
 import { ConsolidationResult, LiquidationParams } from "../lib/types";
 
 interface TabPanelEjecutivoProps {
@@ -38,6 +39,8 @@ export default function TabPanelEjecutivo({
     formatCompactChartMoney,
     chartUnitSuffix,
     currency,
+    rates,
+    fxLive,
     lang,
   } = useAppPreferences();
 
@@ -85,13 +88,16 @@ export default function TabPanelEjecutivo({
     },
   ];
 
-  const chartData = resumen_caps.map((c) => ({
-    name: c.Capitulo.length > 20 ? c.Capitulo.slice(0, 18) + "…" : c.Capitulo,
-    fullName: c.Capitulo,
-    Presupuestado: formatCompactChartMoney(c.Presupuesto_Total),
-    Ejecutado: formatCompactChartMoney(c.Costo_Ejecutado),
-    Avance: c["Avance_%"],
-  }));
+  const chartData = resumen_caps.map((c) => {
+    const locCap = localizeChapter(c.Capitulo, lang);
+    return {
+      name: locCap.length > 20 ? locCap.slice(0, 18) + "…" : locCap,
+      fullName: locCap,
+      Presupuestado: formatCompactChartMoney(c.Presupuesto_Total),
+      Ejecutado: formatCompactChartMoney(c.Costo_Ejecutado),
+      Avance: c["Avance_%"],
+    };
+  });
 
   const standardsBadges = [
     {
@@ -228,7 +234,7 @@ export default function TabPanelEjecutivo({
                 {resumen_caps.map((cap) => (
                   <tr key={cap.Capitulo} className="hover:bg-slate-50">
                     <td className="py-2.5 px-2 font-bold text-slate-800">
-                      {cap.Capitulo}
+                      {localizeChapter(cap.Capitulo, lang)}
                     </td>
                     <td className="py-2.5 px-2 text-right font-mono text-slate-700">
                       {formatMoney(cap.Presupuesto_Total)}
@@ -283,7 +289,13 @@ export default function TabPanelEjecutivo({
               title={tr.exec.exchangeDisclaimer}
             >
               • {lang === "en" ? "FX Ref" : "TRM Ref"}: 1 {currency} = $
-              {EXCHANGE_RATES_COP[currency].toLocaleString("en-US")} COP ({tr.exec.exchangeDisclaimer})
+              {(rates[currency] > 0
+                ? Math.round(rates[currency])
+                : currency === "EUR"
+                ? 4680
+                : 4350
+              ).toLocaleString("en-US")}{" "}
+              COP ({fxLive ? (lang === "en" ? "Live Market FX" : "TRM Mercado en Vivo") : tr.exec.exchangeDisclaimer})
             </span>
           )}
         </div>

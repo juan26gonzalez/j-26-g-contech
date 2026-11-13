@@ -35,7 +35,7 @@ export const PROYECTOS_BASE: Record<string, ProjectConfig> = {
     ant_def: 15.0,
     gar_def: 5.0,
     modelo_bim: "Casa Mendoza 1.1.rvt (Autodesk Revit 2027)",
-    logo: "🏡",
+    logo: "CM",
     firma_residente: "ING. JUAN GONZÁLEZ MENDOZA\nIngeniero Residente • JGM ConTech",
     firma_interventor: "PROPIETARIO / SUPERVISOR\nFamilia Mendoza",
     ppto_base: [
@@ -68,7 +68,7 @@ export const PROYECTOS_BASE: Record<string, ProjectConfig> = {
     ant_def: 20.0,
     gar_def: 5.0,
     modelo_bim: "Revit 2027 • Estructura & Acero",
-    logo: "🏢",
+    logo: "MZ",
     firma_residente: "ING. JUAN GONZÁLEZ MENDOZA\nIngeniero Residente • JGM ConTech",
     firma_interventor: "INTERVENTOR TÉCNICO DELEGADO\nSupervisor de Obra • DOLMEN S.A. E.S.P.",
     ppto_base: [
@@ -114,7 +114,7 @@ export const PROYECTOS_BASE: Record<string, ProjectConfig> = {
     ant_def: 50.0,
     gar_def: 5.0,
     modelo_bim: "Presupuesto Contractual Base (Sin Modelo 3D)",
-    logo: "📋",
+    logo: "PP",
     honorarios_consultoria: {
       incluir: true,
       escenario: "solo_consultoria",

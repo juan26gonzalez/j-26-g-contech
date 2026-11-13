@@ -441,10 +441,10 @@ export function calcularConsolidacionLocal(
     const mayorCant = Math.max(0, Math.round((ejecutado - contratado) * 100) / 100);
     const sobrecosto = Math.round(mayorCant * pu * 100) / 100;
 
-    let estado = "🔵 En Curso";
-    if (ejecutado === 0) estado = "⚪ Sin Iniciar";
-    else if (pctAvance >= 99.0 && pctAvance <= 100.0) estado = "🟢 Completado";
-    else if (pctAvance > 100.0) estado = "🔴 Mayor Cantidad";
+    let estado = "En Curso";
+    if (ejecutado === 0) estado = "Sin Iniciar";
+    else if (pctAvance >= 99.0 && pctAvance <= 100.0) estado = "Completado";
+    else if (pctAvance > 100.0) estado = "Mayor Cantidad";
 
     return {
       Item: item.Item,
@@ -553,10 +553,10 @@ export function calcularConsolidacionLocal(
         : 100;
     const evaluacion =
       eficiencia >= 105
-        ? "🟢 Alto Rendimiento"
+        ? "Alto Rendimiento"
         : eficiencia >= 90
-        ? "🔵 En Rango APU"
-        : "🔴 Rendimiento Bajo";
+        ? "En Rango APU"
+        : "Rendimiento Bajo";
     rendimientos.push({
       Actividad: st.display,
       Cuadrilla_Asignada: metaInfo.cuadrilla,

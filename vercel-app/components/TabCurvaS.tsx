@@ -2,6 +2,33 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  Calendar,
+  Check,
+  CheckCircle2,
+  ClipboardList,
+  Code2,
+  Download,
+  FileSpreadsheet,
+  Flame,
+  HelpCircle,
+  Lightbulb,
+  Link2,
+  Loader2,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Search,
+  Trash2,
+  TrendingDown,
+  TrendingUp,
+  Upload,
+  X,
+  Zap,
+} from "lucide-react";
+import {
   Area,
   CartesianGrid,
   ComposedChart,
@@ -13,6 +40,7 @@ import {
   YAxis,
 } from "recharts";
 import { callPythonJson } from "../lib/calcClient";
+import { useAppPreferences } from "../lib/i18n";
 import {
   addDaysIso,
   buildDefaultGanttFromBudget,
@@ -24,8 +52,9 @@ import {
   parseMsProjectTabular,
   parseMsProjectXml,
 } from "../lib/msProjectGantt";
-import { formatCOP, formatNum } from "../lib/projects";
-import { ConsolidationResult, GanttTask, ProjectConfig, BitacoraRow } from "../lib/types";
+import { formatNum } from "../lib/projects";
+import { BitacoraRow, ConsolidationResult, GanttTask, ProjectConfig } from "../lib/types";
+import { localizeActivity, localizeChapter, localizeTerm } from "../lib/units";
 
 interface TabCurvaSProps {
   proyecto: ProjectConfig;
@@ -39,7 +68,7 @@ const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const ROW_HEIGHT = 42;
 const TIMELINE_HEADER_HEIGHT = 50;
 
-const MESES_CORTO = [
+const MESES_ES = [
   "ENE",
   "FEB",
   "MAR",
@@ -54,8 +83,23 @@ const MESES_CORTO = [
   "DIC",
 ];
 
+const MESES_EN = [
+  "JAN",
+  "FEB",
+  "MAR",
+  "APR",
+  "MAY",
+  "JUN",
+  "JUL",
+  "AUG",
+  "SEP",
+  "OCT",
+  "NOV",
+  "DEC",
+];
+
 export const VBA_MSPROJECT_SYNC_CODE = `' ==============================================================================
-' MÓDULO DE SINCRONIZACIÓN MS PROJECT PROFESIONAL 2021 -> JGM CONTECH CLOUD
+' MODULO DE SINCRONIZACION MS PROJECT PROFESIONAL 2021 -> JGM CONTECH CLOUD
 ' Sincroniza en tiempo real las tareas con el Centro de Control BIM 4D y Curva S
 ' ==============================================================================
 Option Explicit
@@ -73,15 +117,15 @@ Public Sub SincronizarJGMConTech()
     Dim predsStr As String, respStr As String, costStr As String
     Dim responseText As String, statusVal As Long
     
-    ' URL de la API de producción de JGM ConTech
+    ' URL de la API de produccion de JGM ConTech
     url = "https://jagm2000-jgmcontech.vercel.app/api/msproject-sync"
     
     If ActiveProject Is Nothing Then
-        MsgBox "No hay ningún proyecto activo abierto en Microsoft Project.", vbExclamation, "JGM ConTech"
+        MsgBox "No hay ningun proyecto activo abierto en Microsoft Project.", vbExclamation, "JGM ConTech"
         Exit Sub
     End If
     
-    ' Detección automática del proyecto según el nombre del archivo
+    ' Deteccion automatica del proyecto segun el nombre del archivo
     Dim projId As String, projTitle As String
     projTitle = ActiveProject.Name
     If InStr(1, LCase(projTitle), "mendoza") > 0 Or InStr(1, LCase(projTitle), "casa") > 0 Then
@@ -111,7 +155,7 @@ Public Sub SincronizarJGMConTech()
             startStr = Format(t.Start, "yyyy-mm-dd")
             finishStr = Format(t.Finish, "yyyy-mm-dd")
             
-            ' 480 minutos laborables = 1 día en MS Project
+            ' 480 minutos laborables = 1 dia en MS Project
             durDays = Round(t.Duration / 480, 2)
             durStr = Replace(CStr(durDays), ",", ".")
             
@@ -149,7 +193,7 @@ Public Sub SincronizarJGMConTech()
     
     jsonPayload = jsonPayload & vbCrLf & "  ]" & vbCrLf & "}"
     
-    ' Envío HTTP POST seguro
+    ' Envio HTTP POST seguro
     On Error Resume Next
     Set http = CreateObject("MSXML2.ServerXMLHTTP.6.0")
     If http Is Nothing Then Set http = CreateObject("MSXML2.XMLHTTP")
@@ -164,27 +208,55 @@ Public Sub SincronizarJGMConTech()
     responseText = http.responseText
     
     If statusVal = 200 Or statusVal = 201 Then
-        MsgBox "✅ ¡Cronograma sincronizado con éxito!" & vbCrLf & vbCrLf & _
-               "• Proyecto: " & projId & " (" & projTitle & ")" & vbCrLf & _
-               "• Tareas procesadas: " & count & vbCrLf & _
-               "• Reflejado en JGM ConTech Curva S & Plazo 4D en tiempo real.", _
+        MsgBox "[OK] Cronograma sincronizado con exito!" & vbCrLf & vbCrLf & _
+               "- Proyecto: " & projId & " (" & projTitle & ")" & vbCrLf & _
+               "- Tareas procesadas: " & count & vbCrLf & _
+               "- Reflejado en JGM ConTech Curva S & Plazo 4D en tiempo real.", _
                vbInformation, "JGM ConTech 4D Sync"
     Else
-        MsgBox "⚠️ Error HTTP " & statusVal & ":" & vbCrLf & responseText, _
+        MsgBox "[WARN] Error HTTP " & statusVal & ":" & vbCrLf & responseText, _
                vbCritical, "JGM ConTech 4D Sync"
     End If
     Exit Sub
     
 ErrorHandler:
-    MsgBox "❌ Error de conexión al sincronizar con JGM ConTech:" & vbCrLf & Err.Description, _
+    MsgBox "[ERROR] Fallo de conexion al sincronizar con JGM ConTech:" & vbCrLf & Err.Description, _
            vbCritical, "JGM ConTech"
 End Sub`;
 
-function formatShortDateEs(iso: string): string {
+function formatShortDate(iso: string, lang: "es" | "en"): string {
   const clean = String(iso || "").slice(0, 10);
   const parts = clean.split("-");
   if (parts.length !== 3) return clean;
+  if (lang === "en") return `${parts[1]}/${parts[2]}/${parts[0].slice(2)}`;
   return `${parts[2]}/${parts[1]}/${parts[0].slice(2)}`;
+}
+
+function localizeGanttTaskName(task: GanttTask, lang: "es" | "en"): string {
+  const raw = task.nombre || "";
+  if (lang === "es") return raw;
+  if (task.esHito) {
+    if (raw.toLowerCase().includes("entrega")) return "◆ Final Project Handover Milestone";
+    return localizeTerm(localizeActivity(raw, "en"), "en");
+  }
+  if (task.esResumen) {
+    return localizeChapter(raw, "en")
+      .replace(/^FASE\s+/i, "PHASE ")
+      .replace(/ESTRUCTURA & MAMPOSTER[IÍ]A/gi, "STRUCTURE & MASONRY")
+      .replace(/ENVOLVENTE, PISOS & CUBIERTA/gi, "ENVELOPE, FLOORING & ROOFING")
+      .replace(/ACABADOS ARQUITECT[OÓ]NICOS & CARPINTER[IÍ]A/gi, "ARCHITECTURAL FINISHES & GLAZING")
+      .replace(/ACABADOS ARQUITECT[OÓ]NICOS/gi, "ARCHITECTURAL FINISHES");
+  }
+  return localizeActivity(raw, "en");
+}
+
+function localizeGanttStatus(estado: string, rawLabel: string, lang: "es" | "en"): string {
+  if (lang === "es") return rawLabel;
+  if (estado === "completada") return "Completed";
+  if (estado === "retrasada") return "Delayed";
+  if (estado === "en_atencion") return "At Risk";
+  if (estado === "en_curso") return "In Progress";
+  return "Scheduled";
 }
 
 function arrayBufferToBase64(buffer: ArrayBuffer): string {
@@ -215,6 +287,10 @@ export default function TabCurvaS({
   cloudRows = [],
   onRefreshCloud,
 }: TabCurvaSProps) {
+  const { lang, currency, formatMoney } = useAppPreferences();
+  const isEn = lang === "en";
+  const moneyDecimals = currency === "COP" ? 0 : 2;
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [fechaCorte, setFechaCorte] = useState<string>(() => getTodayIso());
@@ -234,15 +310,19 @@ export default function TabCurvaS({
   const [showAddForm, setShowAddForm] = useState<boolean>(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
 
-  // Estados del modal y sincronización de API MS Project 2021
+  // MS Project 2021 API modal states
   const [showApiModal, setShowApiModal] = useState<boolean>(false);
   const [activeApiTab, setActiveApiTab] = useState<"vba" | "instrucciones" | "prueba">("vba");
   const [testingApi, setTestingApi] = useState<boolean>(false);
-  const [testApiResult, setTestApiResult] = useState<{ ok: boolean; message: string; details?: any } | null>(null);
+  const [testApiResult, setTestApiResult] = useState<{
+    ok: boolean;
+    message: string;
+    details?: unknown;
+  } | null>(null);
   const [copiedVba, setCopiedVba] = useState<boolean>(false);
   const [refreshingLive, setRefreshingLive] = useState<boolean>(false);
 
-  // Formulario rápido de nueva tarea MS Project
+  // Quick Add Task Form
   const [newNombre, setNewNombre] = useState<string>("");
   const [newWbs, setNewWbs] = useState<string>("");
   const [newInicio, setNewInicio] = useState<string>(() => getTodayIso());
@@ -251,7 +331,7 @@ export default function TabCurvaS({
   const [newPred, setNewPred] = useState<string>("");
   const [newMatchItem, setNewMatchItem] = useState<string>("");
 
-  // Extracción automática del último cronograma sincronizado vía API desde MS Project Profesional 2021
+  // Extract latest synced MS Project schedule from cloud logs
   const syncedMsProjectInfo = useMemo(() => {
     if (!cloudRows || cloudRows.length === 0) return null;
     const proyId = (proyecto.id || "casa_mendoza").toLowerCase();
@@ -279,12 +359,12 @@ export default function TabCurvaS({
         };
       }
     } catch {
-      // Ignorar error de parsing
+      // Ignore parse failure
     }
     return null;
   }, [cloudRows, proyecto.id]);
 
-  // Polling automático cada 8 segundos mientras la pestaña de Curva S esté activa
+  // Live poll every 8s while tab is active
   useEffect(() => {
     if (!onRefreshCloud) return;
     const interval = setInterval(() => {
@@ -293,7 +373,6 @@ export default function TabCurvaS({
     return () => clearInterval(interval);
   }, [onRefreshCloud]);
 
-  // Refrescar manualmente el cronograma en vivo
   const handleManualLiveRefresh = async () => {
     if (!onRefreshCloud) return;
     setRefreshingLive(true);
@@ -301,19 +380,22 @@ export default function TabCurvaS({
       await onRefreshCloud();
       setStatusBanner({
         type: "ok",
-        text: "Sincronización en vivo verificada con Supabase y MS Project.",
+        text: isEn
+          ? "Live synchronization verified with Supabase and MS Project."
+          : "Sincronización en vivo verificada con Supabase y MS Project.",
       });
     } catch {
       setStatusBanner({
         type: "error",
-        text: "No se pudo actualizar el estado en vivo de la nube.",
+        text: isEn
+          ? "Unable to refresh live cloud state."
+          : "No se pudo actualizar el estado en vivo de la nube.",
       });
     } finally {
       setRefreshingLive(false);
     }
   };
 
-  // Enviar prueba a la API desde el navegador para verificar la tubería
   const handleTestApi = async () => {
     setTestingApi(true);
     setTestApiResult(null);
@@ -363,12 +445,16 @@ export default function TabCurvaS({
       if (!res.ok || !dataRes.ok) {
         setTestApiResult({
           ok: false,
-          message: dataRes.error || `HTTP ${res.status}: Fallo en la API`,
+          message:
+            dataRes.error ||
+            (isEn ? `HTTP ${res.status}: API error` : `HTTP ${res.status}: Fallo en la API`),
         });
       } else {
         setTestApiResult({
           ok: true,
-          message: `¡Prueba de sincronización exitosa! Se guardaron ${dataRes.tasksCount} tareas en Supabase para ${dataRes.projectId}.`,
+          message: isEn
+            ? `Sync test succeeded! Saved ${dataRes.tasksCount} tasks to Supabase for ${dataRes.projectId}.`
+            : `Prueba de sincronización exitosa: se guardaron ${dataRes.tasksCount} tareas en Supabase para ${dataRes.projectId}.`,
           details: dataRes,
         });
         if (onRefreshCloud) {
@@ -385,10 +471,6 @@ export default function TabCurvaS({
     }
   };
 
-  // Cronograma base activo:
-  // 1. Prioridad: Sincronización directa vía API desde MS Project Profesional 2021
-  // 2. Custom guardado en el proyecto
-  // 3. Fallback: Línea base automática derivada del presupuesto APU
   const rawTasks: GanttTask[] = useMemo(() => {
     if (syncedMsProjectInfo && syncedMsProjectInfo.tasks.length > 0) {
       return syncedMsProjectInfo.tasks;
@@ -403,13 +485,11 @@ export default function TabCurvaS({
     syncedMsProjectInfo || (proyecto.gantt_base && proyecto.gantt_base.length > 0)
   );
 
-  // Tareas enriquecidas con ejecución real de Supabase Bitácora + % programado a fechaCorte
   const enrichedTasks: EnrichedGanttTask[] = useMemo(
     () => enrichGanttWithExecution(rawTasks, data, fechaCorte),
     [rawTasks, data, fechaCorte]
   );
 
-  // Curva S y métricas EVM sincronizadas dinámicamente con las tareas y la fecha de corte
   const curvaSeries = useMemo(
     () => buildGanttCurvaSSeries(enrichedTasks, data, fechaCorte),
     [enrichedTasks, data, fechaCorte]
@@ -424,13 +504,13 @@ export default function TabCurvaS({
   const sobrecosto = data.totals.total_sobrecosto_cop || 0;
   const cpi = ev > 0 ? ev / (ev + sobrecosto) : 1.0;
 
-  // Filtrado de filas visibles en el diagrama de Gantt
   const visibleTasks: EnrichedGanttTask[] = useMemo(() => {
     const q = busqueda.trim().toLowerCase();
     return enrichedTasks.filter((t) => {
       if (q) {
-        const hay = `${t.wbs} ${t.nombre} ${t.capitulo || ""} ${t.responsable || ""}`
-          .toLowerCase();
+        const hay = `${t.wbs} ${t.nombre} ${localizeGanttTaskName(t, lang)} ${
+          t.capitulo || ""
+        } ${localizeChapter(t.capitulo || "", lang)} ${t.responsable || ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (filtroEstado === "criticas") {
@@ -448,9 +528,8 @@ export default function TabCurvaS({
       }
       return true;
     });
-  }, [enrichedTasks, busqueda, filtroEstado]);
+  }, [enrichedTasks, busqueda, filtroEstado, lang]);
 
-  // Resumen de conteos para badges del cronograma
   const summaryCounts = useMemo(() => {
     const detail = enrichedTasks.filter((t) => !t.esResumen && !t.esHito);
     return {
@@ -463,7 +542,6 @@ export default function TabCurvaS({
     };
   }, [enrichedTasks]);
 
-  // Cálculos geométricos del eje temporal del Diagrama de Gantt
   const timelineGeometry = useMemo(() => {
     const minTaskMs =
       enrichedTasks.length > 0
@@ -480,12 +558,12 @@ export default function TabCurvaS({
     const pxPerDay = escala === "day" ? 28 : 11;
     const widthPx = Math.max(680, totalDays * pxPerDay);
 
-    // Agrupar por meses para banda superior
+    const monthsList = isEn ? MESES_EN : MESES_ES;
     const months: { key: string; label: string; leftPx: number; widthPx: number }[] = [];
     for (let d = 0; d < totalDays; d++) {
       const dt = new Date(startMs + d * MS_PER_DAY);
       const key = `${dt.getUTCFullYear()}-${dt.getUTCMonth()}`;
-      const label = `${MESES_CORTO[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
+      const label = `${monthsList[dt.getUTCMonth()]} ${dt.getUTCFullYear()}`;
       const last = months[months.length - 1];
       if (last && last.key === key) {
         last.widthPx += pxPerDay;
@@ -499,7 +577,6 @@ export default function TabCurvaS({
       }
     }
 
-    // Marcas de semanas o días para banda inferior + líneas verticales
     const ticks: {
       leftPx: number;
       widthPx: number;
@@ -527,7 +604,9 @@ export default function TabCurvaS({
         ticks.push({
           leftPx: d * pxPerDay,
           widthPx: span * pxPerDay,
-          label: `S${w} · ${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
+          label: isEn
+            ? `W${w} · ${iso.slice(5, 7)}/${iso.slice(8, 10)}`
+            : `S${w} · ${iso.slice(8, 10)}/${iso.slice(5, 7)}`,
         });
       }
     }
@@ -546,9 +625,8 @@ export default function TabCurvaS({
       corteX,
       showCorteLine: corteX >= -4 && corteX <= widthPx + 4,
     };
-  }, [enrichedTasks, escala, fechaCorte]);
+  }, [enrichedTasks, escala, fechaCorte, isEn]);
 
-  // Posiciones (x, y) de cada tarea visible para dibujar barras y predecesoras SVG
   const barPositions = useMemo(() => {
     const posMap = new Map<
       string,
@@ -558,8 +636,7 @@ export default function TabCurvaS({
       const tIni = parseIsoDateMs(t.inicio);
       const tFin = Math.max(tIni, parseIsoDateMs(t.fin));
       const startX =
-        ((tIni - timelineGeometry.startMs) / MS_PER_DAY) *
-        timelineGeometry.pxPerDay;
+        ((tIni - timelineGeometry.startMs) / MS_PER_DAY) * timelineGeometry.pxPerDay;
       const rawDays = Math.max(0, (tFin - tIni) / MS_PER_DAY);
       const barW = t.esHito
         ? 14
@@ -573,7 +650,6 @@ export default function TabCurvaS({
       return { task: t, ...geom };
     });
 
-    // Conectores Finish-to-Start SVG para predecesoras visibles
     const links: { key: string; pathD: string; critical: boolean }[] = [];
     if (mostrarDependencias) {
       items.forEach((item) => {
@@ -606,7 +682,6 @@ export default function TabCurvaS({
     return { items, links };
   }, [visibleTasks, timelineGeometry, mostrarDependencias]);
 
-  // Parámetros para el slider temporal de simulación 4D
   const sliderBounds = useMemo(() => {
     const sMs = parseIsoDateMs(curvaSeries.startIso);
     const eMs = parseIsoDateMs(curvaSeries.endIso);
@@ -621,7 +696,6 @@ export default function TabCurvaS({
     [enrichedTasks, selectedTaskId]
   );
 
-  // --- Handlers ---
   const saveSchedule = (nextTasks: GanttTask[], bannerMsg?: string) => {
     onUpdateProyecto({
       ...proyecto,
@@ -668,29 +742,46 @@ export default function TabCurvaS({
           file_base64: b64,
         });
         if (!pyRes.ok || !pyRes.tasks || pyRes.tasks.length === 0) {
-          errMsg = pyRes.error || "No se pudieron extraer tareas válidas del archivo Excel.";
+          errMsg =
+            pyRes.error ||
+            (isEn
+              ? "No valid tasks could be extracted from the Excel file."
+              : "No se pudieron extraer tareas válidas del archivo Excel.");
         } else {
           parsedTasks = pyRes.tasks;
         }
       } else {
-        errMsg = "Formato no soportado. Exporta desde MS Project en .xml, .xlsx o .csv.";
+        errMsg = isEn
+          ? "Unsupported format. Export from MS Project as .xml, .xlsx, or .csv."
+          : "Formato no soportado. Exporta desde MS Project en .xml, .xlsx o .csv.";
       }
 
       if (errMsg || parsedTasks.length === 0) {
         setStatusBanner({
           type: "error",
-          text: errMsg || "No se detectaron tareas válidas en el archivo seleccionado.",
+          text:
+            errMsg ||
+            (isEn
+              ? "No valid tasks found in the selected file."
+              : "No se detectaron tareas válidas en el archivo seleccionado."),
         });
       } else {
         saveSchedule(
           parsedTasks,
-          `MS Project cargado correctamente: ${parsedTasks.length} tareas importadas desde "${file.name}".`
+          isEn
+            ? `MS Project loaded successfully: ${parsedTasks.length} tasks imported from "${file.name}".`
+            : `MS Project cargado correctamente: ${parsedTasks.length} tareas importadas desde "${file.name}".`
         );
       }
     } catch (err) {
       setStatusBanner({
         type: "error",
-        text: err instanceof Error ? err.message : "Error procesando archivo MS Project.",
+        text:
+          err instanceof Error
+            ? err.message
+            : isEn
+            ? "Error processing MS Project file."
+            : "Error procesando archivo MS Project.",
       });
     } finally {
       setImporting(false);
@@ -712,7 +803,7 @@ export default function TabCurvaS({
       uid: id,
       wbs: newWbs.trim() || `${rawTasks.length + 1}`,
       nombre: newNombre.trim(),
-      capitulo: "PROGRAMACIÓN 4D",
+      capitulo: isEn ? "4D SCHEDULE" : "PROGRAMACIÓN 4D",
       inicio: safeStart,
       fin: safeEnd,
       duracionDias: dur,
@@ -720,10 +811,15 @@ export default function TabCurvaS({
       rutaCritica: newCritica,
       esHito: dur === 0,
       predecesoras: newPred ? [newPred] : undefined,
-      responsable: "Dirección Técnica",
+      responsable: isEn ? "Technical Director" : "Dirección Técnica",
       matchItem: newMatchItem || undefined,
     };
-    saveSchedule([...rawTasks, newTask], `Tarea "${newTask.nombre}" añadida al Gantt 4D.`);
+    saveSchedule(
+      [...rawTasks, newTask],
+      isEn
+        ? `Task "${newTask.nombre}" added to 4D Gantt.`
+        : `Tarea "${newTask.nombre}" añadida al Gantt 4D.`
+    );
     setNewNombre("");
     setNewWbs("");
     setNewPred("");
@@ -750,7 +846,12 @@ export default function TabCurvaS({
   const handleDeleteTask = (id: string) => {
     const next = rawTasks.filter((t) => t.id !== id);
     setSelectedTaskId(null);
-    saveSchedule(next, "Tarea eliminada del diagrama de Gantt.");
+    saveSchedule(
+      next,
+      isEn
+        ? "Task removed from Gantt schedule."
+        : "Tarea eliminada del diagrama de Gantt."
+    );
   };
 
   const handleResetDefaultGantt = () => {
@@ -760,43 +861,62 @@ export default function TabCurvaS({
     });
     setStatusBanner({
       type: "ok",
-      text: "Cronograma 4D restaurado a la línea base derivada del presupuesto del proyecto.",
+      text: isEn
+        ? "4D schedule restored to budget-derived baseline."
+        : "Cronograma 4D restaurado a la línea base derivada del presupuesto del proyecto.",
     });
   };
 
   const handleExportCsv = () => {
-    const headers = [
-      "ID",
-      "EDT_WBS",
-      "Nombre_Tarea",
-      "Capitulo",
-      "Inicio",
-      "Fin",
-      "Duracion_Dias",
-      "Predecesoras",
-      "Ruta_Critica",
-      "Peso_%",
-      "Programado_Corte_%",
-      "Avance_Real_%",
-      "Desviacion_%",
-      "Estado",
-    ];
+    const headers = isEn
+      ? [
+          "ID",
+          "WBS",
+          "Task_Name",
+          "Chapter",
+          "Start",
+          "Finish",
+          "Duration_Days",
+          "Predecessors",
+          "Critical_Path",
+          "Weight_%",
+          "Planned_To_Date_%",
+          "Actual_Progress_%",
+          "Variance_%",
+          "Status",
+        ]
+      : [
+          "ID",
+          "EDT_WBS",
+          "Nombre_Tarea",
+          "Capitulo",
+          "Inicio",
+          "Fin",
+          "Duracion_Dias",
+          "Predecesoras",
+          "Ruta_Critica",
+          "Peso_%",
+          "Programado_Corte_%",
+          "Avance_Real_%",
+          "Desviacion_%",
+          "Estado",
+        ];
     const rows = enrichedTasks.map((t) =>
       [
         t.id,
         t.wbs,
-        `"${(t.nombre || "").replace(/"/g, '""')}"`,
-        `"${(t.capitulo || "").replace(/"/g, '""')}"`,
+        `"${localizeGanttTaskName(t, lang).replace(/"/g, '""')}"`,
+        `"${localizeChapter(t.capitulo || "", lang).replace(/"/g, '""')}"`,
         t.inicio,
         t.fin,
         t.duracionDias,
         (t.predecesoras || []).join("|"),
-        t.rutaCritica ? "SI" : "NO",
+        t.rutaCritica ? (isEn ? "YES" : "SI") : "NO",
         t.pesoPct.toFixed(2),
         t.pctProgramado.toFixed(1),
         t.pctReal.toFixed(1),
         t.desviacion.toFixed(1),
-        t.estadoLabel,
+        localizeGanttStatus(t.estado, t.estadoLabel, lang),
       ].join(";")
     );
     const csv = "\uFEFF" + [headers.join(";"), ...rows].join("\n");
@@ -804,14 +924,16 @@ export default function TabCurvaS({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Gantt_MSProject_${proyecto.id}_${fechaCorte}.csv`;
+    a.download = isEn
+      ? `Gantt_Schedule_${proyecto.id}_${fechaCorte}.csv`
+      : `Gantt_MSProject_${proyecto.id}_${fechaCorte}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   return (
     <div className="space-y-6">
-      {/* Encabezado Principal + Simulador de Fecha de Corte 4D */}
+      {/* Main Header + 4D Cutoff Simulator */}
       <div className="bento-card p-6 space-y-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
@@ -820,19 +942,40 @@ export default function TabCurvaS({
                 MS Project 4D · EVM Control
               </span>
               <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                {isCustomSchedule ? "Cronograma MS Project Importado" : "Línea Base APU Auto-4D"}
+                {isCustomSchedule
+                  ? isEn
+                    ? "Imported MS Project Schedule"
+                    : "Cronograma MS Project Importado"
+                  : isEn
+                  ? "Auto-4D BOQ Baseline"
+                  : "Línea Base APU Auto-4D"}
               </span>
             </div>
-            <h3 className="text-lg font-extrabold text-slate-900">
-              📈 Curva S, Gestión del Valor Ganado (EVM) & Diagrama de Gantt MS Project
+            <h3 className="text-lg font-extrabold text-slate-900 flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-slate-800 shrink-0" />
+              <span>
+                {isEn
+                  ? "S-Curve, Earned Value Management (EVM) & MS Project 4D Gantt"
+                  : "Curva S, Gestión del Valor Ganado (EVM) & Diagrama de Gantt MS Project"}
+              </span>
             </h3>
             <p className="text-xs text-slate-500 mt-0.5">
-              Cronograma maestro sincronizado en vivo con la ejecución reportada en{" "}
-              <span className="font-semibold text-slate-700">Bitácora Cloud</span> para{" "}
-              <span className="font-semibold text-slate-700">{proyecto.nombre}</span>.
+              {isEn ? (
+                <>
+                  Master schedule synchronized live with actual field progress from{" "}
+                  <span className="font-semibold text-slate-700">Cloud Field Log</span> for{" "}
+                  <span className="font-semibold text-slate-700">{proyecto.nombre}</span>.
+                </>
+              ) : (
+                <>
+                  Cronograma maestro sincronizado en vivo con la ejecución reportada en{" "}
+                  <span className="font-semibold text-slate-700">Bitácora Cloud</span> para{" "}
+                  <span className="font-semibold text-slate-700">{proyecto.nombre}</span>.
+                </>
+              )}
             </p>
 
-            {/* Estado de sincronización en tiempo real con MS Project Profesional 2021 */}
+            {/* Real-time MS Project sync status */}
             <div className="mt-2.5 flex flex-wrap items-center gap-2">
               {syncedMsProjectInfo ? (
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-300 text-[11px] font-bold text-emerald-800 shadow-sm">
@@ -840,9 +983,11 @@ export default function TabCurvaS({
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-600"></span>
                   </span>
-                  <span>MS Project Profesional 2021: En Línea</span>
+                  <span>
+                    {isEn ? "MS Project Pro 2021: Online" : "MS Project Profesional 2021: En Línea"}
+                  </span>
                   <span className="text-emerald-700 font-medium">
-                    ({syncedMsProjectInfo.count} tareas •{" "}
+                    ({syncedMsProjectInfo.count} {isEn ? "tasks" : "tareas"} •{" "}
                     {syncedMsProjectInfo.created_at
                       ? new Date(syncedMsProjectInfo.created_at).toLocaleTimeString([], {
                           hour: "2-digit",
@@ -855,7 +1000,11 @@ export default function TabCurvaS({
               ) : (
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-300 text-[11px] font-semibold text-slate-700">
                   <span className="h-2 w-2 rounded-full bg-slate-400"></span>
-                  <span>MS Project API: Listo para recibir sincronización</span>
+                  <span>
+                    {isEn
+                      ? "MS Project API: Ready to receive sync"
+                      : "MS Project API: Listo para recibir sincronización"}
+                  </span>
                 </div>
               )}
               {onRefreshCloud && (
@@ -863,11 +1012,23 @@ export default function TabCurvaS({
                   type="button"
                   onClick={handleManualLiveRefresh}
                   disabled={refreshingLive}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 transition"
-                  title="Comprobar actualizaciones en vivo en Supabase"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 transition"
+                  title={
+                    isEn
+                      ? "Check live updates from Supabase"
+                      : "Comprobar actualizaciones en vivo en Supabase"
+                  }
                 >
-                  <span className={refreshingLive ? "animate-spin" : ""}>↻</span>
-                  <span>{refreshingLive ? "Verificando..." : "Sincronizar ahora"}</span>
+                  <RefreshCw className={`w-3 h-3 ${refreshingLive ? "animate-spin" : ""}`} />
+                  <span>
+                    {refreshingLive
+                      ? isEn
+                        ? "Checking..."
+                        : "Verificando..."
+                      : isEn
+                      ? "Sync Now"
+                      : "Sincronizar ahora"}
+                  </span>
                 </button>
               )}
             </div>
@@ -878,9 +1039,13 @@ export default function TabCurvaS({
               type="button"
               onClick={() => setShowApiModal(true)}
               className="px-3.5 py-2 rounded-xl text-xs font-extrabold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer transition"
-              title="API en Tiempo Real para Microsoft Project Desktop 2021"
+              title={
+                isEn
+                  ? "Real-time API for Microsoft Project Desktop 2021"
+                  : "API en Tiempo Real para Microsoft Project Desktop 2021"
+              }
             >
-              <span>⚡</span>
+              <Zap className="w-3.5 h-3.5" />
               <span>API MS Project 2021</span>
             </button>
             <input
@@ -896,63 +1061,123 @@ export default function TabCurvaS({
               disabled={importing}
               className="steel-btn-primary px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-60"
             >
-              <span>📥</span>
-              <span>{importing ? "Procesando archivo..." : "Importar MS Project"}</span>
+              {importing ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Upload className="w-3.5 h-3.5" />
+              )}
+              <span>
+                {importing
+                  ? isEn
+                    ? "Parsing file..."
+                    : "Procesando archivo..."
+                  : isEn
+                  ? "Import MS Project"
+                  : "Importar MS Project"}
+              </span>
             </button>
             <button
               type="button"
               onClick={() => setShowAddForm((v) => !v)}
-              className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer inline-flex items-center gap-1.5"
             >
-              {showAddForm ? "✕ Cerrar" : "➕ Nueva Tarea"}
+              {showAddForm ? (
+                <>
+                  <X className="w-3.5 h-3.5" />
+                  <span>{isEn ? "Close" : "Cerrar"}</span>
+                </>
+              ) : (
+                <>
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{isEn ? "New Task" : "Nueva Tarea"}</span>
+                </>
+              )}
             </button>
             <button
               type="button"
               onClick={handleExportCsv}
-              className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer"
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 cursor-pointer inline-flex items-center gap-1.5"
             >
-              📑 Exportar CSV
+              <FileSpreadsheet className="w-3.5 h-3.5" />
+              <span>{isEn ? "Export CSV" : "Exportar CSV"}</span>
             </button>
             {isCustomSchedule && (
               <button
                 type="button"
                 onClick={handleResetDefaultGantt}
-                className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 cursor-pointer"
+                className="px-3 py-2 rounded-xl text-xs font-bold bg-amber-50 border border-amber-200 text-amber-800 hover:bg-amber-100 cursor-pointer inline-flex items-center gap-1.5"
               >
-                ↺ Restaurar Base
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>{isEn ? "Restore Baseline" : "Restaurar Base"}</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => setShowMsProjectHelp((v) => !v)}
-              className="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer"
-              title="Cómo exportar desde Microsoft Project"
+              className="px-2.5 py-2 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 cursor-pointer inline-flex items-center gap-1.5"
+              title={
+                isEn
+                  ? "How to export from Microsoft Project"
+                  : "Cómo exportar desde Microsoft Project"
+              }
             >
-              ❓ Guía MSP
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>{isEn ? "MSP Guide" : "Guía MSP"}</span>
             </button>
           </div>
         </div>
 
-        {/* Ayuda rápida de exportación desde Microsoft Project */}
+        {/* MS Project quick export guide */}
         {showMsProjectHelp && (
           <div className="rounded-xl border border-sky-200 bg-sky-50/70 p-4 text-xs text-slate-700 space-y-1.5">
-            <p className="font-bold text-slate-900">
-              💡 Cómo traer tu programación real desde Microsoft Project en 10 segundos:
+            <p className="font-bold text-slate-900 flex items-center gap-1.5">
+              <Lightbulb className="w-4 h-4 text-sky-600 shrink-0" />
+              <span>
+                {isEn
+                  ? "How to import your live schedule from Microsoft Project in 10 seconds:"
+                  : "Cómo traer tu programación real desde Microsoft Project en 10 segundos:"}
+              </span>
             </p>
             <ul className="list-disc pl-5 space-y-1">
               <li>
-                <strong>Opción 1 (Recomendada — Conserva EDT, Ruta Crítica y Predecesoras exactas):</strong>{" "}
-                En MS Project ve a <em>Archivo → Guardar como → Tipo: </em>
-                <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Formato XML (*.xml)</code> y súbelo con el botón <strong>Importar MS Project</strong>.
+                {isEn ? (
+                  <>
+                    <strong>Option 1 (Recommended — Preserves WBS, Critical Path & Predecessors):</strong>{" "}
+                    In MS Project click <em>File → Save As → Format: </em>
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">XML Format (*.xml)</code>{" "}
+                    and upload it via <strong>Import MS Project</strong>.
+                  </>
+                ) : (
+                  <>
+                    <strong>Opción 1 (Recomendada — Conserva EDT, Ruta Crítica y Predecesoras exactas):</strong>{" "}
+                    En MS Project ve a <em>Archivo → Guardar como → Tipo: </em>
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Formato XML (*.xml)</code>{" "}
+                    y súbelo con el botón <strong>Importar MS Project</strong>.
+                  </>
+                )}
               </li>
               <li>
-                <strong>Opción 2 (Excel / CSV):</strong> Exporta o copia tus columnas{" "}
-                <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Nombre de tarea</code>,{" "}
-                <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Comienzo</code>,{" "}
-                <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Fin</code>,{" "}
-                <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Predecesoras</code>,{" "}
-                <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Crítica</code> en{" "}
-                <code>.xlsx</code> o <code>.csv</code>.
+                {isEn ? (
+                  <>
+                    <strong>Option 2 (Excel / CSV):</strong> Export columns{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Task Name</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Start</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Finish</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Predecessors</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Critical</code> as{" "}
+                    <code>.xlsx</code> or <code>.csv</code>.
+                  </>
+                ) : (
+                  <>
+                    <strong>Opción 2 (Excel / CSV):</strong> Exporta o copia tus columnas{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Nombre de tarea</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Comienzo</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Fin</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Predecesoras</code>,{" "}
+                    <code className="px-1 py-0.5 rounded bg-white border border-sky-200">Crítica</code> en{" "}
+                    <code>.xlsx</code> o <code>.csv</code>.
+                  </>
+                )}
               </li>
             </ul>
           </div>
@@ -972,40 +1197,44 @@ export default function TabCurvaS({
               onClick={() => setStatusBanner(null)}
               className="ml-3 text-[11px] opacity-70 hover:opacity-100 cursor-pointer"
             >
-              ✕
+              <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {/* Tarjetas EVM 4D */}
+        {/* 4D EVM Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="steel-subcard rounded-2xl p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Valor Planeado a Corte (PV)
+              {isEn ? "Planned Value at Cutoff (PV)" : "Valor Planeado a Corte (PV)"}
             </p>
             <p className="text-2xl font-extrabold text-slate-900 mt-1 kpi-num">
-              {formatCOP(pv)}
+              {formatMoney(pv, moneyDecimals)}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              {pvPct.toFixed(1)}% programado al {formatShortDateEs(fechaCorte)}
+              {pvPct.toFixed(1)}%{" "}
+              {isEn
+                ? `scheduled through ${formatShortDate(fechaCorte, lang)}`
+                : `programado al ${formatShortDate(fechaCorte, lang)}`}
             </p>
           </div>
 
           <div className="steel-subcard rounded-2xl p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Valor Ganado Real (EV)
+              {isEn ? "Actual Earned Value (EV)" : "Valor Ganado Real (EV)"}
             </p>
             <p className="text-2xl font-extrabold text-slate-900 mt-1 kpi-num">
-              {formatCOP(ev)}
+              {formatMoney(ev, moneyDecimals)}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              {evPct.toFixed(1)}% físico ejecutado en obra
+              {evPct.toFixed(1)}%{" "}
+              {isEn ? "physical progress on site" : "físico ejecutado en obra"}
             </p>
           </div>
 
           <div className="steel-subcard rounded-2xl p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Índice Desempeño Plazo (SPI)
+              {isEn ? "Schedule Performance (SPI)" : "Índice Desempeño Plazo (SPI)"}
             </p>
             <p
               className={`text-2xl font-extrabold mt-1 kpi-num ${
@@ -1014,18 +1243,27 @@ export default function TabCurvaS({
             >
               {spi.toFixed(2)}
             </p>
-            <p className="text-xs text-slate-500 mt-1">
-              {spi >= 1
-                ? "Adelantado o en línea 4D"
-                : spi >= 0.85
-                ? "Leve retraso controlable"
-                : "⚠️ Desfase frente a línea base"}
+            <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+              {spi < 0.85 && <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />}
+              <span>
+                {spi >= 1
+                  ? isEn
+                    ? "Ahead or on 4D schedule"
+                    : "Adelantado o en línea 4D"
+                  : spi >= 0.85
+                  ? isEn
+                    ? "Manageable minor variance"
+                    : "Leve retraso controlable"
+                  : isEn
+                  ? "Schedule slippage vs. baseline"
+                  : "Desfase frente a línea base"}
+              </span>
             </p>
           </div>
 
           <div className="steel-subcard rounded-2xl p-4">
             <p className="text-[11px] font-bold uppercase tracking-wider text-slate-500">
-              Índice Desempeño Costo (CPI)
+              {isEn ? "Cost Performance (CPI)" : "Índice Desempeño Costo (CPI)"}
             </p>
             <p
               className={`text-2xl font-extrabold mt-1 kpi-num ${
@@ -1035,16 +1273,23 @@ export default function TabCurvaS({
               {cpi.toFixed(2)}
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              {cpi >= 1 ? "Control eficiente de APU" : "Sobrecosto detectado en ítems"}
+              {cpi >= 1
+                ? isEn
+                  ? "Efficient BOQ cost control"
+                  : "Control eficiente de APU"
+                : isEn
+                ? "Cost overrun detected in items"
+                : "Sobrecosto detectado en ítems"}
             </p>
           </div>
         </div>
 
-        {/* Simulador Interactivo de Fecha de Corte 4D */}
+        {/* 4D Cutoff Interactive Slider */}
         <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 flex flex-wrap items-center gap-4">
           <div className="flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-slate-700" />
             <span className="text-xs font-extrabold text-slate-800">
-              🎞️ Corte / Simulador 4D:
+              {isEn ? "4D Cutoff / Simulator:" : "Corte / Simulador 4D:"}
             </span>
             <input
               type="date"
@@ -1059,13 +1304,13 @@ export default function TabCurvaS({
               onClick={() => setFechaCorte(getTodayIso())}
               className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-[11px] font-bold hover:bg-slate-800 cursor-pointer"
             >
-              Hoy
+              {isEn ? "Today" : "Hoy"}
             </button>
           </div>
 
           <div className="flex-1 min-w-[200px] flex items-center gap-3">
             <span className="text-[11px] font-mono text-slate-500">
-              {formatShortDateEs(curvaSeries.startIso)}
+              {formatShortDate(curvaSeries.startIso, lang)}
             </span>
             <input
               type="range"
@@ -1079,41 +1324,54 @@ export default function TabCurvaS({
               className="flex-1 accent-slate-800 cursor-pointer"
             />
             <span className="text-[11px] font-mono text-slate-500">
-              {formatShortDateEs(curvaSeries.endIso)}
+              {formatShortDate(curvaSeries.endIso, lang)}
             </span>
           </div>
 
           <div className="text-xs text-slate-600 font-semibold">
-            Duración total:{" "}
-            <span className="text-slate-900 font-bold">{curvaSeries.totalDays} días</span>
+            {isEn ? "Total duration:" : "Duración total:"}{" "}
+            <span className="text-slate-900 font-bold">
+              {curvaSeries.totalDays} {isEn ? "days" : "días"}
+            </span>
           </div>
         </div>
       </div>
 
-      {/* Formulario colapsable para agregar nueva tarea al MS Project 4D */}
+      {/* Collapsible New Task Form */}
       {showAddForm && (
         <form
           onSubmit={handleAddTask}
           className="bento-card p-5 border-2 border-slate-300 space-y-4"
         >
           <div className="flex items-center justify-between">
-            <h4 className="text-sm font-extrabold text-slate-900">
-              ➕ Agregar Actividad al Cronograma MS Project 4D
+            <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-1.5">
+              <Plus className="w-4 h-4 text-slate-700" />
+              <span>
+                {isEn
+                  ? "Add Activity to 4D MS Project Schedule"
+                  : "Agregar Actividad al Cronograma MS Project 4D"}
+              </span>
             </h4>
             <span className="text-[11px] text-slate-500">
-              Se guarda automáticamente en el proyecto local
+              {isEn
+                ? "Automatically saved in local project workspace"
+                : "Se guarda automáticamente en el proyecto local"}
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
             <div className="lg:col-span-2">
               <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Nombre de la Tarea *
+                {isEn ? "Task Name *" : "Nombre de la Tarea *"}
               </label>
               <input
                 type="text"
                 required
-                placeholder="Ej: Instalación Ventanería Fachada"
+                placeholder={
+                  isEn
+                    ? "e.g. Aluminum Facade Glazing"
+                    : "Ej: Instalación Ventanería Fachada"
+                }
                 value={newNombre}
                 onChange={(e) => setNewNombre(e.target.value)}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs"
@@ -1122,11 +1380,11 @@ export default function TabCurvaS({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                EDT / WBS
+                {isEn ? "WBS" : "EDT / WBS"}
               </label>
               <input
                 type="text"
-                placeholder="Ej: 4.7"
+                placeholder={isEn ? "e.g. 4.7" : "Ej: 4.7"}
                 value={newWbs}
                 onChange={(e) => setNewWbs(e.target.value)}
                 className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs"
@@ -1135,7 +1393,7 @@ export default function TabCurvaS({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Comienzo
+                {isEn ? "Start" : "Comienzo"}
               </label>
               <input
                 type="date"
@@ -1147,7 +1405,7 @@ export default function TabCurvaS({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Fin
+                {isEn ? "Finish" : "Fin"}
               </label>
               <input
                 type="date"
@@ -1159,19 +1417,19 @@ export default function TabCurvaS({
 
             <div>
               <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                Predecesora
+                {isEn ? "Predecessor" : "Predecesora"}
               </label>
               <select
                 value={newPred}
                 onChange={(e) => setNewPred(e.target.value)}
                 className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
               >
-                <option value="">Ninguna</option>
+                <option value="">{isEn ? "None" : "Ninguna"}</option>
                 {rawTasks
                   .filter((t) => !t.esResumen)
                   .map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.wbs} · {t.nombre.slice(0, 28)}
+                      {t.wbs} · {localizeGanttTaskName(t, lang).slice(0, 28)}
                     </option>
                   ))}
               </select>
@@ -1187,22 +1445,25 @@ export default function TabCurvaS({
                   onChange={(e) => setNewCritica(e.target.checked)}
                   className="rounded border-slate-300"
                 />
-                🔥 Marcar en Ruta Crítica
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+                <span>{isEn ? "Flag Critical Path" : "Marcar en Ruta Crítica"}</span>
               </label>
 
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold text-slate-600">
-                  Vincular Ítem APU (Bitácora):
+                  {isEn ? "Link BOQ Item (Field Log):" : "Vincular Ítem APU (Bitácora):"}
                 </span>
                 <select
                   value={newMatchItem}
                   onChange={(e) => setNewMatchItem(e.target.value)}
                   className="px-2.5 py-1 rounded-lg border border-slate-300 text-xs bg-white max-w-[260px]"
                 >
-                  <option value="">Auto-emparejar por nombre</option>
+                  <option value="">
+                    {isEn ? "Auto-match by name" : "Auto-emparejar por nombre"}
+                  </option>
                   {(proyecto.ppto_base || []).map((it) => (
                     <option key={it.Item} value={it.Item}>
-                      {it.Item} · {it.Actividad.slice(0, 38)}
+                      {it.Item} · {localizeActivity(it.Actividad, lang).slice(0, 38)}
                     </option>
                   ))}
                 </select>
@@ -1213,60 +1474,87 @@ export default function TabCurvaS({
               type="submit"
               className="steel-btn-primary px-4 py-2 rounded-xl text-xs font-bold cursor-pointer"
             >
-              Guardar Tarea 4D
+              {isEn ? "Save 4D Task" : "Guardar Tarea 4D"}
             </button>
           </div>
         </form>
       )}
 
-      {/* DIAGRAMA DE GANTT MS PROJECT DUAL-PANE */}
+      {/* DUAL-PANE MS PROJECT GANTT CHART */}
       <div className="bento-card p-5 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h4 className="text-base font-extrabold text-slate-900">
-              📊 Diagrama de Gantt MS Project — Control de Plazo 4D
+            <h4 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <BarChart3 className="w-4 h-4 text-slate-800 shrink-0" />
+              <span>
+                {isEn
+                  ? "MS Project Gantt Diagram — 4D Schedule Control"
+                  : "Diagrama de Gantt MS Project — Control de Plazo 4D"}
+              </span>
             </h4>
             <p className="text-xs text-slate-500">
-              Haz clic sobre cualquier actividad o barra para editar fechas, % manual o ruta crítica.
+              {isEn
+                ? "Click any task or bar to edit dates, manual % override, or critical path flag."
+                : "Haz clic sobre cualquier actividad o barra para editar fechas, % manual o ruta crítica."}
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
-            {/* Buscador */}
-            <input
-              type="text"
-              placeholder="🔍 Filtrar EDT o tarea..."
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-slate-300 text-xs w-44 bg-white"
-            />
+            {/* Search */}
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2" />
+              <input
+                type="text"
+                placeholder={isEn ? "Filter WBS or task..." : "Filtrar EDT o tarea..."}
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                className="pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs w-44 bg-white"
+              />
+            </div>
 
-            {/* Filtros de estado */}
+            {/* Status filters */}
             <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px] font-bold">
               {(
                 [
-                  ["todas", `Todas (${summaryCounts.total})`],
-                  ["criticas", `🔥 Crítica (${summaryCounts.criticas})`],
-                  ["atrasadas", `⚠️ Atraso (${summaryCounts.atrasadas})`],
-                  ["completadas", `✅ Listas (${summaryCounts.completadas})`],
+                  {
+                    key: "todas",
+                    label: `${isEn ? "All" : "Todas"} (${summaryCounts.total})`,
+                    icon: null,
+                  },
+                  {
+                    key: "criticas",
+                    label: `${isEn ? "Critical" : "Crítica"} (${summaryCounts.criticas})`,
+                    icon: <Flame className="w-3 h-3 text-rose-500" />,
+                  },
+                  {
+                    key: "atrasadas",
+                    label: `${isEn ? "Delayed" : "Atraso"} (${summaryCounts.atrasadas})`,
+                    icon: <AlertTriangle className="w-3 h-3 text-amber-500" />,
+                  },
+                  {
+                    key: "completadas",
+                    label: `${isEn ? "Done" : "Listas"} (${summaryCounts.completadas})`,
+                    icon: <CheckCircle2 className="w-3 h-3 text-emerald-500" />,
+                  },
                 ] as const
-              ).map(([key, label]) => (
+              ).map((item) => (
                 <button
-                  key={key}
+                  key={item.key}
                   type="button"
-                  onClick={() => setFiltroEstado(key)}
-                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer ${
-                    filtroEstado === key
+                  onClick={() => setFiltroEstado(item.key)}
+                  className={`px-2.5 py-1 rounded-lg transition cursor-pointer inline-flex items-center gap-1 ${
+                    filtroEstado === item.key
                       ? "bg-slate-900 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
-                  {label}
+                  {item.icon}
+                  <span>{item.label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Escala temporal */}
+            {/* Timescale */}
             <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-[11px] font-bold">
               <button
                 type="button"
@@ -1277,7 +1565,7 @@ export default function TabCurvaS({
                     : "text-slate-500"
                 }`}
               >
-                Semanas
+                {isEn ? "Weeks" : "Semanas"}
               </button>
               <button
                 type="button"
@@ -1288,75 +1576,85 @@ export default function TabCurvaS({
                     : "text-slate-500"
                 }`}
               >
-                Días
+                {isEn ? "Days" : "Días"}
               </button>
             </div>
 
-            {/* Toggle predecesoras SVG */}
+            {/* Predecessor links SVG */}
             <button
               type="button"
               onClick={() => setMostrarDependencias((v) => !v)}
-              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border cursor-pointer ${
+              className={`px-2.5 py-1.5 rounded-xl text-[11px] font-bold border cursor-pointer inline-flex items-center gap-1 ${
                 mostrarDependencias
                   ? "bg-slate-900 text-white border-slate-900"
                   : "bg-white text-slate-600 border-slate-300"
               }`}
             >
-              🔗 Enlaces FS
+              <Link2 className="w-3 h-3" />
+              <span>{isEn ? "FS Links" : "Enlaces FS"}</span>
             </button>
           </div>
         </div>
 
-        {/* Leyenda visual */}
+        {/* Visual Legend */}
         <div className="flex flex-wrap items-center gap-4 text-[11px] font-semibold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2">
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-2.5 rounded-sm bg-slate-800 inline-block" /> Capítulo / Resumen
+            <span className="w-3 h-2.5 rounded-sm bg-slate-800 inline-block" />
+            {isEn ? "Chapter / Summary" : "Capítulo / Resumen"}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-2.5 rounded-sm bg-rose-500 inline-block" /> Ruta Crítica
+            <span className="w-3 h-2.5 rounded-sm bg-rose-500 inline-block" />
+            {isEn ? "Critical Path" : "Ruta Crítica"}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-2.5 rounded-sm bg-sky-600 inline-block" /> En Ejecución / Normal
+            <span className="w-3 h-2.5 rounded-sm bg-sky-600 inline-block" />
+            {isEn ? "In Progress / Normal" : "En Ejecución / Normal"}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-2.5 rounded-sm bg-emerald-500 inline-block" /> Completado Real (Bitácora)
+            <span className="w-3 h-2.5 rounded-sm bg-emerald-500 inline-block" />
+            {isEn ? "100% Built (Field Log)" : "Completado Real (Bitácora)"}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="inline-block w-2.5 h-2.5 bg-amber-500 rotate-45" /> Hito
+            <span className="inline-block w-2.5 h-2.5 bg-amber-500 rotate-45" />
+            {isEn ? "Milestone" : "Hito"}
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-0.5 h-3.5 bg-rose-600 inline-block" /> Línea Corte 4D ({formatShortDateEs(fechaCorte)})
+            <span className="w-0.5 h-3.5 bg-rose-600 inline-block" />
+            {isEn
+              ? `4D Cutoff Line (${formatShortDate(fechaCorte, lang)})`
+              : `Línea Corte 4D (${formatShortDate(fechaCorte, lang)})`}
           </span>
         </div>
 
-        {/* Contenedor Sincronizado Izquierda (WBS) + Derecha (Timeline Horizontal Scrollable) */}
+        {/* Dual-Pane Container */}
         <div className="border border-slate-300 rounded-2xl overflow-hidden bg-white shadow-inner">
           <div className="overflow-x-auto max-h-[560px] overflow-y-auto relative">
             <div className="flex min-w-max">
-              {/* PANEL IZQUIERDO STICKY: Tabla WBS estilo MS Project */}
+              {/* LEFT STICKY PANE: WBS Table */}
               <div className="w-[450px] min-w-[450px] sticky left-0 z-20 bg-white border-r-2 border-slate-300 shadow-[4px_0_12px_-4px_rgba(15,23,42,0.12)]">
-                {/* Header fijo WBS */}
                 <div
                   style={{ height: TIMELINE_HEADER_HEIGHT }}
                   className="bg-slate-900 text-slate-100 text-[10px] font-bold uppercase tracking-wider grid grid-cols-[44px_1fr_64px_64px_42px_52px] items-center px-2 border-b border-slate-700 sticky top-0 z-30"
                 >
-                  <span>EDT</span>
-                  <span>Nombre de Tarea / Capítulo</span>
-                  <span className="text-center">Comienzo</span>
-                  <span className="text-center">Fin</span>
-                  <span className="text-center">Días</span>
-                  <span className="text-right pr-1">% Real</span>
+                  <span>{isEn ? "WBS" : "EDT"}</span>
+                  <span>{isEn ? "Task / Phase Name" : "Nombre de Tarea / Capítulo"}</span>
+                  <span className="text-center">{isEn ? "Start" : "Comienzo"}</span>
+                  <span className="text-center">{isEn ? "Finish" : "Fin"}</span>
+                  <span className="text-center">{isEn ? "Days" : "Días"}</span>
+                  <span className="text-right pr-1">{isEn ? "% Act" : "% Real"}</span>
                 </div>
 
-                {/* Filas WBS */}
                 <div>
                   {visibleTasks.length === 0 ? (
                     <div className="p-6 text-xs text-slate-500 text-center">
-                      No hay tareas que coincidan con el filtro aplicado.
+                      {isEn
+                        ? "No tasks match the current filter."
+                        : "No hay tareas que coincidan con el filtro aplicado."}
                     </div>
                   ) : (
                     visibleTasks.map((t) => {
                       const isSelected = t.id === selectedTaskId;
+                      const localizedTitle = localizeGanttTaskName(t, lang);
                       return (
                         <div
                           key={t.id}
@@ -1377,21 +1675,21 @@ export default function TabCurvaS({
                             {t.rutaCritica && !t.esResumen && (
                               <span
                                 className="w-1.5 h-1.5 rounded-full bg-rose-500 shrink-0"
-                                title="Ruta Crítica"
+                                title={isEn ? "Critical Path" : "Ruta Crítica"}
                               />
                             )}
                             <span
                               className="truncate"
-                              title={`${t.wbs} · ${t.nombre}`}
+                              title={`${t.wbs} · ${localizedTitle}`}
                             >
-                              {t.nombre}
+                              {localizedTitle}
                             </span>
                           </div>
                           <span className="text-center font-mono text-[10px] text-slate-500">
-                            {formatShortDateEs(t.inicio)}
+                            {formatShortDate(t.inicio, lang)}
                           </span>
                           <span className="text-center font-mono text-[10px] text-slate-500">
-                            {formatShortDateEs(t.fin)}
+                            {formatShortDate(t.fin, lang)}
                           </span>
                           <span className="text-center font-mono text-[10px] text-slate-600">
                             {t.esHito ? "0d" : `${t.duracionDias}d`}
@@ -1420,17 +1718,15 @@ export default function TabCurvaS({
                 </div>
               </div>
 
-              {/* PANEL DERECHO: Timeline Gantt + Barras + Predecesoras SVG */}
+              {/* RIGHT PANE: Gantt Timeline */}
               <div
                 style={{ width: timelineGeometry.widthPx }}
                 className="relative bg-white shrink-0"
               >
-                {/* Cabecera Meses + Semanas/Días */}
                 <div
                   style={{ height: TIMELINE_HEADER_HEIGHT }}
                   className="sticky top-0 z-10 bg-slate-900 text-slate-100 border-b border-slate-700 select-none"
                 >
-                  {/* Fila superior: Meses */}
                   <div className="relative h-[22px] border-b border-slate-700/80">
                     {timelineGeometry.months.map((m) => (
                       <div
@@ -1443,7 +1739,6 @@ export default function TabCurvaS({
                     ))}
                   </div>
 
-                  {/* Fila inferior: Ticks (Semanas o Días) */}
                   <div className="relative h-[28px]">
                     {timelineGeometry.ticks.map((tk, i) => (
                       <div
@@ -1459,14 +1754,12 @@ export default function TabCurvaS({
                   </div>
                 </div>
 
-                {/* Cuerpo del Timeline */}
                 <div
                   style={{
                     height: Math.max(ROW_HEIGHT, visibleTasks.length * ROW_HEIGHT),
                   }}
                   className="relative"
                 >
-                  {/* Líneas verticales de cuadrícula + fines de semana */}
                   {timelineGeometry.ticks.map((tk, i) => (
                     <div
                       key={i}
@@ -1477,7 +1770,6 @@ export default function TabCurvaS({
                     />
                   ))}
 
-                  {/* Bandas horizontales alternas por fila */}
                   {visibleTasks.map((t, idx) => (
                     <div
                       key={`bg-${t.id}`}
@@ -1492,7 +1784,6 @@ export default function TabCurvaS({
                     />
                   ))}
 
-                  {/* Capa SVG: Conectores Finish-to-Start de Predecesoras */}
                   {mostrarDependencias && barPositions.links.length > 0 && (
                     <svg
                       width={timelineGeometry.widthPx}
@@ -1538,10 +1829,10 @@ export default function TabCurvaS({
                     </svg>
                   )}
 
-                  {/* Barras Gantt de cada tarea */}
                   {barPositions.items.map(({ task, idx, startX, barW }) => {
                     const topRow = idx * ROW_HEIGHT;
                     const pctFill = Math.min(100, Math.max(0, task.pctReal));
+                    const taskName = localizeGanttTaskName(task, lang);
 
                     if (task.esHito) {
                       return (
@@ -1550,11 +1841,11 @@ export default function TabCurvaS({
                           onClick={() => setSelectedTaskId(task.id)}
                           style={{ top: topRow + 13, left: startX }}
                           className="absolute flex items-center gap-2 z-[4] cursor-pointer group"
-                          title={`${task.nombre} (${task.inicio})`}
+                          title={`${taskName} (${task.inicio})`}
                         >
                           <div className="w-4 h-4 bg-amber-500 border-2 border-amber-700 rotate-45 shadow-sm group-hover:scale-110 transition-transform" />
                           <span className="text-[10px] font-extrabold text-amber-800 whitespace-nowrap bg-amber-50/90 px-1.5 py-0.5 rounded border border-amber-200">
-                            {formatShortDateEs(task.inicio)} · {task.nombre.replace("◆ ", "")}
+                            {formatShortDate(task.inicio, lang)} · {taskName.replace("◆ ", "")}
                           </span>
                         </div>
                       );
@@ -1567,14 +1858,12 @@ export default function TabCurvaS({
                           onClick={() => setSelectedTaskId(task.id)}
                           style={{ top: topRow + 14, left: startX, width: barW }}
                           className="absolute h-3 bg-slate-800 rounded-t-sm z-[4] cursor-pointer"
-                          title={`${task.nombre}: ${pctFill.toFixed(1)}% real`}
+                          title={`${taskName}: ${pctFill.toFixed(1)}%`}
                         >
-                          {/* Progreso acumulado del capítulo */}
                           <div
                             style={{ width: `${pctFill}%` }}
                             className="h-full bg-emerald-400/90 rounded-tl-sm"
                           />
-                          {/* Puntas bracket características de MS Project Summary Bar */}
                           <div className="absolute -bottom-1.5 left-0 w-1.5 h-2 bg-slate-800" />
                           <div className="absolute -bottom-1.5 right-0 w-1.5 h-2 bg-slate-800" />
                         </div>
@@ -1597,9 +1886,17 @@ export default function TabCurvaS({
                         onClick={() => setSelectedTaskId(task.id)}
                         style={{ top: topRow + 9, left: startX, width: barW }}
                         className={`absolute h-6 rounded-md border ${trackClass} z-[4] cursor-pointer shadow-sm hover:brightness-95 transition flex items-center overflow-visible`}
-                        title={`${task.wbs} · ${task.nombre}\nInicio: ${task.inicio} | Fin: ${task.fin}\nReal: ${pctFill.toFixed(
-                          1
-                        )}% vs Prog: ${task.pctProgramado.toFixed(1)}% (${task.estadoLabel})`}
+                        title={`${task.wbs} · ${taskName}\n${
+                          isEn ? "Start" : "Inicio"
+                        }: ${task.inicio} | ${isEn ? "Finish" : "Fin"}: ${task.fin}\n${
+                          isEn ? "Actual" : "Real"
+                        }: ${pctFill.toFixed(1)}% vs ${
+                          isEn ? "Plan" : "Prog"
+                        }: ${task.pctProgramado.toFixed(1)}% (${localizeGanttStatus(
+                          task.estado,
+                          task.estadoLabel,
+                          lang
+                        )})`}
                       >
                         <div
                           style={{ width: `${pctFill}%` }}
@@ -1608,26 +1905,26 @@ export default function TabCurvaS({
                           } ${fillClass} transition-all duration-300`}
                         />
 
-                        {/* Etiqueta de avance / alerta fuera a la derecha de la barra */}
                         <span
                           style={{ left: barW + 6 }}
-                          className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold text-slate-600 pointer-events-none"
+                          className="absolute top-1/2 -translate-y-1/2 whitespace-nowrap text-[10px] font-bold text-slate-600 pointer-events-none inline-flex items-center gap-1"
                         >
                           {pctFill > 0 ? `${formatNum(pctFill, 0)}%` : ""}
-                          {task.estado === "retrasada" ? " ⚠️" : ""}
+                          {task.estado === "retrasada" && (
+                            <AlertTriangle className="w-3 h-3 text-rose-500 inline" />
+                          )}
                         </span>
                       </div>
                     );
                   })}
 
-                  {/* Línea vertical roja de Corte 4D / HOY */}
                   {timelineGeometry.showCorteLine && (
                     <div
                       style={{ left: timelineGeometry.corteX }}
                       className="absolute top-0 bottom-0 w-0.5 bg-rose-600 z-[8] pointer-events-none"
                     >
-                      <div className="sticky top-0 -translate-x-1/2 bg-rose-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-b shadow">
-                        CORTE 4D
+                      <div className="sticky top-0 -translate-x-1/2 bg-rose-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-b shadow whitespace-nowrap">
+                        {isEn ? "4D CUTOFF" : "CORTE 4D"}
                       </div>
                     </div>
                   )}
@@ -1638,17 +1935,17 @@ export default function TabCurvaS({
         </div>
       </div>
 
-      {/* PANEL INSPECTOR / EDITOR RÁPIDO DE TAREA SELECCIONADA */}
+      {/* SELECTED TASK QUICK EDITOR */}
       {selectedTask && (
         <div className="bento-card p-5 border-2 border-slate-900/15 bg-slate-50 space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
                 <span className="px-2 py-0.5 rounded bg-slate-900 text-white text-[10px] font-mono font-bold">
-                  EDT {selectedTask.wbs}
+                  {isEn ? "WBS" : "EDT"} {selectedTask.wbs}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  {selectedTask.capitulo || "General"}
+                  {localizeChapter(selectedTask.capitulo || "General", lang)}
                 </span>
                 <span
                   className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1659,11 +1956,11 @@ export default function TabCurvaS({
                       : "bg-slate-200 text-slate-700"
                   }`}
                 >
-                  {selectedTask.estadoLabel}
+                  {localizeGanttStatus(selectedTask.estado, selectedTask.estadoLabel, lang)}
                 </span>
               </div>
               <h5 className="text-sm font-extrabold text-slate-900 mt-1">
-                {selectedTask.nombre}
+                {localizeGanttTaskName(selectedTask, lang)}
               </h5>
             </div>
 
@@ -1671,16 +1968,18 @@ export default function TabCurvaS({
               <button
                 type="button"
                 onClick={() => handleDeleteTask(selectedTask.id)}
-                className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-bold hover:bg-rose-100 cursor-pointer inline-flex items-center gap-1"
               >
-                🗑️ Eliminar
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isEn ? "Delete" : "Eliminar"}</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedTaskId(null)}
-                className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-white border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100 cursor-pointer inline-flex items-center gap-1"
               >
-                Cerrar ✕
+                <span>{isEn ? "Close" : "Cerrar"}</span>
+                <X className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -1688,7 +1987,7 @@ export default function TabCurvaS({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                Fecha Comienzo
+                {isEn ? "Start Date" : "Fecha Comienzo"}
               </label>
               <input
                 type="date"
@@ -1703,7 +2002,7 @@ export default function TabCurvaS({
 
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                Fecha Fin
+                {isEn ? "Finish Date" : "Fecha Fin"}
               </label>
               <input
                 type="date"
@@ -1718,7 +2017,7 @@ export default function TabCurvaS({
 
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                % Manual (si no vincula APU)
+                {isEn ? "Manual % (if unlinked)" : "% Manual (si no vincula APU)"}
               </label>
               <input
                 type="number"
@@ -1736,11 +2035,11 @@ export default function TabCurvaS({
 
             <div>
               <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
-                Programado a Corte / Real
+                {isEn ? "Planned vs. Actual" : "Programado a Corte / Real"}
               </label>
               <div className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white font-mono text-xs text-slate-700">
-                Prog: {selectedTask.pctProgramado.toFixed(1)}% · Real:{" "}
-                {selectedTask.pctReal.toFixed(1)}%
+                {isEn ? "Plan" : "Prog"}: {selectedTask.pctProgramado.toFixed(1)}% ·{" "}
+                {isEn ? "Act" : "Real"}: {selectedTask.pctReal.toFixed(1)}%
               </div>
             </div>
 
@@ -1753,30 +2052,39 @@ export default function TabCurvaS({
                     handleUpdateSelectedTask({ rutaCritica: e.target.checked })
                   }
                 />
-                🔥 Ruta Crítica
+                <Flame className="w-3.5 h-3.5 text-rose-500" />
+                <span>{isEn ? "Critical Path" : "Ruta Crítica"}</span>
               </label>
             </div>
           </div>
         </div>
       )}
 
-      {/* GRÁFICO CURVA S (SINCRONIZADO EN VIVO CON GANTT 4D Y BITÁCORA) */}
+      {/* S-CURVE CHART */}
       <div className="bento-card p-6">
         <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
           <div>
-            <h4 className="text-sm font-extrabold text-slate-900">
-              📉 Trayectoria Curva S: Programado (MS Project) vs. Avance Real (%)
+            <h4 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+              <TrendingDown className="w-4 h-4 text-slate-800 shrink-0" />
+              <span>
+                {isEn
+                  ? "S-Curve Trajectory: Scheduled (MS Project) vs. Actual Progress (%)"
+                  : "Trayectoria Curva S: Programado (MS Project) vs. Avance Real (%)"}
+              </span>
             </h4>
             <p className="text-xs text-slate-500">
-              Calculada dinámicamente ponderando las actividades del Gantt activo hasta{" "}
+              {isEn
+                ? "Dynamically computed from active Gantt weights through "
+                : "Calculada dinámicamente ponderando las actividades del Gantt activo hasta "}
               <span className="font-semibold text-slate-700">
-                {formatShortDateEs(fechaCorte)}
+                {formatShortDate(fechaCorte, lang)}
               </span>
               .
             </p>
           </div>
           <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-700">
-            Corte actual: PV {pvPct.toFixed(1)}% · EV {evPct.toFixed(1)}%
+            {isEn ? "Current cutoff:" : "Corte actual:"} PV {pvPct.toFixed(1)}% · EV{" "}
+            {evPct.toFixed(1)}%
           </span>
         </div>
 
@@ -1789,6 +2097,9 @@ export default function TabCurvaS({
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
               <XAxis
                 dataKey="semana"
+                tickFormatter={(v) =>
+                  isEn ? String(v).replace(/^Sem\b/i, "Wk") : String(v)
+                }
                 tick={{ fontSize: 11, fill: "#475569" }}
               />
               <YAxis
@@ -1799,19 +2110,24 @@ export default function TabCurvaS({
               <Tooltip
                 formatter={(v) => `${Number(v).toFixed(1)}%`}
                 labelFormatter={(label, payload) => {
-                  const p = payload?.[0]?.payload as
-                    | { fechaIso?: string }
-                    | undefined;
-                  return p?.fechaIso
-                    ? `${label} (${formatShortDateEs(p.fechaIso)})`
+                  const cleanLabel = isEn
+                    ? String(label).replace(/^Sem\b/i, "Wk")
                     : String(label);
+                  const p = payload?.[0]?.payload as { fechaIso?: string } | undefined;
+                  return p?.fechaIso
+                    ? `${cleanLabel} (${formatShortDate(p.fechaIso, lang)})`
+                    : cleanLabel;
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
               <Line
                 type="monotone"
                 dataKey="Programado"
-                name="Línea Base Programada (MS Project)"
+                name={
+                  isEn
+                    ? "Scheduled Baseline (MS Project)"
+                    : "Línea Base Programada (MS Project)"
+                }
                 stroke="#64748b"
                 strokeWidth={2.5}
                 strokeDasharray="6 4"
@@ -1820,7 +2136,11 @@ export default function TabCurvaS({
               <Area
                 type="monotone"
                 dataKey="Real"
-                name="Avance Físico Real (Bitácora)"
+                name={
+                  isEn
+                    ? "Actual Physical Progress (Field Log)"
+                    : "Avance Físico Real (Bitácora)"
+                }
                 stroke="#0284c7"
                 fill="#0284c7"
                 fillOpacity={0.22}
@@ -1832,20 +2152,23 @@ export default function TabCurvaS({
         </div>
       </div>
 
-      {/* MODAL API & MACRO VBA MICROSOFT PROJECT PROFESIONAL 2021 */}
+      {/* API & VBA MODAL */}
       {showApiModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-3xl w-full max-h-[92vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Cabecera del Modal */}
             <div className="p-5 border-b border-slate-200 flex items-center justify-between bg-slate-900 text-white">
               <div className="flex items-center gap-3">
-                <span className="text-2xl">⚡</span>
+                <Zap className="w-6 h-6 text-amber-400 shrink-0" />
                 <div>
                   <h3 className="text-base font-extrabold tracking-tight">
-                    API en Tiempo Real · Microsoft Project Profesional 2021
+                    {isEn
+                      ? "Real-Time API · Microsoft Project Professional 2021"
+                      : "API en Tiempo Real · Microsoft Project Profesional 2021"}
                   </h3>
                   <p className="text-xs text-slate-300">
-                    Sincronización instantánea de tu cronograma de escritorio con la Curva S y Plazo 4D
+                    {isEn
+                      ? "Instant synchronization between Desktop MS Project and your 4D S-Curve & Gantt."
+                      : "Sincronización instantánea de tu cronograma de escritorio con la Curva S y Plazo 4D"}
                   </p>
                 </div>
               </div>
@@ -1854,58 +2177,67 @@ export default function TabCurvaS({
                 onClick={() => setShowApiModal(false)}
                 className="w-8 h-8 rounded-lg bg-slate-800 text-slate-300 hover:text-white hover:bg-slate-700 flex items-center justify-center text-sm font-bold transition cursor-pointer"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Pestañas del Modal */}
             <div className="flex border-b border-slate-200 bg-slate-50 px-5 pt-3 gap-2">
               <button
                 type="button"
                 onClick={() => setActiveApiTab("vba")}
-                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer ${
+                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer inline-flex items-center gap-1.5 ${
                   activeApiTab === "vba"
                     ? "border-indigo-600 text-indigo-700 bg-white"
                     : "border-transparent text-slate-600 hover:text-slate-900"
                 }`}
               >
-                💻 Código Macro VBA (MS Project)
+                <Code2 className="w-3.5 h-3.5" />
+                <span>
+                  {isEn ? "VBA Macro Code (MS Project)" : "Código Macro VBA (MS Project)"}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveApiTab("instrucciones")}
-                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer ${
+                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer inline-flex items-center gap-1.5 ${
                   activeApiTab === "instrucciones"
                     ? "border-indigo-600 text-indigo-700 bg-white"
                     : "border-transparent text-slate-600 hover:text-slate-900"
                 }`}
               >
-                📋 Guía Paso a Paso (Alt + F11)
+                <ClipboardList className="w-3.5 h-3.5" />
+                <span>
+                  {isEn ? "Step-by-Step Guide (Alt + F11)" : "Guía Paso a Paso (Alt + F11)"}
+                </span>
               </button>
               <button
                 type="button"
                 onClick={() => setActiveApiTab("prueba")}
-                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer ${
+                className={`px-4 py-2 text-xs font-bold rounded-t-lg transition border-b-2 cursor-pointer inline-flex items-center gap-1.5 ${
                   activeApiTab === "prueba"
                     ? "border-indigo-600 text-indigo-700 bg-white"
                     : "border-transparent text-slate-600 hover:text-slate-900"
                 }`}
               >
-                🧪 Probar API en Vivo
+                <Activity className="w-3.5 h-3.5" />
+                <span>{isEn ? "Test Live API" : "Probar API en Vivo"}</span>
               </button>
             </div>
 
-            {/* Contenido de Pestañas */}
             <div className="p-6 overflow-y-auto flex-1 space-y-4 text-xs text-slate-700">
               {activeApiTab === "vba" && (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <div>
                       <p className="font-bold text-slate-900 text-sm">
-                        Macro VBA para Microsoft Project Profesional 2021
+                        {isEn
+                          ? "VBA Macro for Microsoft Project Professional 2021"
+                          : "Macro VBA para Microsoft Project Profesional 2021"}
                       </p>
                       <p className="text-slate-500">
-                        Pégalo en tu proyecto de MS Project. Detecta automáticamente si es Casa Mendoza o Mezzanine.
+                        {isEn
+                          ? "Paste it into your MS Project workbook module to push WBS schedules directly."
+                          : "Pégalo en tu proyecto de MS Project para enviar tu programación directo a la nube."}
                       </p>
                     </div>
                     <button
@@ -1917,8 +2249,20 @@ export default function TabCurvaS({
                       }}
                       className="px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition flex items-center gap-1.5 shrink-0 cursor-pointer"
                     >
-                      <span>{copiedVba ? "✓" : "📋"}</span>
-                      <span>{copiedVba ? "¡Copiado!" : "Copiar Código VBA"}</span>
+                      {copiedVba ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <ClipboardList className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {copiedVba
+                          ? isEn
+                            ? "Copied!"
+                            : "¡Copiado!"
+                          : isEn
+                          ? "Copy VBA Code"
+                          : "Copiar Código VBA"}
+                      </span>
                     </button>
                   </div>
 
@@ -1931,20 +2275,36 @@ export default function TabCurvaS({
               {activeApiTab === "instrucciones" && (
                 <div className="space-y-4">
                   <h4 className="font-extrabold text-slate-900 text-sm">
-                    Cómo instalar el sincronizador en Microsoft Project 2021 en 3 pasos:
+                    {isEn
+                      ? "How to install the Microsoft Project 2021 sync in 3 steps:"
+                      : "Cómo instalar el sincronizador en Microsoft Project 2021 en 3 pasos:"}
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                     <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
                       <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
                         1
                       </div>
-                      <h5 className="font-bold text-slate-900">Abrir Editor VBA</h5>
+                      <h5 className="font-bold text-slate-900">
+                        {isEn ? "Open VBA Editor" : "Abrir Editor VBA"}
+                      </h5>
                       <p className="text-slate-600">
-                        En Microsoft Project Profesional 2021 con tu proyecto abierto, presiona en tu teclado{" "}
-                        <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">
-                          Alt + F11
-                        </kbd>
-                        .
+                        {isEn ? (
+                          <>
+                            With your project open in MS Project Pro 2021, press{" "}
+                            <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">
+                              Alt + F11
+                            </kbd>
+                            .
+                          </>
+                        ) : (
+                          <>
+                            En Microsoft Project Profesional 2021 con tu proyecto abierto, presiona{" "}
+                            <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">
+                              Alt + F11
+                            </kbd>
+                            .
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -1952,9 +2312,19 @@ export default function TabCurvaS({
                       <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
                         2
                       </div>
-                      <h5 className="font-bold text-slate-900">Insertar Módulo</h5>
+                      <h5 className="font-bold text-slate-900">
+                        {isEn ? "Insert Module" : "Insertar Módulo"}
+                      </h5>
                       <p className="text-slate-600">
-                        En la barra de menús ve a <strong>Insertar → Módulo</strong>. Se abrirá una ventana en blanco; pega allí el código VBA copiado.
+                        {isEn ? (
+                          <>
+                            Go to <strong>Insert → Module</strong> in the top menu and paste the copied VBA macro.
+                          </>
+                        ) : (
+                          <>
+                            En la barra de menús ve a <strong>Insertar → Módulo</strong>. Se abrirá una ventana en blanco; pega allí el código VBA copiado.
+                          </>
+                        )}
                       </p>
                     </div>
 
@@ -1962,21 +2332,40 @@ export default function TabCurvaS({
                       <div className="w-7 h-7 rounded-full bg-indigo-100 text-indigo-700 font-black flex items-center justify-center text-xs">
                         3
                       </div>
-                      <h5 className="font-bold text-slate-900">Guardar y Ejecutar</h5>
+                      <h5 className="font-bold text-slate-900">
+                        {isEn ? "Save & Run" : "Guardar y Ejecutar"}
+                      </h5>
                       <p className="text-slate-600">
-                        Cierra el editor (<kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px]">Alt + Q</kbd>). Presiona{" "}
-                        <kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">Alt + F8</kbd>
-                        , selecciona <code>SincronizarJGMConTech</code> y haz clic en <strong>Ejecutar</strong>.
+                        {isEn ? (
+                          <>
+                            Close the editor (<kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px]">Alt + Q</kbd>). Press{" "}
+                            <kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">Alt + F8</kbd>
+                            , select <code>SincronizarJGMConTech</code>, and click <strong>Run</strong>.
+                          </>
+                        ) : (
+                          <>
+                            Cierra el editor (<kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px]">Alt + Q</kbd>). Presiona{" "}
+                            <kbd className="px-1 py-0.5 rounded bg-white border border-slate-300 font-mono text-[10px] font-bold">Alt + F8</kbd>
+                            , selecciona <code>SincronizarJGMConTech</code> y haz clic en <strong>Ejecutar</strong>.
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-indigo-200 bg-indigo-50/70 p-4 space-y-1.5">
-                    <p className="font-bold text-indigo-950">
-                      💡 Tip Profesional: Botón de 1 Clic en la Cinta de Opciones de MS Project
+                    <p className="font-bold text-indigo-950 flex items-center gap-1.5">
+                      <Lightbulb className="w-4 h-4 text-indigo-700 shrink-0" />
+                      <span>
+                        {isEn
+                          ? "Pro Tip: 1-Click Ribbon Button in MS Project"
+                          : "Tip Profesional: Botón de 1 Clic en la Cinta de Opciones de MS Project"}
+                      </span>
                     </p>
                     <p className="text-indigo-900 leading-relaxed">
-                      Haz clic derecho sobre cualquier pestaña de MS Project → <em>Personalizar la cinta de opciones</em> → Crea un botón con el icono de rayo o calendario apuntando a la macro <code>SincronizarJGMConTech</code>. ¡Cada vez que hagas un cambio en tus fechas o tareas, le das un clic y tu Curva S en la web se actualiza al instante!
+                      {isEn
+                        ? "Right-click the MS Project Ribbon → Customize the Ribbon → Assign a custom macro button pointing to SincronizarJGMConTech so every schedule change syncs to the web S-Curve in one click."
+                        : "Haz clic derecho sobre cualquier pestaña de MS Project → Personalizar la cinta de opciones → Crea un botón apuntando a la macro SincronizarJGMConTech para actualizar la Curva S web al instante."}
                     </p>
                   </div>
                 </div>
@@ -1986,7 +2375,9 @@ export default function TabCurvaS({
                 <div className="space-y-4">
                   <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-900">Endpoint Oficial de la API:</span>
+                      <span className="font-bold text-slate-900">
+                        {isEn ? "Official API Endpoint:" : "Endpoint Oficial de la API:"}
+                      </span>
                       <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold font-mono text-[10px]">
                         POST · REST
                       </span>
@@ -1995,59 +2386,79 @@ export default function TabCurvaS({
                       https://jagm2000-jgmcontech.vercel.app/api/msproject-sync
                     </code>
                     <p className="text-slate-500 text-[11px]">
-                      Proyecto objetivo actual: <strong>{proyecto.nombre}</strong> (<code>{proyecto.id}</code>)
+                      {isEn ? "Active target project:" : "Proyecto objetivo actual:"}{" "}
+                      <strong>{proyecto.nombre}</strong> (<code>{proyecto.id}</code>)
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <button
                       type="button"
                       onClick={handleTestApi}
                       disabled={testingApi}
                       className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition flex items-center gap-2 disabled:opacity-60 cursor-pointer shadow-sm"
                     >
-                      <span>{testingApi ? "⏳" : "🧪"}</span>
-                      <span>{testingApi ? "Enviando prueba a Supabase..." : "Simular Sincronización de MS Project"}</span>
+                      {testingApi ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <Activity className="w-4 h-4" />
+                      )}
+                      <span>
+                        {testingApi
+                          ? isEn
+                            ? "Sending test payload..."
+                            : "Enviando prueba a Supabase..."
+                          : isEn
+                          ? "Simulate MS Project Sync"
+                          : "Simular Sincronización de MS Project"}
+                      </span>
                     </button>
                     {testApiResult && (
                       <span
-                        className={`font-bold text-xs ${
+                        className={`font-bold text-xs inline-flex items-center gap-1.5 ${
                           testApiResult.ok ? "text-emerald-700" : "text-rose-700"
                         }`}
                       >
-                        {testApiResult.ok ? "✅" : "⚠️"} {testApiResult.message}
+                        {testApiResult.ok ? (
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                        )}
+                        <span>{testApiResult.message}</span>
                       </span>
                     )}
                   </div>
 
-                  {testApiResult?.details && (
+                  {Boolean(testApiResult?.details) && (
                     <div className="rounded-xl border border-slate-200 bg-slate-900 text-emerald-400 p-3 font-mono text-[11px] overflow-x-auto">
-                      <pre>{JSON.stringify(testApiResult.details, null, 2)}</pre>
+                      <pre>{JSON.stringify(testApiResult?.details, null, 2)}</pre>
                     </div>
                   )}
                 </div>
               )}
             </div>
 
-            {/* Pie del Modal */}
             <div className="p-4 border-t border-slate-200 bg-slate-50 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
               <span>
-                Microsoft Office Project Profesional 2021 • Compilación 14334.20522
+                Microsoft Office Project Professional 2021 • Build 14334.20522
               </span>
               <div className="flex items-center gap-2">
                 <a
                   href="/Cronograma_Prueba_Casa_Mendoza.xml"
                   download="Cronograma_Prueba_Casa_Mendoza.xml"
-                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition"
+                  className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition inline-flex items-center gap-1.5"
                 >
-                  📥 Descargar XML Prueba Casa Mendoza
+                  <Download className="w-3.5 h-3.5" />
+                  <span>
+                    {isEn ? "Download Sample XML" : "Descargar XML Prueba"}
+                  </span>
                 </a>
                 <button
                   type="button"
                   onClick={() => setShowApiModal(false)}
                   className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold transition cursor-pointer"
                 >
-                  Cerrar
+                  {isEn ? "Close" : "Cerrar"}
                 </button>
               </div>
             </div>

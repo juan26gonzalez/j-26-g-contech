@@ -213,11 +213,16 @@ export function getDemoShowcaseProject(): ProjectConfig {
     tipo: "bim",
     nombre: "Northbridge Corporate Hub (BIM 5D Showcase)",
     contratante: "Northbridge Capital Partners",
-    contratista: "Ing. Juan González Mendoza (JGM ConTech)",
+    cedula_cliente: "",
+    contratista: "JGM ConTech Engineering Team",
+    cedula_contratista: "",
+    cargo_contratista: "Project Controls & BIM 5D Director",
     ubicacion: "Barranquilla / Miami / Madrid • ISO 19650 OpenBIM Demo",
     modelo_bim: "Northbridge_Hub_BIM5D.ifc (OpenBIM Three.js)",
     badge: "ISO 19650 • BIM 5D DEMO",
-    logo: "🏢",
+    logo: "NB",
+    firma_residente: "PROJECT DIRECTOR / LEAD ENGINEER\nJGM ConTech Showcase Platform",
+    firma_interventor: "OWNER'S REPRESENTATIVE\nNorthbridge Capital Partners",
     a_def: 8.0,
     i_def: 2.0,
     u_def: 5.0,
@@ -483,40 +488,37 @@ export function getDemoBitacoraRows(): BitacoraRow[] {
  * Genera un gemelo digital 3D paramétrico en Three.js compatible con ParsedIfcModel
  * para demostraciones públicas en LinkedIn o previsualización sin cargar archivos .IFC locales.
  */
-export function buildShowcaseIfcModel(projectName = "Northbridge Showcase"): ParsedIfcModel {
+export function buildShowcaseIfcModel(
+  projectName = "Northbridge Showcase",
+  lang: "es" | "en" = "es"
+): ParsedIfcModel {
+  const isEn = lang === "en";
+  const L = (esText: string, enText: string) => (isEn ? enText : esText);
+
   const elements: IfcElementRenderData[] = [];
   const boundingBox = new THREE.Box3();
   let nextId = 1001;
 
-  const pushBox = (opts: {
+  const pushGeometry = (opts: {
     ifcType: string;
     name: string;
     objectType: string;
     comments: string;
     level: string;
     material: string;
+    bimTags?: string;
     color: number;
     opacity?: number;
-    w: number;
-    h: number;
-    d: number;
-    x: number;
-    y: number;
-    z: number;
-    rotZ?: number;
+    geom: THREE.BufferGeometry;
   }) => {
-    const geom = new THREE.BoxGeometry(opts.w, opts.h, opts.d);
-    if (opts.rotZ) {
-      geom.rotateZ(opts.rotZ);
-    }
-    geom.translate(opts.x, opts.y, opts.z);
-    geom.computeBoundingBox();
-    if (geom.boundingBox) {
-      boundingBox.union(geom.boundingBox);
+    opts.geom.computeVertexNormals();
+    opts.geom.computeBoundingBox();
+    if (opts.geom.boundingBox) {
+      boundingBox.union(opts.geom.boundingBox);
     }
 
     const searchTextNorm = normalizarTexto(
-      `${opts.ifcType} ${opts.name} ${opts.objectType} ${opts.comments} ${opts.material} ${opts.level}`
+      `${opts.ifcType} ${opts.name} ${opts.objectType} ${opts.comments} ${opts.material} ${opts.level} ${opts.bimTags || ""}`
     );
 
     const id = nextId++;
@@ -534,14 +536,14 @@ export function buildShowcaseIfcModel(projectName = "Northbridge Showcase"): Par
         materialNames: [opts.material],
         rawProps: {
           "GlobalId / Tag": `NB-${id}`,
-          "Pset_BIM5D": opts.comments,
-          "Material": opts.material,
+          Pset_BIM5D: opts.comments,
+          Material: opts.material,
         },
         searchTextNorm,
       },
       parts: [
         {
-          geometry: geom,
+          geometry: opts.geom,
           originalColor: new THREE.Color(opts.color),
           originalOpacity: opts.opacity ?? 1,
         },
@@ -549,7 +551,42 @@ export function buildShowcaseIfcModel(projectName = "Northbridge Showcase"): Par
     });
   };
 
-  // 1. Zapatas y vigas de cimentación (y = -0.30..0)
+  const pushBox = (opts: {
+    ifcType: string;
+    name: string;
+    objectType: string;
+    comments: string;
+    level: string;
+    material: string;
+    bimTags?: string;
+    color: number;
+    opacity?: number;
+    w: number;
+    h: number;
+    d: number;
+    x: number;
+    y: number;
+    z: number;
+    rotZ?: number;
+  }) => {
+    const geom = new THREE.BoxGeometry(opts.w, opts.h, opts.d);
+    if (opts.rotZ) {
+      geom.rotateZ(opts.rotZ);
+    }
+    geom.translate(opts.x, opts.y, opts.z);
+    pushGeometry({ ...opts, geom });
+  };
+
+  // Structural envelope geometry constants (in meters):
+  // Footprint frame centers X in [-5.5, 5.5], Z in [-3.5, 3.5]
+  // Eave bottom: 3.20 m | Ridge underside: 4.15 m
+  const EAVE_Y = 3.2;
+  const RIDGE_Y = 4.15;
+  const HALF_SPAN = 5.5;
+  const HALF_DEPTH = 3.5;
+  const ROOF_SLOPE_RAD = Math.atan2(RIDGE_Y - EAVE_Y, HALF_SPAN);
+
+  // 1. Spread footings, grade tie-beams, columns, upper bond beams & rafters
   const colPositions: [number, number][] = [
     [-5.5, -3.5],
     [0, -3.5],
@@ -559,266 +596,638 @@ export function buildShowcaseIfcModel(projectName = "Northbridge Showcase"): Par
     [5.5, 3.5],
   ];
   colPositions.forEach(([cx, cz], idx) => {
+    const isCenterRidgeCol = Math.abs(cx) < 0.01;
+    const colTopY = isCenterRidgeCol ? RIDGE_Y : EAVE_Y;
+
     pushBox({
       ifcType: "IFCFOOTING",
-      name: `Zapata Cimentación Z-${idx + 1}`,
-      objectType: "Footing: Rectangular Concrete",
-      comments: "Zapatas y vigas de cimentación",
-      level: "Nivel 0 - Cimentación",
-      material: "Concreto f'c=21 MPa",
+      name: L(`Zapata Cimentación Z-${idx + 1}`, `Spread Footing F-${idx + 1}`),
+      objectType: "Footing: Rectangular Concrete 110x110cm",
+      comments: L("Zapatas y vigas de cimentación", "Spread footings & grade beams"),
+      bimTags: "zapatas vigas de cimentacion cimentacion",
+      level: L("Nivel 0 - Cimentación", "Level 0 - Foundations"),
+      material: isEn ? "Reinforced Concrete f'c=3,000 PSI" : "Concreto f'c=21 MPa",
       color: 0x64748b,
       w: 1.1,
       h: 0.35,
       d: 1.1,
       x: cx,
-      y: -0.18,
+      y: -0.175,
       z: cz,
     });
     pushBox({
       ifcType: "IFCCOLUMN",
-      name: `Columna Estructural C-${idx + 1}`,
-      objectType: "Column: Concrete 30x30",
-      comments: "Columnas y pórtico estructural",
-      level: "Nivel 1",
-      material: "Concreto f'c=24 MPa",
+      name: L(
+        `Columna Estructural C-${idx + 1}${isCenterRidgeCol ? " (Cumbrera)" : ""}`,
+        `Structural Column C-${idx + 1}${isCenterRidgeCol ? " (Ridge)" : ""}`
+      ),
+      objectType: "Column: Reinforced Concrete 32x32cm",
+      comments: L("Columnas y pórtico estructural", "Structural frame columns"),
+      bimTags: "columnas portico pedestal",
+      level: L("Nivel 1", "Level 1"),
+      material: isEn ? "Reinforced Concrete f'c=3,500 PSI" : "Concreto f'c=24 MPa",
       color: 0x94a3b8,
       w: 0.32,
-      h: 3.1,
+      h: colTopY,
       d: 0.32,
       x: cx,
-      y: 1.55,
+      y: colTopY / 2,
       z: cz,
     });
   });
 
-  // 2. Placas de piso en porcelanato (3 zonas)
+  // Ground grade beams tying all 6 footings continuously
+  ([-3.5, 3.5] as const).forEach((gz, i) => {
+    pushBox({
+      ifcType: "IFCBEAM",
+      name: L(
+        `Viga de Cimentación Longitudinal VC-${i + 1}`,
+        `Longitudinal Grade Beam GB-${i + 1}`
+      ),
+      objectType: "Beam: Concrete Grade Tie-Beam 30x28cm",
+      comments: L("Zapatas y vigas de cimentación", "Spread footings & grade beams"),
+      bimTags: "zapatas vigas de cimentacion cimentacion",
+      level: L("Nivel 0 - Cimentación", "Level 0 - Foundations"),
+      material: isEn ? "Reinforced Concrete f'c=3,000 PSI" : "Concreto f'c=21 MPa",
+      color: 0x64748b,
+      w: 11.32,
+      h: 0.28,
+      d: 0.3,
+      x: 0,
+      y: -0.02,
+      z: gz,
+    });
+  });
+  ([-5.5, 0, 5.5] as const).forEach((gx, i) => {
+    pushBox({
+      ifcType: "IFCBEAM",
+      name: L(
+        `Viga de Cimentación Transversal VCT-${i + 1}`,
+        `Transverse Grade Beam TGB-${i + 1}`
+      ),
+      objectType: "Beam: Concrete Grade Tie-Beam 30x28cm",
+      comments: L("Zapatas y vigas de cimentación", "Spread footings & grade beams"),
+      bimTags: "zapatas vigas de cimentacion cimentacion",
+      level: L("Nivel 0 - Cimentación", "Level 0 - Foundations"),
+      material: isEn ? "Reinforced Concrete f'c=3,000 PSI" : "Concreto f'c=21 MPa",
+      color: 0x64748b,
+      w: 0.3,
+      h: 0.28,
+      d: 7.0,
+      x: gx,
+      y: -0.02,
+      z: 0,
+    });
+  });
+
+  // Upper eave bond beams (connect corner columns & support roof eaves cleanly)
+  ([-5.5, 5.5] as const).forEach((ex, i) => {
+    pushBox({
+      ifcType: "IFCBEAM",
+      name: L(
+        `Viga Corona / Amarre Alero VA-${i + 1}`,
+        `Perimeter Eave Bond Beam EBB-${i + 1}`
+      ),
+      objectType: "Beam: Concrete Eave Tie-Beam 32x25cm",
+      comments: L("Columnas y pórtico estructural", "Structural frame columns & tie beams"),
+      bimTags: "columnas portico pedestal",
+      level: L("Cubierta", "Roof Level"),
+      material: isEn ? "Reinforced Concrete f'c=3,500 PSI" : "Concreto f'c=24 MPa",
+      color: 0x94a3b8,
+      w: 0.32,
+      h: 0.25,
+      d: 7.32,
+      x: ex,
+      y: EAVE_Y - 0.125,
+      z: 0,
+    });
+  });
+
+  // Center structural ridge beam connecting C-2 and C-5 directly beneath roof apex
+  pushBox({
+    ifcType: "IFCBEAM",
+    name: L("Viga Estructural de Cumbrera VC-01", "Structural Ridge Beam RB-01"),
+    objectType: "Beam: Concrete / Steel Ridge Girder",
+    comments: L("Columnas y pórtico estructural", "Structural frame columns & ridge beam"),
+    bimTags: "columnas portico cubierta techo",
+    level: L("Cubierta", "Roof Level"),
+    material: isEn ? "Reinforced Concrete f'c=3,500 PSI" : "Concreto f'c=24 MPa",
+    color: 0x94a3b8,
+    w: 0.3,
+    h: 0.25,
+    d: 7.32,
+    x: 0,
+    y: RIDGE_Y - 0.125,
+    z: 0,
+  });
+
+  // Sloped structural frame rafters connecting center ridge column to corner eave columns
+  const halfSlopeLen = Math.hypot(HALF_SPAN, RIDGE_Y - EAVE_Y);
+  ([-3.5, 3.5] as const).forEach((rz, zi) => {
+    pushBox({
+      ifcType: "IFCBEAM",
+      name: L(`Viga Inclinada Pórtico Oeste VI-O${zi + 1}`, `Sloped Rafter Beam West SRB-W${zi + 1}`),
+      objectType: "Beam: Sloped Concrete Portal Rafter",
+      comments: L("Columnas y pórtico estructural", "Sloped structural portal rafters"),
+      bimTags: "columnas portico cubierta",
+      level: L("Cubierta", "Roof Level"),
+      material: isEn ? "Reinforced Concrete f'c=3,500 PSI" : "Concreto f'c=24 MPa",
+      color: 0x94a3b8,
+      w: halfSlopeLen,
+      h: 0.22,
+      d: 0.28,
+      x: -HALF_SPAN / 2,
+      y: (RIDGE_Y + EAVE_Y) / 2 - 0.11,
+      z: rz,
+      rotZ: ROOF_SLOPE_RAD,
+    });
+    pushBox({
+      ifcType: "IFCBEAM",
+      name: L(`Viga Inclinada Pórtico Este VI-E${zi + 1}`, `Sloped Rafter Beam East SRB-E${zi + 1}`),
+      objectType: "Beam: Sloped Concrete Portal Rafter",
+      comments: L("Columnas y pórtico estructural", "Sloped structural portal rafters"),
+      bimTags: "columnas portico cubierta",
+      level: L("Cubierta", "Roof Level"),
+      material: isEn ? "Reinforced Concrete f'c=3,500 PSI" : "Concreto f'c=24 MPa",
+      color: 0x94a3b8,
+      w: halfSlopeLen,
+      h: 0.22,
+      d: 0.28,
+      x: HALF_SPAN / 2,
+      y: (RIDGE_Y + EAVE_Y) / 2 - 0.11,
+      z: rz,
+      rotZ: -ROOF_SLOPE_RAD,
+    });
+  });
+
+  // 2. Interior porcelain floor slabs (flush inside perimeter masonry walls, zero overhang)
   pushBox({
     ifcType: "IFCSLAB",
-    name: "Piso Porcelanato 51x51 - Lobby Principal",
-    objectType: "Floor: Porcelanato 51x51 + Plantilla",
-    comments: "Lobby Principal - Porcelanato",
-    level: "Nivel 1",
-    material: "Porcelanato Gris Ejecutivo",
+    name: L("Piso Porcelanato 51x51 - Lobby Principal", "20x20 Porcelain Floor - Main Lobby"),
+    objectType: "Floor: Porcelain Tile + Leveling Sub-Slab",
+    comments: L("Lobby Principal - Porcelanato", "Main Lobby - Porcelain Tile"),
+    bimTags: "lobby principal porcelanato piso plantilla",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Executive Gray Porcelain Tile" : "Porcelanato Gris Ejecutivo",
     color: 0xdbeafe,
-    w: 5.3,
+    w: 5.335,
     h: 0.12,
-    d: 6.7,
-    x: -2.75,
+    d: 6.82,
+    x: -2.7425,
     y: 0.06,
     z: 0,
   });
   pushBox({
     ifcType: "IFCSLAB",
-    name: "Piso Porcelanato 51x51 - Oficina Norte",
-    objectType: "Floor: Porcelanato 51x51 + Plantilla",
-    comments: "Oficina Norte - Porcelanato",
-    level: "Nivel 1",
-    material: "Porcelanato Gris Ejecutivo",
+    name: L("Piso Porcelanato 51x51 - Oficina Norte", "20x20 Porcelain Floor - North Office"),
+    objectType: "Floor: Porcelain Tile + Leveling Sub-Slab",
+    comments: L("Oficina Norte - Porcelanato", "North Office - Porcelain Tile"),
+    bimTags: "oficina norte porcelanato piso plantilla",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Executive Gray Porcelain Tile" : "Porcelanato Gris Ejecutivo",
     color: 0xe2e8f0,
-    w: 5.3,
+    w: 5.335,
     h: 0.12,
-    d: 3.3,
-    x: 2.75,
+    d: 3.335,
+    x: 2.7425,
     y: 0.06,
-    z: -1.7,
+    z: -1.7425,
   });
   pushBox({
     ifcType: "IFCSLAB",
-    name: "Piso Porcelanato 51x51 - Sala de Juntas",
-    objectType: "Floor: Porcelanato 51x51 + Plantilla",
-    comments: "Sala de Juntas - Porcelanato",
-    level: "Nivel 1",
-    material: "Porcelanato Gris Ejecutivo",
+    name: L("Piso Porcelanato 51x51 - Sala de Juntas", "20x20 Porcelain Floor - Boardroom"),
+    objectType: "Floor: Porcelain Tile + Leveling Sub-Slab",
+    comments: L("Sala de Juntas - Porcelanato", "Boardroom - Porcelain Tile"),
+    bimTags: "sala de juntas porcelanato piso plantilla",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Executive Gray Porcelain Tile" : "Porcelanato Gris Ejecutivo",
     color: 0xe2e8f0,
-    w: 5.3,
+    w: 5.335,
     h: 0.12,
-    d: 3.3,
-    x: 2.75,
+    d: 3.335,
+    x: 2.7425,
     y: 0.06,
-    z: 1.7,
+    z: 1.7425,
   });
 
-  // 3. Muros de mampostería + Pañete + Pintura
+  // 3. Full-height Perimeter & Partition Masonry Walls (tight column-to-column & up to bond beam)
+  // Posterior wall: X in [-5.34, +5.34], Y in [0.12, 3.20]
   pushBox({
     ifcType: "IFCWALL",
-    name: "Muro Perimetral Posterior - Mampostería Bloque No. 12",
-    objectType: "Basic Wall: Mampostería Bloque 12 + Pañete",
-    comments: "Mampostería y Pañete Muros",
-    level: "Nivel 1",
-    material: "Bloque Concreto No. 12",
+    name: L("Muro Perimetral Posterior - Mampostería Bloque No. 12", "Rear Perimeter Wall - CMU Block No. 12"),
+    objectType: "Basic Wall: CMU No. 12 + Stucco Plaster",
+    comments: L("Mampostería y Pañete Muros", "Masonry & Two-Side Plaster"),
+    bimTags: "mamposteria bloque muros panete revoco",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU Concrete Block No. 12" : "Bloque Concreto No. 12",
     color: 0xcbd5e1,
-    w: 10.8,
-    h: 2.8,
+    w: 10.68,
+    h: 3.08,
     d: 0.18,
     x: 0,
-    y: 1.5,
-    z: -3.5,
+    y: 1.66,
+    z: -HALF_DEPTH,
   });
+  // Left & Right side walls: Z in [-3.34, +3.34], Y in [0.12, 2.95] meeting eave bond beams flush
   pushBox({
     ifcType: "IFCWALL",
-    name: "Muro Lateral Izquierdo - Estuco y Pintura",
-    objectType: "Basic Wall: Estuco y Pintura Vinílica",
-    comments: "Estuco plástico y pintura",
-    level: "Nivel 1",
-    material: "Estuco + Vinilo Arquitectónico",
+    name: L("Muro Lateral Oeste - Estuco y Pintura", "West Exterior Wall - Stucco & Paint"),
+    objectType: "Basic Wall: Skim Coat & Architectural Paint",
+    comments: L("Estuco plástico y pintura", "Skim coat & latex paint"),
+    bimTags: "estuco pintura vinilica mamposteria muros",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Skim Coat + Latex Paint" : "Estuco + Vinilo Arquitectónico",
     color: 0xf1f5f9,
     w: 0.18,
-    h: 2.8,
-    d: 6.8,
-    x: -5.5,
-    y: 1.5,
+    h: 2.83,
+    d: 6.68,
+    x: -HALF_SPAN,
+    y: 1.535,
     z: 0,
   });
   pushBox({
     ifcType: "IFCWALL",
-    name: "Muro Lateral Derecho - Mampostería Bloque No. 12",
-    objectType: "Basic Wall: Mampostería Bloque 12",
-    comments: "Mampostería Bloque 12",
-    level: "Nivel 1",
-    material: "Bloque Concreto No. 12",
+    name: L("Muro Lateral Este - Mampostería Bloque No. 12", "East Exterior Wall - CMU Block No. 12"),
+    objectType: "Basic Wall: CMU No. 12 + Finish",
+    comments: L("Mampostería Bloque 12", "CMU Block No. 12"),
+    bimTags: "mamposteria bloque muros",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU Concrete Block No. 12" : "Bloque Concreto No. 12",
     color: 0xcbd5e1,
     w: 0.18,
-    h: 2.8,
-    d: 6.8,
-    x: 5.5,
-    y: 1.5,
+    h: 2.83,
+    d: 6.68,
+    x: HALF_SPAN,
+    y: 1.535,
     z: 0,
+  });
+
+  // Front facade framed masonry piers, sills, and lintel headers (eliminates gaps around windows & door)
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Antepecho Fachada Frontal Oeste - Bloque No. 12", "Front West Facade Sill Wall - CMU"),
+    objectType: "Basic Wall: Facade Sill Masonry",
+    comments: L("Mampostería y Pañete Muros", "Facade Masonry Sill & Plaster"),
+    bimTags: "mamposteria bloque muros panete",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU Block + Stucco Finish" : "Bloque Concreto + Pañete",
+    color: 0xe2e8f0,
+    w: 5.18,
+    h: 0.78,
+    d: 0.18,
+    x: -2.75,
+    y: 0.51,
+    z: HALF_DEPTH,
   });
   pushBox({
     ifcType: "IFCWALL",
-    name: "Muro Divisorio Central - Pañete y Mortero",
-    objectType: "Basic Wall: Pañete Dos Caras",
-    comments: "Pañete y mortero de revoco",
-    level: "Nivel 1",
-    material: "Mortero Pañete 1:4",
-    color: 0xd1d5db,
-    w: 0.15,
-    h: 2.75,
-    d: 4.8,
-    x: 0,
-    y: 1.48,
-    z: -1.0,
+    name: L("Mocheta Lateral Izquierda Ventana V-01", "Left Jamb Pier Window V-01"),
+    objectType: "Basic Wall: Facade Pier",
+    comments: L("Mampostería y Pañete Muros", "Facade Pier Masonry"),
+    bimTags: "mamposteria bloque muros estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU + Stucco Paint" : "Estuco + Vinilo Arquitectónico",
+    color: 0xf1f5f9,
+    w: 0.54,
+    h: 2.3,
+    d: 0.18,
+    x: -5.07,
+    y: 2.05,
+    z: HALF_DEPTH,
+  });
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Mocheta Central Ventana V-01", "Center-Left Jamb Pier Window V-01"),
+    objectType: "Basic Wall: Facade Pier",
+    comments: L("Estuco plástico y pintura", "Facade Pier Finish"),
+    bimTags: "mamposteria muros estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU + Stucco Paint" : "Estuco + Vinilo Arquitectónico",
+    color: 0xf1f5f9,
+    w: 0.34,
+    h: 2.3,
+    d: 0.18,
+    x: -0.33,
+    y: 2.05,
+    z: HALF_DEPTH,
+  });
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Dintel Superior Fachada Frontal Oeste", "Front West Facade Lintel Header Wall"),
+    objectType: "Basic Wall: Lintel Masonry Header",
+    comments: L("Pañete y mortero de revoco", "Header Stucco & Plaster"),
+    bimTags: "mamposteria panete revoco estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU + Stucco Paint" : "Estuco + Vinilo Arquitectónico",
+    color: 0xf1f5f9,
+    w: 4.3,
+    h: 0.7,
+    d: 0.18,
+    x: -2.65,
+    y: 2.85,
+    z: HALF_DEPTH,
   });
 
-  // 4. Ventanería aluminio & vidrio + Puerta de acceso
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Antepecho Fachada Frontal Este - Bloque No. 12", "Front East Facade Sill Wall - CMU"),
+    objectType: "Basic Wall: Facade Sill Masonry",
+    comments: L("Mampostería Bloque 12", "Facade Masonry Sill"),
+    bimTags: "mamposteria bloque muros panete",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU Block + Stucco Finish" : "Bloque Concreto + Pañete",
+    color: 0xe2e8f0,
+    w: 3.99,
+    h: 0.78,
+    d: 0.18,
+    x: 3.345,
+    y: 0.51,
+    z: HALF_DEPTH,
+  });
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Mocheta Puerta-Ventana P-01 / V-02", "Door-Window Divider Pier P-01 / V-02"),
+    objectType: "Basic Wall: Facade Pier",
+    comments: L("Estuco plástico y pintura", "Facade Pier Finish"),
+    bimTags: "mamposteria muros estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU + Stucco Paint" : "Estuco + Vinilo Arquitectónico",
+    color: 0xf1f5f9,
+    w: 0.3,
+    h: 2.3,
+    d: 0.18,
+    x: 1.5,
+    y: 2.05,
+    z: HALF_DEPTH,
+  });
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Mocheta Derecha Ventana V-02", "Right Jamb Pier Window V-02"),
+    objectType: "Basic Wall: Facade Pier",
+    comments: L("Estuco plástico y pintura", "Facade Pier Finish"),
+    bimTags: "mamposteria muros estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU + Stucco Paint" : "Estuco + Vinilo Arquitectónico",
+    color: 0xf1f5f9,
+    w: 0.34,
+    h: 2.3,
+    d: 0.18,
+    x: 5.17,
+    y: 2.05,
+    z: HALF_DEPTH,
+  });
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Dintel Superior Fachada Frontal Este", "Front East Facade Lintel Header Wall"),
+    objectType: "Basic Wall: Lintel Masonry Header",
+    comments: L("Pañete y mortero de revoco", "Header Stucco & Plaster"),
+    bimTags: "mamposteria panete revoco estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "CMU + Stucco Paint" : "Estuco + Vinilo Arquitectónico",
+    color: 0xf1f5f9,
+    w: 5.18,
+    h: 0.7,
+    d: 0.18,
+    x: 2.75,
+    y: 2.85,
+    z: HALF_DEPTH,
+  });
+
+  // Interior partition walls reaching ceiling cleanly
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Muro Divisorio Central - Pañete y Pintura", "Center Spine Partition Wall - Stucco Finish"),
+    objectType: "Basic Wall: Interior Partition",
+    comments: L("Pañete y mortero de revoco", "Cement stucco & architectural paint"),
+    bimTags: "panete revoco estuco pintura mamposteria",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "1:4 Cement Plaster + Latex" : "Mortero Pañete 1:4 + Vinilo",
+    color: 0xd1d5db,
+    w: 0.15,
+    h: 2.7,
+    d: 4.84,
+    x: 0,
+    y: 1.47,
+    z: -0.92,
+  });
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Dintel Paso Interior Lobby-Juntas", "Interior Passage Lintel Wall"),
+    objectType: "Basic Wall: Interior Door Header",
+    comments: L("Pañete y mortero de revoco", "Cement stucco header"),
+    bimTags: "panete revoco estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "1:4 Cement Plaster" : "Mortero Pañete 1:4",
+    color: 0xd1d5db,
+    w: 0.15,
+    h: 0.52,
+    d: 1.84,
+    x: 0,
+    y: 2.56,
+    z: 2.42,
+  });
+  pushBox({
+    ifcType: "IFCWALL",
+    name: L("Muro Divisorio Oficina Norte / Sala de Juntas", "North Office / Boardroom Cross Partition"),
+    objectType: "Basic Wall: Interior Acoustic Partition",
+    comments: L("Estuco plástico y pintura", "Acoustic interior masonry partition"),
+    bimTags: "mamposteria panete estuco pintura",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Stucco + Acoustic Paint" : "Estuco + Pintura Vinílica",
+    color: 0xe2e8f0,
+    w: 5.335,
+    h: 2.7,
+    d: 0.15,
+    x: 2.7425,
+    y: 1.47,
+    z: 0,
+  });
+
+  // Triangular Gable End Walls (Z = -3.5 and Z = +3.5) sealing space from eave (3.20) up to roof peak (4.15)
+  ([-HALF_DEPTH - 0.09, HALF_DEPTH - 0.09] as const).forEach((zStart, idx) => {
+    const gableShape = new THREE.Shape();
+    gableShape.moveTo(-HALF_SPAN, EAVE_Y);
+    gableShape.lineTo(0, RIDGE_Y);
+    gableShape.lineTo(HALF_SPAN, EAVE_Y);
+    gableShape.closePath();
+
+    const gableGeom = new THREE.ExtrudeGeometry(gableShape, {
+      depth: 0.18,
+      bevelEnabled: false,
+    });
+    gableGeom.translate(0, 0, zStart);
+    pushGeometry({
+      ifcType: "IFCWALL",
+      name: L(
+        `Tímpano / Frontón Cumbrera ${idx === 0 ? "Posterior" : "Frontal"}`,
+        `${idx === 0 ? "Rear" : "Front"} Gable End Wall`
+      ),
+      objectType: "Basic Wall: Gable Masonry Enclosure",
+      comments: L("Mampostería y Pañete Muros", "Gable masonry roof closure"),
+      bimTags: "mamposteria bloque muros panete estuco pintura",
+      level: L("Cubierta", "Roof Level"),
+      material: isEn ? "CMU Block + Stucco" : "Bloque No. 12 + Estuco",
+      color: 0xe2e8f0,
+      geom: gableGeom,
+    });
+  });
+
+  // 4. Aluminum Windows & Acoustic Entry Door fitted inside framed openings
   pushBox({
     ifcType: "IFCWINDOW",
-    name: "Fachada Vidrio & Ventanería Aluminio V-01",
-    objectType: "Curtain / Window: Aluminum Acoustic Glass",
-    comments: "Ventanería aluminio termoacústica",
-    level: "Nivel 1",
-    material: "Vidrio Laminado + Aluminio Anodizado",
+    name: L("Ventanería Aluminio Termoacústica Lobby V-01", "Lobby Aluminum Acoustic Window V-01"),
+    objectType: "Window: Aluminum Acoustic Glazing",
+    comments: L("Ventanería aluminio termoacústica", "Aluminum acoustic glazing"),
+    bimTags: "ventana ventaneria aluminio vidrio",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Laminated Acoustic Glass + Anodized Aluminum" : "Vidrio Laminado + Aluminio Anodizado",
     color: 0x38bdf8,
-    opacity: 0.45,
-    w: 4.8,
-    h: 2.1,
-    d: 0.12,
-    x: -2.4,
-    y: 1.45,
-    z: 3.5,
+    opacity: 0.5,
+    w: 4.3,
+    h: 1.6,
+    d: 0.1,
+    x: -2.65,
+    y: 1.7,
+    z: HALF_DEPTH,
   });
   pushBox({
     ifcType: "IFCWINDOW",
-    name: "Ventanería Aluminio Sala de Juntas V-02",
-    objectType: "Window: Aluminum Acoustic Glass",
-    comments: "Ventanería aluminio",
-    level: "Nivel 1",
-    material: "Vidrio Laminado",
+    name: L("Ventanería Aluminio Sala de Juntas V-02", "Boardroom Aluminum Acoustic Window V-02"),
+    objectType: "Window: Aluminum Acoustic Glazing",
+    comments: L("Ventanería aluminio", "Aluminum window glazing"),
+    bimTags: "ventana ventaneria aluminio vidrio",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Laminated Glass + Aluminum" : "Vidrio Laminado",
     color: 0x38bdf8,
-    opacity: 0.45,
-    w: 3.4,
-    h: 1.8,
-    d: 0.12,
-    x: 3.2,
-    y: 1.5,
-    z: 3.5,
+    opacity: 0.5,
+    w: 3.35,
+    h: 1.6,
+    d: 0.1,
+    x: 3.325,
+    y: 1.7,
+    z: HALF_DEPTH,
   });
   pushBox({
     ifcType: "IFCDOOR",
-    name: "Puerta Acceso Ejecutivo P-01",
-    objectType: "Door: Acoustic Wood Frame",
-    comments: "Puertas interiores y acceso",
-    level: "Nivel 1",
-    material: "Madera Acústica Nogal",
+    name: L("Puerta Acceso Ejecutivo P-01", "Executive Entry Door P-01"),
+    objectType: "Door: Acoustic Walnut Frame",
+    comments: L("Puertas interiores y acceso", "Entry & interior doors"),
+    bimTags: "puerta puertas acceso",
+    level: L("Nivel 1", "Level 1"),
+    material: isEn ? "Acoustic Solid Core Walnut" : "Madera Acústica Nogal",
     color: 0x78350f,
-    w: 1.15,
-    h: 2.25,
+    w: 1.19,
+    h: 2.38,
     d: 0.14,
-    x: 0.75,
-    y: 1.24,
-    z: 3.5,
+    x: 0.755,
+    y: 1.31,
+    z: HALF_DEPTH,
   });
 
-  // 5. Cielo raso suspendido + Aislamiento Frescasa Eco 2-1/2"
+  // 5. Suspended Drywall Ceiling & Frescasa Insulation engaging inner wall perimeter flush (w=10.84, d=6.84)
   pushBox({
     ifcType: "IFCCOVERING",
-    name: "Cielo Raso Suspendido Drywall - Lobby y Oficinas",
-    objectType: "Ceiling: Drywall 1/2\"",
-    comments: "Lobby Principal - Cielo Raso",
-    level: "Cielo Raso",
-    material: "Drywall Acústico",
+    name: L("Cielo Raso Suspendido Drywall - Lobby y Oficinas", "Suspended Drywall Ceiling - Lobby & Offices"),
+    objectType: "Ceiling: Acoustic Drywall 1/2\"",
+    comments: L("Lobby Principal - Cielo Raso", "Main Lobby - Suspended Ceiling"),
+    bimTags: "cielo raso cielorraso drywall lobby oficina juntas",
+    level: L("Cielo Raso", "Ceiling Plenum"),
+    material: isEn ? "Acoustic Gypsum Board" : "Drywall Acústico",
     color: 0xf8fafc,
-    w: 10.4,
+    w: 10.84,
     h: 0.08,
-    d: 6.4,
+    d: 6.84,
     x: 0,
     y: 2.75,
     z: 0,
   });
   pushBox({
     ifcType: "IFCCOVERING",
-    name: "Aislamiento Termoacústico Frescasa Eco 2-1/2\" sobre Cielo Raso",
-    objectType: "Insulation: Fiberglass Frescasa Eco",
-    comments: "Aislamiento Frescasa Eco 2-1/2",
-    level: "Cielo Raso",
-    material: "Fibra de Vidrio Frescasa Eco",
+    name: L(
+      "Aislamiento Termoacústico Frescasa Eco 2-1/2\" sobre Cielo Raso",
+      "Frescasa Eco 2-1/2\" Thermal-Acoustic Fiberglass Insulation"
+    ),
+    objectType: "Insulation: Fiberglass Batts 2-1/2\"",
+    comments: L("Aislamiento Frescasa Eco 2-1/2", "Frescasa Eco 2-1/2 Insulation"),
+    bimTags: "frescasa aislamiento cielo raso cielorraso",
+    level: L("Cielo Raso", "Ceiling Plenum"),
+    material: isEn ? "Frescasa Eco 2-1/2\" Fiberglass" : "Fibra de Vidrio Frescasa Eco",
     color: 0xa3e635,
-    opacity: 0.85,
-    w: 10.2,
+    opacity: 0.88,
+    w: 10.76,
     h: 0.08,
-    d: 6.2,
+    d: 6.76,
     x: 0,
-    y: 2.86,
+    y: 2.83,
     z: 0,
   });
 
-  // 6. Cubierta metálica / teja Eternit
+  // 6. Pitched Fiber-Cement Roof Panels & Ridge Cap seated flush on top of portal rafters, eave beams & gable walls
+  const overhang = 0.35;
+  const roofPanelW = halfSlopeLen + overhang;
+  const roofH = 0.1;
+  const localMid = roofPanelW / 2 - 0.02;
+  const normalOffset = roofH / 2;
+
+  const westCx = -localMid * Math.cos(ROOF_SLOPE_RAD) - normalOffset * Math.sin(ROOF_SLOPE_RAD);
+  const westCy = RIDGE_Y - localMid * Math.sin(ROOF_SLOPE_RAD) + normalOffset * Math.cos(ROOF_SLOPE_RAD);
+  const eastCx = localMid * Math.cos(ROOF_SLOPE_RAD) + normalOffset * Math.sin(ROOF_SLOPE_RAD);
+  const eastCy = RIDGE_Y - localMid * Math.sin(ROOF_SLOPE_RAD) + normalOffset * Math.cos(ROOF_SLOPE_RAD);
+
   pushBox({
     ifcType: "IFCROOF",
-    name: "Cubierta Termoacústica Eternit - Faldón Oeste",
-    objectType: "Roof: Eternit Corrugated Sheet",
-    comments: "Cubierta teja Eternit",
-    level: "Cubierta",
-    material: "Teja Ondulada Eternit",
+    name: L("Cubierta Termoacústica Eternit - Faldón Oeste", "Thermo-Acoustic Corrugated Roof - West Slope"),
+    objectType: "Roof: Corrugated Fiber-Cement Panels",
+    comments: L("Cubierta teja Eternit", "Corrugated thermo-acoustic roof"),
+    bimTags: "cubierta eternit teja",
+    level: L("Cubierta", "Roof Level"),
+    material: isEn ? "Corrugated Fiber-Cement Panel" : "Teja Ondulada Eternit",
     color: 0x475569,
-    w: 5.9,
-    h: 0.12,
-    d: 7.4,
-    x: -2.85,
-    y: 3.55,
+    w: roofPanelW,
+    h: roofH,
+    d: 7.6,
+    x: westCx,
+    y: westCy,
     z: 0,
-    rotZ: 0.16,
+    rotZ: ROOF_SLOPE_RAD,
   });
   pushBox({
     ifcType: "IFCROOF",
-    name: "Cubierta Termoacústica Eternit - Faldón Este",
-    objectType: "Roof: Eternit Corrugated Sheet",
-    comments: "Cubierta teja Eternit",
-    level: "Cubierta",
-    material: "Teja Ondulada Eternit",
+    name: L("Cubierta Termoacústica Eternit - Faldón Este", "Thermo-Acoustic Corrugated Roof - East Slope"),
+    objectType: "Roof: Corrugated Fiber-Cement Panels",
+    comments: L("Cubierta teja Eternit", "Corrugated thermo-acoustic roof"),
+    bimTags: "cubierta eternit teja",
+    level: L("Cubierta", "Roof Level"),
+    material: isEn ? "Corrugated Fiber-Cement Panel" : "Teja Ondulada Eternit",
     color: 0x475569,
-    w: 5.9,
-    h: 0.12,
-    d: 7.4,
-    x: 2.85,
-    y: 3.55,
+    w: roofPanelW,
+    h: roofH,
+    d: 7.6,
+    x: eastCx,
+    y: eastCy,
     z: 0,
-    rotZ: -0.16,
+    rotZ: -ROOF_SLOPE_RAD,
+  });
+  pushBox({
+    ifcType: "IFCROOF",
+    name: L("Caballete de Cumbrera Cubierta Eternit", "Roof Ridge Cap Flashing"),
+    objectType: "Roof: Ridge Flashing",
+    comments: L("Cubierta teja Eternit", "Roof ridge flashing assembly"),
+    bimTags: "cubierta eternit teja caballete",
+    level: L("Cubierta", "Roof Level"),
+    material: isEn ? "Fiber-Cement Ridge Cap" : "Caballete Articulado Eternit",
+    color: 0x334155,
+    w: 0.44,
+    h: 0.12,
+    d: 7.64,
+    x: 0,
+    y: RIDGE_Y + 0.08,
+    z: 0,
   });
 
   return {
     filename: "Northbridge_Hub_BIM5D_Showcase.ifc",
-    sizeBytes: 742400,
+    sizeBytes: 864200,
     elements,
     boundingBox,
   };

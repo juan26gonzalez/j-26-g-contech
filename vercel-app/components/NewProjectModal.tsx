@@ -2,12 +2,22 @@
 
 import React, { useState } from "react";
 import {
+  Building2,
+  ClipboardList,
+  Download,
+  Loader2,
+  Plus,
+  Rocket,
+  Upload,
+  X,
+} from "lucide-react";
+import {
   callPythonJson,
   downloadPlantillaExcel,
   normalizarTexto,
   parseCsvLocalFallback,
 } from "../lib/calcClient";
-import { formatCOP } from "../lib/projects";
+import { useAppPreferences } from "../lib/i18n";
 import { BudgetItem, ProjectConfig, ProjectMode } from "../lib/types";
 
 interface NewProjectModalProps {
@@ -30,13 +40,21 @@ export default function NewProjectModal({
   onClose,
   onSaveProject,
 }: NewProjectModalProps) {
+  const { lang, currency, formatMoney } = useAppPreferences();
+  const isEn = lang === "en";
+  const moneyDecimals = currency === "COP" ? 0 : 2;
+
   const [tipo, setTipo] = useState<ProjectMode>("presupuesto");
   const [nombre, setNombre] = useState("");
-  const [contratante, setContratante] = useState("Cliente Privado");
+  const [contratante, setContratante] = useState(
+    isEn ? "Private Client" : "Cliente Privado"
+  );
   const [cedulaCliente, setCedulaCliente] = useState("");
-  const [ubicacion, setUbicacion] = useState("Sabanalarga, Atlántico");
-  const [contratista, setContratista] = useState("Ing. Juan González Mendoza");
-  const [badge, setBadge] = useState("PRESUPUESTO OFICIAL");
+  const [ubicacion, setUbicacion] = useState("Barranquilla / Sabanalarga");
+  const [contratista, setContratista] = useState("JGM ConTech Engineering");
+  const [badge, setBadge] = useState(
+    isEn ? "OFFICIAL BUDGET" : "PRESUPUESTO OFICIAL"
+  );
   const [aDef, setADef] = useState(8.0);
   const [iDef, setIDef] = useState(2.0);
   const [uDef, setUDef] = useState(5.0);
@@ -69,7 +87,9 @@ export default function NewProjectModal({
           setItems(res.items);
           setMsg({
             type: "ok",
-            text: `CSV procesado correctamente (${res.items.length} actividades).`,
+            text: isEn
+              ? `CSV processed (${res.items.length} activities).`
+              : `CSV procesado correctamente (${res.items.length} actividades).`,
           });
         }
         return;
@@ -91,12 +111,16 @@ export default function NewProjectModal({
       setItems(res.items);
       setMsg({
         type: "ok",
-        text: `Excel procesado con Pandas (${res.items.length} actividades detectadas).`,
+        text: isEn
+          ? `Excel parsed via Pandas (${res.items.length} items detected).`
+          : `Excel procesado con Pandas (${res.items.length} actividades detectadas).`,
       });
     } catch (err) {
       setMsg({
         type: "err",
-        text: `No se pudo procesar en servidor Python (${String(err)}). Para pruebas locales rápidas sin Vercel CLI puedes subir un .CSV.`,
+        text: isEn
+          ? `Unable to parse on Python server (${String(err)}). Try uploading a .CSV file.`
+          : `No se pudo procesar en servidor Python (${String(err)}). Puedes subir un .CSV.`,
       });
     } finally {
       setUploading(false);
@@ -109,7 +133,7 @@ export default function NewProjectModal({
       {
         Item: `${prev.length + 1}.1`,
         Capitulo: prev[prev.length - 1]?.Capitulo || "1. ACTIVIDADES GENERALES",
-        Actividad: "Nueva actividad constructiva",
+        Actividad: isEn ? "New construction activity" : "Nueva actividad constructiva",
         Unidad: "m²",
         Cantidad_Contratada: 1,
         Precio_Unitario: 0,
@@ -139,7 +163,12 @@ export default function NewProjectModal({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!nombre.trim()) {
-      setMsg({ type: "err", text: "Debes ingresar el nombre oficial del proyecto." });
+      setMsg({
+        type: "err",
+        text: isEn
+          ? "Please enter an official project name."
+          : "Debes ingresar el nombre oficial del proyecto.",
+      });
       return;
     }
     const validItems = items
@@ -154,7 +183,12 @@ export default function NewProjectModal({
       }));
 
     if (validItems.length === 0) {
-      setMsg({ type: "err", text: "Agrega al menos una actividad válida en el presupuesto." });
+      setMsg({
+        type: "err",
+        text: isEn
+          ? "Add at least one valid budget activity."
+          : "Agrega al menos una actividad válida en el presupuesto.",
+      });
       return;
     }
 
@@ -169,20 +203,25 @@ export default function NewProjectModal({
       id: finalId,
       tipo,
       nombre: nombre.trim(),
-      contratante: contratante.trim() || "Cliente Privado",
+      contratante: contratante.trim() || (isEn ? "Private Client" : "Cliente Privado"),
       cedula_cliente: cedulaCliente.trim(),
-      contratista: contratista.trim() || "Ing. Juan González Mendoza",
-      cedula_contratista: "C.C. 1001867834 • M.P. 021037-0828864 ATL",
-      cargo_contratista: "Ingeniero Residente de Obra",
-      ubicacion: ubicacion.trim() || "Sabanalarga, Atlántico",
-      badge: badge.trim() || (tipo === "presupuesto" ? "PRESUPUESTO OFICIAL" : "BIM 5D"),
+      contratista: contratista.trim() || "JGM ConTech Engineering",
+      cedula_contratista: "",
+      cargo_contratista: isEn ? "Lead Project Manager" : "Director Técnico de Obra",
+      ubicacion: ubicacion.trim() || "Barranquilla / Sabanalarga",
+      badge: badge.trim() || (tipo === "presupuesto" ? "BOQ" : "BIM 5D"),
       a_def: aDef,
       i_def: iDef,
       u_def: uDef,
       ant_def: 15.0,
       gar_def: 5.0,
-      modelo_bim: tipo === "presupuesto" ? "Presupuesto Contractual Directo" : "Revit 2027 / Bitácora",
-      logo: tipo === "presupuesto" ? "📋" : "🏗️",
+      modelo_bim:
+        tipo === "presupuesto"
+          ? isEn
+            ? "Direct Contract BOQ"
+            : "Presupuesto Contractual Directo"
+          : "OpenBIM IFC / Field Log",
+      logo: tipo === "presupuesto" ? "PR" : "BM",
       ppto_base: validItems,
       isCustom: true,
     };
@@ -197,19 +236,24 @@ export default function NewProjectModal({
         {/* Header */}
         <div className="bg-slate-900 text-white px-6 py-4 flex items-center justify-between">
           <div>
-            <h2 className="text-base sm:text-lg font-extrabold">
-              🏗️ Asistente de Creación de Nuevo Proyecto
+            <h2 className="text-base sm:text-lg font-extrabold flex items-center gap-2">
+              <Building2 className="w-5 h-5 text-emerald-400 shrink-0" />
+              <span>
+                {isEn ? "New Project Setup Wizard" : "Asistente de Creación de Nuevo Proyecto"}
+              </span>
             </h2>
             <p className="text-xs text-slate-300">
-              Crea presupuestos oficiales o proyectos BIM 5D con carga Excel (Pandas) o edición manual.
+              {isEn
+                ? "Create official BOQ estimates or live 5D BIM projects with Excel (Pandas) import or inline editing."
+                : "Crea presupuestos oficiales o proyectos BIM 5D con carga Excel (Pandas) o edición manual."}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-slate-300 hover:text-white text-lg font-bold px-2"
+            className="text-slate-300 hover:text-white p-1.5 rounded-lg hover:bg-slate-800"
           >
-            ✕
+            <X className="w-5 h-5" />
           </button>
         </div>
 
@@ -227,13 +271,13 @@ export default function NewProjectModal({
             </div>
           )}
 
-          {/* Step 1: Modalidad */}
+          {/* Step 1: Mode */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               type="button"
               onClick={() => {
                 setTipo("presupuesto");
-                setBadge("PRESUPUESTO OFICIAL");
+                setBadge(isEn ? "OFFICIAL BUDGET" : "PRESUPUESTO OFICIAL");
               }}
               className={`text-left p-3.5 rounded-xl border-2 transition-all ${
                 tipo === "presupuesto"
@@ -241,11 +285,14 @@ export default function NewProjectModal({
                   : "border-slate-200 hover:border-slate-300"
               }`}
             >
-              <div className="font-extrabold text-sm text-slate-900">
-                📋 Solo Presupuesto
+              <div className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                <ClipboardList className="w-4 h-4 text-slate-700" />
+                <span>{isEn ? "Budget / Tender Only" : "Solo Presupuesto"}</span>
               </div>
               <div className="text-slate-600 mt-1">
-                Estudios de costos, licitaciones y consultorías sin seguimiento diario BIM.
+                {isEn
+                  ? "Cost engineering estimates, tender BOQs, and consulting without daily field logs."
+                  : "Estudios de costos, licitaciones y consultorías sin seguimiento diario BIM."}
               </div>
             </button>
 
@@ -261,33 +308,36 @@ export default function NewProjectModal({
                   : "border-slate-200 hover:border-slate-300"
               }`}
             >
-              <div className="font-extrabold text-sm text-slate-900">
-                🏗️ Control Integral BIM 5D
+              <div className="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-slate-700" />
+                <span>{isEn ? "Full 5D BIM Project Controls" : "Control Integral BIM 5D"}</span>
               </div>
               <div className="text-slate-600 mt-1">
-                Control de obra en vivo conectado a Supabase Bitácora, Curva S y Actas de Cobro.
+                {isEn
+                  ? "Live construction tracking linked to Cloud Field Log, S-Curve, and Payment Certificates."
+                  : "Control de obra en vivo conectado a Supabase Bitácora, Curva S y Actas de Cobro."}
               </div>
             </button>
           </div>
 
-          {/* Step 2: Datos */}
+          {/* Step 2: Details */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Nombre Oficial del Proyecto *
+                {isEn ? "Official Project Name *" : "Nombre Oficial del Proyecto *"}
               </label>
               <input
                 type="text"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
-                placeholder="Ej: Bodega Logística Norte"
+                placeholder={isEn ? "e.g. North Logistics Hub" : "Ej: Bodega Logística Norte"}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 font-semibold"
                 required
               />
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Contratante / Cliente
+                {isEn ? "Client / Owner" : "Contratante / Cliente"}
               </label>
               <input
                 type="text"
@@ -298,19 +348,19 @@ export default function NewProjectModal({
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                C.C. / NIT del Cliente
+                {isEn ? "Client Tax ID / NIT" : "C.C. / NIT del Cliente"}
               </label>
               <input
                 type="text"
                 value={cedulaCliente}
                 onChange={(e) => setCedulaCliente(e.target.value)}
-                placeholder="Opcional"
+                placeholder={isEn ? "Optional" : "Opcional"}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2"
               />
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Ubicación de la Obra
+                {isEn ? "Site Location" : "Ubicación de la Obra"}
               </label>
               <input
                 type="text"
@@ -321,7 +371,7 @@ export default function NewProjectModal({
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Contratista / Consultor
+                {isEn ? "Contractor / Consultant" : "Contratista / Consultor"}
               </label>
               <input
                 type="text"
@@ -332,7 +382,7 @@ export default function NewProjectModal({
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                Etiqueta / Badge
+                {isEn ? "Tag / Badge" : "Etiqueta / Badge"}
               </label>
               <input
                 type="text"
@@ -343,23 +393,39 @@ export default function NewProjectModal({
             </div>
           </div>
 
-          {/* Step 3: Excel upload / Table editor */}
+          {/* Step 3: Budget table */}
           <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="font-extrabold text-slate-800">
-                3. Actividades del Presupuesto ({items.length} ítems • Costo Directo:{" "}
-                <span className="text-slate-900 font-mono">{formatCOP(totalDirecto)}</span>)
+                {isEn
+                  ? `3. Budget Line Items (${items.length} items • Direct Cost:`
+                  : `3. Actividades del Presupuesto (${items.length} ítems • Costo Directo:`}{" "}
+                <span className="text-slate-900 font-mono">
+                  {formatMoney(totalDirecto, moneyDecimals)}
+                </span>
+                )
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
                   onClick={handleDownloadPlantilla}
-                  className="bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-bold px-3 py-1.5 rounded-lg"
+                  className="bg-white hover:bg-slate-100 border border-slate-300 text-slate-800 font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5"
                 >
-                  ⬇️ Plantilla Excel
+                  <Download className="w-3.5 h-3.5" />
+                  <span>{isEn ? "Excel Template" : "Plantilla Excel"}</span>
                 </button>
-                <label className="cursor-pointer steel-btn-primary font-bold px-3 py-1.5 rounded-lg">
-                  {uploading ? "⏳ Procesando..." : "📤 Cargar Excel / CSV"}
+                <label className="cursor-pointer steel-btn-primary font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5">
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>{isEn ? "Parsing..." : "Procesando..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="w-3.5 h-3.5" />
+                      <span>{isEn ? "Upload Excel / CSV" : "Cargar Excel / CSV"}</span>
+                    </>
+                  )}
                   <input
                     type="file"
                     accept=".xlsx,.xls,.csv"
@@ -374,9 +440,10 @@ export default function NewProjectModal({
                 <button
                   type="button"
                   onClick={handleAddRow}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1.5 rounded-lg inline-flex items-center gap-1.5"
                 >
-                  ➕ Añadir Fila
+                  <Plus className="w-3.5 h-3.5" />
+                  <span>{isEn ? "Add Row" : "Añadir Fila"}</span>
                 </button>
               </div>
             </div>
@@ -385,12 +452,14 @@ export default function NewProjectModal({
               <table className="w-full text-left border-collapse">
                 <thead className="bg-slate-100 sticky top-0 text-[11px] font-bold text-slate-700">
                   <tr>
-                    <th className="p-2 w-16">Ítem</th>
-                    <th className="p-2 w-40">Capítulo</th>
-                    <th className="p-2">Actividad</th>
-                    <th className="p-2 w-16">Und</th>
-                    <th className="p-2 w-24 text-right">Cant.</th>
-                    <th className="p-2 w-28 text-right">P. Unit ($)</th>
+                    <th className="p-2 w-16">{isEn ? "Item" : "Ítem"}</th>
+                    <th className="p-2 w-40">{isEn ? "Chapter" : "Capítulo"}</th>
+                    <th className="p-2">{isEn ? "Activity" : "Actividad"}</th>
+                    <th className="p-2 w-16">{isEn ? "Unit" : "Und"}</th>
+                    <th className="p-2 w-24 text-right">{isEn ? "Qty." : "Cant."}</th>
+                    <th className="p-2 w-28 text-right">
+                      {isEn ? "Unit Rate (COP)" : "P. Unit ($)"}
+                    </th>
                     <th className="p-2 w-10"></th>
                   </tr>
                 </thead>
@@ -451,9 +520,9 @@ export default function NewProjectModal({
                         <button
                           type="button"
                           onClick={() => handleDeleteRow(idx)}
-                          className="text-red-500 hover:text-red-700 font-bold"
+                          className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50"
                         >
-                          ✕
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </td>
                     </tr>
@@ -467,7 +536,7 @@ export default function NewProjectModal({
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                % Admin por defecto
+                {isEn ? "Default Admin %" : "% Admin por defecto"}
               </label>
               <input
                 type="number"
@@ -479,7 +548,7 @@ export default function NewProjectModal({
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                % Imprevistos
+                {isEn ? "Contingencies %" : "% Imprevistos"}
               </label>
               <input
                 type="number"
@@ -491,7 +560,7 @@ export default function NewProjectModal({
             </div>
             <div>
               <label className="block font-bold text-slate-700 mb-1">
-                % Utilidad
+                {isEn ? "Profit / Fee %" : "% Utilidad"}
               </label>
               <input
                 type="number"
@@ -509,13 +578,14 @@ export default function NewProjectModal({
               onClick={onClose}
               className="px-4 py-2 rounded-xl border border-slate-300 font-bold text-slate-700 hover:bg-slate-50"
             >
-              Cancelar
+              {isEn ? "Cancel" : "Cancelar"}
             </button>
             <button
               type="submit"
-              className="px-5 py-2 rounded-xl steel-btn-primary font-extrabold"
+              className="px-5 py-2 rounded-xl steel-btn-primary font-extrabold inline-flex items-center gap-2"
             >
-              🚀 Crear y Activar Proyecto
+              <Rocket className="w-4 h-4" />
+              <span>{isEn ? "Create & Activate Project" : "Crear y Activar Proyecto"}</span>
             </button>
           </div>
         </form>
