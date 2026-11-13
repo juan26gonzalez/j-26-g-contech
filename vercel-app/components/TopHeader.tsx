@@ -15,18 +15,44 @@ interface TopHeaderProps {
   onLogout?: () => void;
 }
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "panel", label: "🏠 Panel Ejecutivo" },
-  { key: "habitaciones", label: "🏠 Habitaciones & Caja" },
-  { key: "visor3d", label: "🧊 Visor 3D BIM" },
-  { key: "presupuesto", label: "💰 Presupuesto 5D (APU)" },
-  { key: "contratos", label: "📜 Contratos PDF" },
-  { key: "actas", label: "📑 Actas de Corte & Cobro" },
-  { key: "mayores", label: "⚠️ Mayores Cantidades & Adicionales" },
-  { key: "rendimiento", label: "👥 Rendimiento & Cuadrillas" },
-  { key: "curva_s", label: "📈 Curva S & Plazo 4D" },
-  { key: "insumos", label: "🧱 Insumos BIM" },
-  { key: "bitacora", label: "📡 Bitácora Cloud" },
+const TAB_GROUPS: {
+  group: string;
+  items: { key: TabKey; label: string }[];
+}[] = [
+  {
+    group: "1. Dirección",
+    items: [{ key: "panel", label: "🏠 Panel Ejecutivo" }],
+  },
+  {
+    group: "2. BIM 3D",
+    items: [
+      { key: "visor3d", label: "🧊 Visor 3D BIM" },
+      { key: "habitaciones", label: "📐 Habitaciones & Caja" },
+    ],
+  },
+  {
+    group: "3. Planeación 4D/5D",
+    items: [
+      { key: "presupuesto", label: "💰 Presupuesto 5D (APU)" },
+      { key: "curva_s", label: "📈 Curva S & Plazo 4D" },
+      { key: "insumos", label: "🧱 Insumos BIM" },
+      { key: "contratos", label: "📜 Contratos PDF" },
+    ],
+  },
+  {
+    group: "4. Campo",
+    items: [
+      { key: "bitacora", label: "📡 Bitácora Cloud" },
+      { key: "rendimiento", label: "👥 Rendimiento & Cuadrillas" },
+    ],
+  },
+  {
+    group: "5. Control & Cobro",
+    items: [
+      { key: "mayores", label: "⚠️ Mayores Cant. & Adicionales" },
+      { key: "actas", label: "📑 Actas de Corte & Cobro" },
+    ],
+  },
 ];
 
 export default function TopHeader({
@@ -128,28 +154,43 @@ export default function TopHeader({
         </div>
       </div>
 
-      {/* Navigation Pills (9 modules) */}
-      <div className="bento-card !p-1.5 overflow-x-auto">
-        <div className="flex items-center gap-1 min-w-max">
-          {TABS.map((t) => {
-            const active = activeTab === t.key;
-            return (
-              <button
-                key={t.key}
-                type="button"
-                onClick={() => onChangeTab(t.key)}
-                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${
-                  active
-                    ? "steel-btn-primary text-white shadow-sm"
-                    : "text-slate-700 hover:text-slate-950 hover:bg-slate-200/75"
-                }`}
-              >
-                {t.label}
-              </button>
-            );
-          })}
+      {/* Navigation Ribbon Jerárquica (11 módulos organizados por ciclo de vida BIM 5D) */}
+      <nav
+        aria-label="Módulos gerenciales BIM 5D"
+        className="bento-card !p-2"
+      >
+        <div className="flex flex-wrap items-stretch gap-2">
+          {TAB_GROUPS.map((grp) => (
+            <div
+              key={grp.group}
+              className="steel-subcard rounded-xl px-1.5 py-1 flex flex-col gap-1"
+            >
+              <span className="text-[9px] font-black uppercase tracking-wider text-slate-500 px-1.5 leading-none pt-0.5">
+                {grp.group}
+              </span>
+              <div className="flex flex-wrap items-center gap-1">
+                {grp.items.map((t) => {
+                  const active = activeTab === t.key;
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => onChangeTab(t.key)}
+                      className={`px-2.5 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold transition-all whitespace-nowrap ${
+                        active
+                          ? "steel-btn-primary text-white shadow-sm"
+                          : "text-slate-700 hover:text-slate-950 hover:bg-slate-300/60"
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      </nav>
     </div>
   );
 }

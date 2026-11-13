@@ -2481,13 +2481,13 @@ if st.session_state.get("mostrar_crear_proyecto", False):
 opciones_menu = [
     "🏠 Panel Ejecutivo",
     "💰 Presupuesto 5D (APU)",
-    "📜 Contratos PDF",
-    "📑 Actas de Corte & Cobro",
-    "⚠️ Mayores Cantidades & Adicionales",
-    "👥 Rendimiento & Cuadrillas",
     "📈 Curva S & Plazo 4D",
     "🧱 Insumos BIM",
-    "📡 Bitácora Cloud"
+    "📜 Contratos PDF",
+    "📡 Bitácora Cloud",
+    "👥 Rendimiento & Cuadrillas",
+    "⚠️ Mayores Cantidades & Adicionales",
+    "📑 Actas de Corte & Cobro"
 ]
 
 if "active_nav_tab" not in st.session_state or st.session_state["active_nav_tab"] not in opciones_menu:

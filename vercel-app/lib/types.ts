@@ -2,16 +2,16 @@ export type ProjectMode = "bim" | "presupuesto";
 
 export type TabKey =
   | "panel"
-  | "habitaciones"
   | "visor3d"
+  | "habitaciones"
   | "presupuesto"
-  | "contratos"
-  | "actas"
-  | "mayores"
-  | "rendimiento"
   | "curva_s"
   | "insumos"
-  | "bitacora";
+  | "contratos"
+  | "bitacora"
+  | "rendimiento"
+  | "mayores"
+  | "actas";
 
 export type RoomActivityKey =
   | "plantilla"
