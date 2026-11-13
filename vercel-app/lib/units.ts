@@ -47,9 +47,11 @@ export function convertUnitLabel(metricUnit: string | undefined | null, lang: Ap
   if (u === "und" || u === "u" || u === "un" || u === "pieza" || u === "pza" || u === "unidades") return "ea";
   if (u === "gl" || u === "glb" || u === "global") return "LS";
   if (u.includes("saco")) return "bags (110 lb)";
+  if (u.includes("bulto")) return "bags (55 lb)";
   if (u.includes("cuñete") || u.includes("cunete")) return "5-gal pails";
   if (u.includes("lámina") || u.includes("lamina")) return "4'×8' sheets";
   if (u.includes("rollo")) return "rolls";
+  if (u === "gal" || u === "galon" || u === "galones" || u === "g") return "gal";
   if (u === "l" || u === "lt" || u === "lts" || u === "litro" || u === "litros") return "gal";
   if (u === "m2/dia" || u === "m2/día") return "ft²/day";
   if (u === "m3/dia" || u === "m3/día") return "yd³/day";
@@ -111,8 +113,11 @@ const EXACT_PHRASE_EN: Record<string, string> = {
   "Pañete y mortero de revoco en muros dos caras": "Cement stucco plaster & screeding on walls (two sides)",
   "Pañete y mortero de revoco en muros (dos caras)": "Cement stucco plaster & screeding on walls (two sides)",
   "Instalación de piso en porcelanato 51x51 cm y plantilla": "20\"×20\" Porcelain tile flooring & 2.75\" leveling sub-slab",
+  "Instalación de piso en porcelanato 51×51 cm y plantilla": "20\"×20\" Porcelain tile flooring & 2.75\" leveling sub-slab",
   "Plantilla de concreto e=7cm (base y solado de piso)": "Concrete floor leveling slab (t=2.75\") & mud slab",
   "Instalación de piso en porcelanato 51x51 cm y enchape": "20\"×20\" Porcelain tile flooring & wall cladding",
+  "Instalación de piso en porcelanato 51×51 cm y enchape": "20\"×20\" Porcelain tile flooring & wall cladding",
+  "Porcelanato 51×51": "20\"×20\" Porcelain Floor Tile",
   "Cielo raso suspendido Drywall + Aislamiento Frescasa Eco 2-1/2\"": "Suspended drywall ceiling + Frescasa Eco 2-1/2\" thermal insulation",
   "Instalación de cielo raso suspendido e=5.3cm": "Suspended drywall ceiling installation (t=2.1\")",
   "Suministro e instalación de aislamiento termoacústico Frescasa Eco 2-1/2\" sobre cielo raso (todas las zonas)": "Frescasa Eco 2-1/2\" thermal-acoustic fiberglass insulation over ceiling",
@@ -124,6 +129,18 @@ const EXACT_PHRASE_EN: Record<string, string> = {
   "Suministro e instalación de ventanería en aluminio y vidrio (8 und)": "Supply & installation of aluminum & glass windows (8 ea)",
   "Suministro e instalación de ventanería y puertas en aluminio": "Aluminum curtain-wall glazing, windows & entry doors assembly",
   "Suministro e instalación de ventanas y accesos": "Aluminum glazing curtain-wall & entry doors assembly",
+  "Ventanería aluminio termoacústica y puertas interiores": "Thermo-acoustic aluminum windows & interior doors",
+  "Ventanería aluminio y puertas acústicas": "Thermo-acoustic aluminum windows & acoustic doors",
+  "Montaje de cubierta termoacústica Eternit y caballetes": "Thermo-acoustic fiber-cement roofing & ridge cap assembly",
+  "Montaje de cubierta termoacústica / Eternit": "Thermo-acoustic fiber-cement roof assembly",
+  "Porcelanato 51x51": "20\"×20\" Porcelain Floor Tile",
+  "Cielo Raso + Frescasa Eco": "Suspended Ceiling + Frescasa Eco 2-1/2\"",
+  "Cielo raso": "Suspended Drywall Ceiling",
+  "Plantilla de concreto 7cm": "Concrete Floor Screed (t=2.75\")",
+  "Enchape piso porcelanato 51x51": "20\"×20\" Porcelain Floor Tile",
+  "Enchape piso porcelanato baño 51x51": "Bathroom 20\"×20\" Porcelain Floor Tile",
+  "Enchape piso porcelanato cocina 51x51": "Kitchen 20\"×20\" Porcelain Floor Tile",
+  "Frescasa Eco 2-1/2\" (sobre cielo raso)": "Frescasa Eco 2-1/2\" Fiberglass Insulation (above ceiling)",
   "Zapatas y vigas de cimentación f'c=21 MPa": "Spread footings & grade beams f'c=3,000 PSI",
   "Columnas y pórtico estructural f'c=24 MPa": "Structural columns & perimeter tie beams f'c=3,500 PSI",
   "Muros en mampostería bloque No. 12": "CMU No. 12 masonry infill & partition walls",
@@ -145,6 +162,7 @@ const EXACT_PHRASE_EN: Record<string, string> = {
   "Excedido": "Overrun",
   "Ahorro": "Under Budget",
   "Alto Rendimiento": "High Efficiency",
+  "En Rango APU": "Within APU Range",
   "Meta Cumplida": "On Target",
   "Rendimiento Bajo": "Below Target",
   "Estándar": "Standard",
@@ -165,36 +183,119 @@ const EXACT_PHRASE_EN: Record<string, string> = {
 };
 
 const MATERIAL_EN_MAP: Array<[RegExp, string]> = [
-  [/Bloques de Concreto #12/i, "#12 Concrete Masonry Units (CMU)"],
-  [/Cemento Portland Tipo I/i, "Portland Cement Type I"],
-  [/Arena de Pañete \/ Pegante/i, "Plaster & Masonry Mortar Sand"],
-  [/Agua de Mezcla/i, "Mixing Water"],
-  [/Porcelanato Tráfico 5 \+ Mortero Pega/i, "PEI-5 Porcelain Tile + Polymer Thin-Set Mortar"],
-  [/Panel Yeso\/Fibrocemento \+ Perfilería Galv\./i, "Gypsum / Fiber-Cement Board + Galv. Stud Framing"],
-  [/Colchoneta Fibra de Vidrio Frescasa Eco 2-1\/2"/i, "Frescasa Eco 2-1/2\" Fiberglass Insulation Batts"],
-  [/Estuco Plástico \+ Pintura Vinílica Tipo 1/i, "Interior Skim Coat + Type-1 Architectural Latex Paint"],
-  [/Teja Ondulada Eternit #6 \+ Caballetes \+ Ganchos/i, "Corrugated Fiber-Cement Roof Panels + Ridge Caps + Fasteners"],
-  [/Puertas Entamboradas \+ Marco \+ Cerradura/i, "Solid-Core Architectural Doors + Frames + Locksets"],
-  [/Ventanería Aluminio \+ Vidrio Crudo 5mm/i, "Extruded Aluminum Window Frames + 5mm Clear Glass"],
-  [/Concreto Premezclado f'c = 21-28 MPa \(3000-4000 PSI\)/i, "Ready-Mix Structural Concrete (3,000–4,000 PSI)"],
-  [/Acero de Refuerzo PDR-60 Corrugado/i, "Grade 60 Deformed Reinforcing Steel (Rebar)"],
-  [/Concreto Mezclado en Obra f'c = 21 MPa \(3000 PSI\)/i, "Site-Mixed Concrete f'c = 3,000 PSI"],
-  [/Aglomerado \/ Carpintería \+ Herrajes/i, "Architectural Millwork & Hardware"],
-  [/Insumos Especializados según APU del ítem/i, "Specialized APU Consumables & Fasteners"],
+  [/Bloques?\s+de\s+Concreto\s*(?:No\.?|#)\s*12.*/i, "Concrete Masonry Units (CMU No. 12 — 16\"×8\"×5\")"],
+  [/Rollo\s+Frescasa\s+Eco\s+2-1\/2".*/i, "Frescasa Eco 2-1/2\" Fiberglass Roll (25'×48\" = 100.1 ft², +5% waste)"],
+  [/Aislamiento\s+Fibra\s+de\s+Vidrio\s+Frescasa\s+Eco.*/i, "Frescasa Eco Fiberglass Thermal Insulation (Area incl. 5% waste)"],
+  [/Colchoneta\s+Fibra\s+de\s+Vidrio\s+Frescasa\s+Eco.*/i, "Frescasa Eco 2-1/2\" Fiberglass Insulation Batts"],
+  [/Cemento\s+Gris\s+para\s+Pañete.*/i, "Gray Portland Cement for Stucco Plaster (110 lb Bags)"],
+  [/Cemento\s+Gris\s+para\s+Pega.*/i, "Gray Portland Cement for Masonry Mortar (110 lb Bags)"],
+  [/Cemento\s+Gris\s+para\s+Plantilla.*/i, "Gray Portland Cement for Floor Screed (110 lb Bags)"],
+  [/Cemento\s+Gris\s+Base\s+Piso.*/i, "Gray Portland Cement for Sub-Slab Screed (110 lb Bags)"],
+  [/Cemento\s+Gris\s+Tipo\s+UG.*/i, "Structural Portland Cement Type I/GU (110 lb Bags)"],
+  [/Cemento\s+Estructural.*/i, "Structural Portland Cement (110 lb Bag Equiv.)"],
+  [/Cemento\s+Portland\s+Tipo\s+I.*/i, "Portland Cement Type I"],
+  [/Arena\s+Lavada\s+para\s+Pañete/i, "Washed River Sand for Stucco Plaster"],
+  [/Arena\s+Fina\s+para\s+Mortero\s+de\s+Pega/i, "Fine Washed Masonry Mortar Sand"],
+  [/Arena\s+Lavada\s+de\s+R[íi]o/i, "Washed Coarse Concrete Sand"],
+  [/Arena\s+de\s+Pañete\s*\/\s*Pegante/i, "Plaster & Masonry Mortar Sand"],
+  [/Gravilla\s+Triturada\s+3\/4.*/i, "3/4\" Crushed Coarse Aggregate / Gravel"],
+  [/Triturado\s*\/\s*Grava\s+de\s+3\/4"?/i, "3/4\" Crushed Coarse Aggregate / Gravel"],
+  [/Agua\s+de\s+Mezcla/i, "Mixing Water"],
+  [/Porcelanato\s*\/\s*(?:Baldosa\s+)?Cer[áa]mica?.*/i, "20\"×20\" Porcelain / Ceramic Floor Tile (+5% waste)"],
+  [/Cer[áa]mica\s*\/\s*Porcelanato\s+de\s+Pared.*/i, "Wall Ceramic / Porcelain Tile (+8% cut waste)"],
+  [/Porcelanato\s+Tr[áa]fico\s+5\s*\+\s*Mortero\s+Pega/i, "PEI-5 Porcelain Tile + Polymer Thin-Set Mortar"],
+  [/Pegacor\s+Cer[áa]mico.*/i, "Polymer-Modified Tile Adhesive Mortar (55 lb Bags)"],
+  [/Pegacor\s+Blanco\s*\/\s*Cer[áa]mico\s+Pared.*/i, "White Wall Tile Adhesive Mortar (55 lb Bags)"],
+  [/Pegante\s+Blanco\s+Especializado.*/i, "White Polymer Tile Adhesive Mortar (55 lb Bags)"],
+  [/Boquilla\s+Antimoho\s+para\s+Muro/i, "Mildew-Resistant Wall Tile Grout"],
+  [/Boquilla\s+para\s+Junta/i, "Polymer Tile Joint Grout"],
+  [/Panel\s+de\s+Cielorraso\s+Suspendido.*/i, "Suspended Drywall Ceiling Board (+5% waste)"],
+  [/Panel\s+Yeso\/Fibrocemento\s*\+\s*Perfiler[íi]a\s+Galv\./i, "Gypsum / Fiber-Cement Board + Galv. Stud Framing"],
+  [/L[áa]mina\s+Drywall\s*\/\s*PVC.*/i, "Drywall / PVC Ceiling Board (4'×8' Sheets)"],
+  [/Perfiler[íi]a\s+(?:Angular\s+y\s+Perfiles\s+Omega|Galvanizada.*)/i, "Galvanized Ceiling Framing (Perimeter Angle & Furring Channels)"],
+  [/Estuco\s+Pl[áa]stico\s+Blanco.*/i, "White Acrylic Skim Coat Putty (62 lb Pails)"],
+  [/Estuco\s+Pl[áa]stico\s+Listo.*/i, "Ready-Mix Acrylic Skim Coat Putty (5-Gal Pails)"],
+  [/Estuco\s+Pl[áa]stico\s*\+\s*Pintura\s+Vin[íi]lica\s+Tipo\s+1/i, "Interior Skim Coat + Grade-1 Architectural Latex Paint"],
+  [/Pintura\s+Vin[íi]l(?:o|ica)\s+Tipo\s+1\s*\(Cuñetes.*/i, "Grade-1 Architectural Latex Paint (5-Gal Pails)"],
+  [/Pintura\s+Vin[íi]l(?:o|ica)\s+Tipo\s+1.*/i, "Grade-1 Architectural Latex Paint (Gallons)"],
+  [/Teja\s+Ondulada\s+Eternit.*/i, "Corrugated Fiber-Cement Roofing Panels (+10% lap & waste)"],
+  [/Caballete\s+Articulado\s+Cubierta\s+Eternit/i, "Fiber-Cement Roof Ridge Caps & Flashing"],
+  [/Ganchos\s+de\s+Fijaci[óo]n\s+con\s+Golilla/i, "Galvanized J-Hook Roof Fasteners w/ EPDM Washer"],
+  [/Puertas?\s+Entamboradas?\s+con\s+Marco\s+y\s+Cerradura/i, "Flush Architectural Interior & Entry Doors w/ Frame & Lockset"],
+  [/Puertas?\s+Entamboradas?\s*\+\s*Marco\s*\+\s*Cerradura/i, "Solid-Core Architectural Doors + Frames + Locksets"],
+  [/Ventan(?:as|er[íi]a)\s+(?:de\s+|en\s+)?Aluminio\s*(?:y|\+)\s*Vidrio.*/i, "Thermo-Acoustic Extruded Aluminum Windows + Insulated Glass"],
+  [/Concreto\s+Simple\s+f'c=14\s+MPa.*/i, "Plain Leveling Concrete f'c=2,000 PSI (2.75\" Screed)"],
+  [/Concreto\s+Premezclado\s*\/\s*Obra\s+3000-3500\s+PSI/i, "Ready-Mix / Site Structural Concrete (3,000–3,500 PSI)"],
+  [/Concreto\s+Premezclado\s+f'c\s*=\s*21-28\s+MPa.*/i, "Ready-Mix Structural Concrete (3,000–4,000 PSI)"],
+  [/Concreto\s+Mezclado\s+en\s+Obra\s+f'c\s*=\s*21\s+MPa.*/i, "Site-Mixed Concrete f'c = 3,000 PSI"],
+  [/Acero\s+(?:Corrugado\s+60\s+KSI|de\s+Refuerzo\s+PDR-60|Estructural\s*\/\s*Corrugado).*/i, "Grade 60 Deformed Reinforcing Steel (Rebar)"],
+  [/Alambre\s+Negro\s+#18\s+para\s+Amarre/i, "18-Gauge Black Annealed Rebar Tie Wire"],
+  [/Aglomerado\s*\/\s*Carpinter[íi]a\s*\+\s*Herrajes/i, "Architectural Millwork & Hardware"],
+  [/Insumos\s+Especializados\s+seg[úu]n\s+APU\s+del\s+[íi]tem/i, "Specialized APU Consumables & Fasteners"],
 ];
 
-const CREW_EN_MAP: Array<[RegExp, string]> = [
-  [/Cuadrilla Estructura: 1 Oficial \+ 4 Ayudantes/i, "Structural Crew: 1 Lead Mason + 4 Helpers"],
-  [/Cuadrilla 1: 1 Oficial \+ 3 Ayudantes/i, "Masonry Crew 1: 1 Mason + 3 Helpers"],
-  [/Cuadrilla 2: 1 Oficial \+ 1 Ayudante/i, "Plastering Crew 2: 1 Plasterer + 1 Helper"],
-  [/Cuadrilla Acabados: 1 Oficial Especializado/i, "Finishing Crew: 1 Master Tile Setter"],
-  [/Cuadrilla Acabados: 1 Oficial \+ 1 Ayudante/i, "Finishing Crew: 1 Installer + 1 Helper"],
-  [/Cuadrilla Acabados: 1 Oficial/i, "Finishing Crew: 1 Installer"],
-  [/Cuadrilla Estuco: 1 Estucador \+ 1 Pintor/i, "Painting Crew: 1 Skim-Coater + 1 Painter"],
-  [/Cuadrilla Metálica: 2 Montadores/i, "Roofing Crew: 2 Steel & Roof Erectors"],
-  [/Cuadrilla Carpintería: 1 Carpintero \+ 1 Ayudante/i, "Glazing & Doors Crew: 1 Glazier + 1 Helper"],
-  [/Cuadrilla Estándar/i, "Standard Field Crew"],
+const CREW_SPECIALTY_EN: Array<[RegExp, string]> = [
+  [/Cuadrilla\s+Carpinter[íi]a\s*&\s*Aluminio/i, "Glazing & Doors Crew"],
+  [/Cuadrilla\s+Estructura/i, "Structural Concrete Crew"],
+  [/Cuadrilla\s+Mamposter[íi]a/i, "Masonry Crew"],
+  [/Cuadrilla\s+Pañete/i, "Plastering Crew"],
+  [/Cuadrilla\s+Obra\s+Gris/i, "Slab & Screed Crew"],
+  [/Cuadrilla\s+Enchape/i, "Tiling Crew"],
+  [/Cuadrilla\s+Pintura/i, "Painting Crew"],
+  [/Cuadrilla\s+Estuco/i, "Skim Coat & Painting Crew"],
+  [/Cuadrilla\s+Aislamiento/i, "Thermal Insulation Crew"],
+  [/Cuadrilla\s+Liviana/i, "Drywall Ceiling Crew"],
+  [/Cuadrilla\s+Met[áa]lica/i, "Roofing & Steel Crew"],
+  [/Cuadrilla\s+Carpinter[íi]a/i, "Millwork & Doors Crew"],
+  [/Cuadrilla\s+Aluminio/i, "Aluminum Glazing Crew"],
+  [/Cuadrilla\s+Hidrosanitaria/i, "Plumbing Crew"],
+  [/Cuadrilla\s+Armadores/i, "Rebar Ironworkers Crew"],
+  [/Cuadrilla\s+Preliminares/i, "Site Prep Crew"],
+  [/Cuadrilla\s+Excavaci[óo]n/i, "Excavation Crew"],
+  [/Cuadrilla\s+Acabados/i, "Finishes Crew"],
+  [/Cuadrilla\s+General/i, "General Trade Crew"],
+  [/Cuadrilla\s+Est[áa]ndar/i, "Standard Field Crew"],
+  [/Cuadrilla\s+1/i, "Masonry Crew 1"],
+  [/Cuadrilla\s+2/i, "Plastering Crew 2"],
+  [/Comisi[óo]n\s+Topograf[íi]a\s*\/\s*Oficial/i, "Survey Crew / Lead Tech"],
 ];
+
+const ROOM_EN_MAP: Record<string, string> = {
+  "Lobby Principal": "Main Lobby",
+  "Oficina Norte": "North Office",
+  "Sala de Juntas": "Executive Boardroom",
+  "Habitación Mamá": "Master Suite / Mom's Bedroom",
+  "Habitacion Mama": "Master Suite / Mom's Bedroom",
+  "Habitación Principal": "Primary Bedroom",
+  "Habitación Abuelos": "Grandparents' Bedroom",
+  "Habitación Esteban": "Bedroom — Esteban",
+  "Habitación Lisbeth": "Bedroom — Lisbeth",
+  "Habitación Huésped": "Guest Bedroom",
+  "Habitacion Huesped": "Guest Bedroom",
+  "Habitación Nan & I": "Suite — Nan & I",
+  "Habitación 1": "Bedroom 1",
+  "Habitación 2": "Bedroom 2",
+  "Sala": "Living Room",
+  "Comedor": "Dining Room",
+  "Sala / Comedor": "Living / Dining Area",
+  "Cocina": "Kitchen",
+  "Baño 1": "Bathroom 1",
+  "Baño 2": "Bathroom 2",
+  "Entrada / Puerta 1": "Main Entry / Door 1",
+  "Entrada / Puerta 2": "Secondary Entry / Door 2",
+  "Pasillo": "Hallway",
+  "Patio": "Patio / Courtyard",
+  "Cubierta": "Roof Deck",
+  "Zona A — Pórticos & Cimentación": "Zone A — Foundations & Structural Frame",
+  "Zona B — Envolvente & Acabados": "Zone B — Envelope & Architectural Finishes",
+  "Zona C — Cubierta & Carpintería": "Zone C — Roofing & Glazing",
+};
+
+export function localizeRoomName(room: string, lang: AppLang): string {
+  const raw = String(room || "").trim();
+  if (lang === "es" || !raw) return raw;
+  return ROOM_EN_MAP[raw] || localizeTerm(raw, lang);
+}
 
 export function localizeChapter(chapter: string, lang: AppLang): string {
   const raw = String(chapter || "").trim();
@@ -228,10 +329,36 @@ export function localizeMaterialName(name: string, lang: AppLang): string {
 export function localizeCrew(crew: string, lang: AppLang): string {
   const raw = String(crew || "").trim();
   if (lang === "es" || !raw) return raw;
-  for (const [pattern, replacement] of CREW_EN_MAP) {
-    if (pattern.test(raw)) return replacement;
+  const parts = raw.split(":");
+  let head = parts[0].trim();
+  for (const [pattern, replacement] of CREW_SPECIALTY_EN) {
+    if (pattern.test(head)) {
+      head = replacement;
+      break;
+    }
   }
-  return raw;
+  if (parts.length < 2) return head;
+  const tail = parts
+    .slice(1)
+    .join(":")
+    .trim()
+    .replace(/(\d+)\s+Oficiales\b/gi, (_, n) => `${n} ${n === "1" ? "Lead Tech" : "Skilled Technicians"}`)
+    .replace(/(\d+)\s+Oficial\s+Especializado\b/gi, (_, n) => `${n} ${n === "1" ? "Master Tech" : "Master Technicians"}`)
+    .replace(/(\d+)\s+Oficial\b/gi, (_, n) => `${n} ${n === "1" ? "Lead Tech" : "Lead Techs"}`)
+    .replace(/(\d+)\s+Of\b/gi, (_, n) => `${n} ${n === "1" ? "Lead Tech" : "Lead Techs"}`)
+    .replace(/(\d+)\s+Ayudantes?\b/gi, (_, n) => `${n} ${n === "1" ? "Helper" : "Helpers"}`)
+    .replace(/(\d+)\s+Ayud\.?/gi, (_, n) => `${n} ${n === "1" ? "Helper" : "Helpers"}`)
+    .replace(/\bOficiales\b/gi, "Skilled Technicians")
+    .replace(/\bOficial\s+Especializado\b/gi, "Master Technician")
+    .replace(/\bOficial\b/gi, "Lead Tech")
+    .replace(/\bOf\b/gi, "Lead Tech")
+    .replace(/\bEstucador\b/gi, "Drywall Finisher")
+    .replace(/\bPintor\b/gi, "Painter")
+    .replace(/\bCarpintero\b/gi, "Carpenter")
+    .replace(/\bMontadores\b/gi, "Steel & Roof Erectors")
+    .replace(/\bAyudantes\b/gi, "Helpers")
+    .replace(/\bAyud\.?/gi, "Helper");
+  return `${head}: ${tail}`;
 }
 
 export function localizeStatus(status: string, lang: AppLang): string {
@@ -249,17 +376,49 @@ export function localizeTerm(text: string, lang: AppLang): string {
 
 function translateConstructionText(raw: string): string {
   return raw
+    .replace(/Lobby Principal/gi, "Main Lobby")
+    .replace(/Oficina Norte/gi, "North Office")
+    .replace(/Sala de Juntas/gi, "Executive Boardroom")
+    .replace(/Habitaci[óo]n Mam[áa]|H\.?\s*Mom/gi, "Master Suite")
+    .replace(/H\.?\s*Abuelos/gi, "Grandparents' Bedroom")
+    .replace(/H\.?\s*Esteban/gi, "Bedroom Esteban")
+    .replace(/H\.?\s*Lisbeth/gi, "Bedroom Lisbeth")
+    .replace(/H\.?\s*Hu[ée]sped|Huesped/gi, "Guest Bedroom")
+    .replace(/H\.?\s*Nan\s*(&|y)\s*I/gi, "Suite Nan & I")
     .replace(/Baño Principal/gi, "Master Bathroom")
     .replace(/Baño Social/gi, "Guest Bathroom")
+    .replace(/Ba[ñn]o 1/gi, "Bathroom 1")
     .replace(/Habitación Principal/gi, "Master Bedroom")
     .replace(/Habitación\s*(\d+)/gi, "Bedroom $1")
     .replace(/Sala Comedor \/ Recibidor/gi, "Living / Dining / Foyer")
     .replace(/Patio Interior & Lavadero/gi, "Courtyard & Laundry")
     .replace(/Circulación Interior & Pasillos/gi, "Interior Hallways & Circulation")
+    .replace(/Cocina/gi, "Kitchen")
+    .replace(/\bSala\b/gi, "Living Room")
+    .replace(/puerta 1|entrada 1/gi, "Entry Door 1")
+    .replace(/puerta 2|entrada 2/gi, "Entry Door 2")
     .replace(/Terraza/gi, "Terrace")
     .replace(/Nivel 1 - Corporativo/gi, "Level 1 - Corporate")
     .replace(/Cubierta y Envolvente/gi, "Roof & Building Envelope")
     .replace(/Cimentación/gi, "Foundations")
+    .replace(/Montaje de cubierta termoac[úu]stica(?:\s*\/\s*|\s+)Eternit(?:\s+y\s+caballetes)?/gi, "Thermo-acoustic fiber-cement roofing & ridge cap assembly")
+    .replace(/cubierta termoac[úu]stica(?:\s+en\s+teja)?\s*Eternit(?:\s+y\s+caballetes)?/gi, "thermo-acoustic fiber-cement roofing & ridge caps")
+    .replace(/cubierta en teja ondulada Eternit y caballetes/gi, "corrugated fiber-cement roofing & ridge caps")
+    .replace(/cubierta en teja ondulada/gi, "corrugated roofing sheets")
+    .replace(/teja ondulada Eternit/gi, "corrugated fiber-cement roofing")
+    .replace(/\bCaballetes?\b/gi, "ridge caps")
+    .replace(/Ventaner[íi]a\s+aluminio\s+termoac[úu]stica\s+y\s+puertas\s+interiores/gi, "Thermo-acoustic aluminum windows & interior doors")
+    .replace(/Ventaner[íi]a\s+aluminio\s+y\s+puertas\s+ac[úu]sticas/gi, "Thermo-acoustic aluminum glazing & acoustic doors")
+    .replace(/ventaner[íi]a en aluminio y vidrio/gi, "aluminum & glass windows")
+    .replace(/ventaner[íi]a/gi, "aluminum glazing")
+    .replace(/Cielo\s*Raso\s*\+\s*Frescasa\s*Eco/gi, "Suspended Ceiling + Frescasa Eco Insulation")
+    .replace(/Cielo\s*raso\s*suspendido/gi, "Suspended Drywall Ceiling")
+    .replace(/Cielo\s*raso/gi, "Suspended Ceiling")
+    .replace(/Frescasa\s*Eco/gi, "Frescasa Eco Insulation")
+    .replace(/Plantilla\s+de\s+concreto\s*(?:e=7cm|7cm)/gi, "Concrete floor screed (t=2.75\")")
+    .replace(/Instalaci[óo]n\s+de\s+piso\s+en\s+porcelanato\s+51[x×]51\s*(?:cm)?\s+y\s+plantilla/gi, "20\"×20\" Porcelain tile flooring & 2.75\" leveling sub-slab")
+    .replace(/piso\s+en\s+porcelanato\s+51[x×]51\s*(?:cm)?\s+y\s+enchape/gi, "20\"×20\" porcelain tile flooring & wall cladding")
+    .replace(/piso\s+en\s+porcelanato/gi, "porcelain tile flooring")
     .replace(/Suministro e instalación de/gi, "Supply & installation of")
     .replace(/Instalación de/gi, "Installation of")
     .replace(/Montaje de/gi, "Erection & assembly of")
@@ -272,20 +431,19 @@ function translateConstructionText(raw: string): string {
     .replace(/columnas y pórtico estructural/gi, "columns & structural frame")
     .replace(/muros en mampostería de bloques de concreto/gi, "concrete masonry block (CMU) walls")
     .replace(/pañete y mortero de revoco/gi, "cement stucco plaster & screeding")
-    .replace(/cielo raso suspendido/gi, "suspended drywall ceiling")
     .replace(/aislamiento termoacústico/gi, "thermal-acoustic insulation")
-    .replace(/cubierta en teja ondulada/gi, "corrugated roofing sheets")
     .replace(/pintura vinílica/gi, "architectural latex paint")
     .replace(/estuco plástico/gi, "skim coat putty")
-    .replace(/porcelanato/gi, "porcelain tile")
+    .replace(/Enchape piso/gi, "Floor tile")
+    .replace(/porcelanato/gi, "Porcelain Tile")
+    .replace(/y\s+plantilla/gi, "& 2.75\" leveling sub-slab")
     .replace(/puertas interiores y acceso/gi, "interior & entry doors")
-    .replace(/ventanería en aluminio y vidrio/gi, "aluminum & glass windows")
     .replace(/f'c=21 MPa/gi, "f'c=3,000 PSI")
     .replace(/f'c=24 MPa/gi, "f'c=3,500 PSI")
     .replace(/Fc=24\.5 MPa/gi, "f'c=3,500 PSI")
     .replace(/e=7cm/gi, "t=2.75\"")
     .replace(/e=5\.3cm/gi, "t=2.1\"")
-    .replace(/51x51 cm/gi, "20\"×20\"")
+    .replace(/51[x×]51(?:\s*cm)?/gi, "20\"×20\"")
     .replace(/\(dos caras\)|dos caras/gi, "(two sides)")
     .replace(/sin novedades|según planos/gi, "verified per drawings")
     .replace(/Excavación y fundida de zapatas Z-1 a Z-6.*/i, "Spread footings F-1 to F-6 poured and cured per structural specs")

@@ -60,17 +60,47 @@ export function resolverMetaApu(
   const uNorm = normalizarUnidad(unidad);
   const hasAny = (keys: string[]) => keys.some((k) => actN.includes(k));
 
+  if (hasAny(["cubierta", "eternit", "techo", "teja", "caballete"])) {
+    return {
+      meta_dia: 20.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Metálica: 2 Montadores",
+    };
+  }
+  if (hasAny(["ventana", "ventaneria", "window"]) && hasAny(["puerta", "door"])) {
+    return {
+      meta_dia: 3.0,
+      und: "und/día",
+      cuadrilla: "Cuadrilla Carpintería & Aluminio: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["puerta", "door"])) {
+    return {
+      meta_dia: 2.5,
+      und: "und/día",
+      cuadrilla: "Cuadrilla Carpintería: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["ventana", "ventaneria", "window"])) {
+    return {
+      meta_dia: 3.5,
+      und: "und/día",
+      cuadrilla: "Cuadrilla Aluminio: 1 Oficial + 1 Ayud",
+    };
+  }
   if (
-    hasAny([
-      "frescasa",
-      "aislamiento",
-      "aislante",
-      "fibra de vidrio",
-      "termoacustico",
-    ])
+    hasAny(["cielorraso", "cielo raso", "drywall", "superboard", "ceiling"]) &&
+    hasAny(["frescasa", "aislamiento", "aislante", "fibra de vidrio"])
   ) {
     return {
-      meta_dia: 28.0,
+      meta_dia: 13.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Liviana: 1 Of + 1 Ayud",
+    };
+  }
+  if (hasAny(["frescasa", "aislamiento", "aislante", "fibra de vidrio"])) {
+    return {
+      meta_dia: 26.0,
       und: "m²/día",
       cuadrilla: "Cuadrilla Aislamiento: 1 Of + 1 Ayud",
     };
@@ -92,32 +122,49 @@ export function resolverMetaApu(
     };
   }
   if (
-    hasAny(["porcelanato", "enchape", "ceramico", "ceramica", "baldosa", "piso"]) &&
-    !actN.includes("plantilla")
+    hasAny(["porcelanato", "enchape", "ceramico", "ceramica", "baldosa"]) &&
+    hasAny(["plantilla", "solado"])
   ) {
     return {
-      meta_dia: 11.0,
+      meta_dia: 9.0,
       und: "m²/día",
       cuadrilla: "Cuadrilla Enchape: 1 Oficial + 1 Ayud",
     };
   }
+  if (
+    hasAny(["porcelanato", "enchape", "ceramico", "ceramica", "baldosa", "piso"]) &&
+    !actN.includes("plantilla")
+  ) {
+    return {
+      meta_dia: 10.5,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Enchape: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["estuco"]) && hasAny(["pintura", "vinil"])) {
+    return {
+      meta_dia: 20.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Pintura: 1 Oficial + 1 Ayud",
+    };
+  }
   if (hasAny(["estuco", "pintura", "vinil"])) {
     return {
-      meta_dia: 26.0,
+      meta_dia: 28.0,
       und: "m²/día",
       cuadrilla: "Cuadrilla Pintura: 1 Oficial + 1 Ayud",
     };
   }
   if (hasAny(["panete", "revoco", "revoque", "repello"])) {
     return {
-      meta_dia: 16.0,
+      meta_dia: 14.0,
       und: "m²/día",
       cuadrilla: "Cuadrilla Pañete: 1 Oficial + 1 Ayud",
     };
   }
   if (hasAny(["mamposteria", "levante", "bloque", "ladrillo", "muro"])) {
     return {
-      meta_dia: 12.0,
+      meta_dia: 10.5,
       und: "m²/día",
       cuadrilla: "Cuadrilla Mampostería: 1 Oficial + 1 Ayud",
     };
@@ -131,7 +178,7 @@ export function resolverMetaApu(
       };
     }
     return {
-      meta_dia: 22.0,
+      meta_dia: 18.0,
       und: "m²/día",
       cuadrilla: "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud",
     };
@@ -145,30 +192,9 @@ export function resolverMetaApu(
       };
     }
     return {
-      meta_dia: 24.0,
-      und: "m²/día",
-      cuadrilla: "Cuadrilla Estructura: 1 Oficial + 4 Ayud",
-    };
-  }
-  if (hasAny(["cubierta", "eternit", "techo", "teja", "caballete"])) {
-    return {
       meta_dia: 22.0,
       und: "m²/día",
-      cuadrilla: "Cuadrilla Metálica: 2 Montadores",
-    };
-  }
-  if (hasAny(["puerta", "door"])) {
-    return {
-      meta_dia: 2.5,
-      und: "und/día",
-      cuadrilla: "Cuadrilla Carpintería: 1 Oficial + 1 Ayud",
-    };
-  }
-  if (hasAny(["ventana", "window"])) {
-    return {
-      meta_dia: 3.5,
-      und: "und/día",
-      cuadrilla: "Cuadrilla Aluminio: 1 Oficial + 1 Ayud",
+      cuadrilla: "Cuadrilla Estructura: 1 Oficial + 4 Ayud",
     };
   }
   if (
@@ -182,7 +208,7 @@ export function resolverMetaApu(
   }
   if (hasAny(["acero", "hierro", "varilla", "malla"])) {
     return {
-      meta_dia: 220.0,
+      meta_dia: 240.0,
       und: "kg/día",
       cuadrilla: "Cuadrilla Armadores: 2 Oficiales",
     };
@@ -190,13 +216,13 @@ export function resolverMetaApu(
   if (hasAny(["demolicion", "retiro"])) {
     if (uNorm === "m2") {
       return {
-        meta_dia: 18.0,
+        meta_dia: 16.0,
         und: "m²/día",
         cuadrilla: "Cuadrilla Preliminares: 2 Ayudantes",
       };
     }
     return {
-      meta_dia: 4.5,
+      meta_dia: 4.0,
       und: "m³/día",
       cuadrilla: "Cuadrilla Preliminares: 2 Ayudantes",
     };
@@ -224,28 +250,35 @@ export function resolverMetaApu(
   }
   if (hasAny(["pedestal", "columna"])) {
     return {
-      meta_dia: 2.5,
+      meta_dia: 2.4,
       und: "m³/día",
       cuadrilla: "Cuadrilla Estructura: 1 Oficial + 3 Ayud",
     };
   }
-  if (hasAny(["viga", "dintel"])) {
+  if (hasAny(["zapata", "cimentacion", "foso"])) {
+    if (uNorm === "m2") {
+      return {
+        meta_dia: 18.0,
+        und: "m²/día",
+        cuadrilla: "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud",
+      };
+    }
     return {
       meta_dia: 3.2,
       und: "m³/día",
       cuadrilla: "Cuadrilla Estructura: 1 Oficial + 3 Ayud",
     };
   }
-  if (hasAny(["zapata", "cimentacion", "foso", "concreto"])) {
+  if (hasAny(["viga", "dintel", "concreto"])) {
     if (uNorm === "m2") {
       return {
-        meta_dia: 20.0,
+        meta_dia: 18.0,
         und: "m²/día",
         cuadrilla: "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud",
       };
     }
     return {
-      meta_dia: 3.5,
+      meta_dia: 3.0,
       und: "m³/día",
       cuadrilla: "Cuadrilla Estructura: 1 Oficial + 3 Ayud",
     };
@@ -577,43 +610,61 @@ export function calcularConsolidacionLocal(
       const cCalc = Number(r[campo] || 0);
       if (cCalc <= 0) continue;
       const actN = normalizarTexto(r.Actividad);
-      const it = r.Item;
-      if (actN.includes("bloque") || actN.includes("mamposteria") || it === "1.1" || it === "6.1") {
+      if (actN.includes("cubierta") || actN.includes("eternit") || actN.includes("teja") || actN.includes("caballete")) {
+        list.push({ Actividad: r.Actividad, Insumo: "Teja Ondulada Eternit No. 6/8", Unidad: "m²", Total_Teorico: cCalc * 1.1 });
+        list.push({ Actividad: r.Actividad, Insumo: "Caballete Articulado Cubierta Eternit", Unidad: "ml", Total_Teorico: cCalc * 0.12 });
+        list.push({ Actividad: r.Actividad, Insumo: "Ganchos de Fijación con Golilla", Unidad: "Und", Total_Teorico: cCalc * 3.0 });
+      } else if (actN.includes("ventaneria") || actN.includes("ventana") || actN.includes("puerta")) {
+        if ((actN.includes("ventaneria") || actN.includes("ventana")) && actN.includes("puerta")) {
+          const nWin = Math.round(cCalc * 0.57);
+          const nDoor = Math.max(0, cCalc - nWin);
+          if (nWin > 0) list.push({ Actividad: r.Actividad, Insumo: "Ventanas de Aluminio y Vidrio", Unidad: "Und", Total_Teorico: nWin });
+          if (nDoor > 0) list.push({ Actividad: r.Actividad, Insumo: "Puertas Entamboradas con Marco y Cerradura", Unidad: "Und", Total_Teorico: nDoor });
+        } else if (actN.includes("puerta")) {
+          list.push({ Actividad: r.Actividad, Insumo: "Puertas Entamboradas con Marco y Cerradura", Unidad: "Und", Total_Teorico: cCalc });
+        } else {
+          list.push({ Actividad: r.Actividad, Insumo: "Ventanas de Aluminio y Vidrio", Unidad: "Und", Total_Teorico: cCalc });
+        }
+      } else if (actN.includes("bloque") || actN.includes("mamposteria")) {
         const cantB = r.Unidad === "und" ? cCalc : cCalc * 12.5;
         list.push({ Actividad: r.Actividad, Insumo: "Bloque de Concreto No. 12 (40x20x10/12)", Unidad: "Und", Total_Teorico: cantB });
         list.push({ Actividad: r.Actividad, Insumo: "Cemento Gris para Pega (Sacos 50kg)", Unidad: "Sacos", Total_Teorico: cantB * 0.015 });
         list.push({ Actividad: r.Actividad, Insumo: "Arena Fina para Mortero de Pega", Unidad: "m³", Total_Teorico: cantB * 0.002 });
-      } else if (actN.includes("panete") || actN.includes("revoco") || it === "1.2" || it === "6.4") {
+      } else if (actN.includes("panete") || actN.includes("revoco")) {
         list.push({ Actividad: r.Actividad, Insumo: "Cemento Gris para Pañete (Sacos 50kg)", Unidad: "Sacos", Total_Teorico: cCalc * 0.22 });
         list.push({ Actividad: r.Actividad, Insumo: "Arena Lavada para Pañete", Unidad: "m³", Total_Teorico: cCalc * 0.028 });
-      } else if (actN.includes("plantilla") || actN.includes("solado") || it === "2.1" || it === "3.1") {
-        list.push({ Actividad: r.Actividad, Insumo: "Cemento Gris Base Piso (Sacos 50kg)", Unidad: "Sacos", Total_Teorico: cCalc * 0.35 });
-        list.push({ Actividad: r.Actividad, Insumo: "Triturado / Grava de 3/4\"", Unidad: "m³", Total_Teorico: cCalc * 0.065 });
-      } else if (actN.includes("porcelanato") || actN.includes("enchape") || actN.includes("piso") || it === "2.2") {
-        list.push({ Actividad: r.Actividad, Insumo: "Porcelanato / Baldosa Cerámica (+5% desp)", Unidad: "m²", Total_Teorico: cCalc * 1.05 });
-        list.push({ Actividad: r.Actividad, Insumo: "Pegante Blanco Especializado (Sacos 25kg)", Unidad: "Sacos", Total_Teorico: cCalc * 0.2 });
-      } else if (actN.includes("concreto") || actN.includes("zapata") || actN.includes("viga") || actN.includes("pedestal") || actN.includes("losa") || actN.includes("placa")) {
+      } else if (actN.includes("estuco") || actN.includes("pintura")) {
+        list.push({ Actividad: r.Actividad, Insumo: "Estuco Plástico Listo (Cuñetes)", Unidad: "Cuñetes", Total_Teorico: cCalc * 0.08 });
+        list.push({ Actividad: r.Actividad, Insumo: "Pintura Vinilo Tipo 1 (Galones)", Unidad: "Gal", Total_Teorico: cCalc * 0.12 });
+      } else if (actN.includes("porcelanato") || actN.includes("enchape")) {
+        list.push({ Actividad: r.Actividad, Insumo: "Porcelanato / Cerámica 51x51 cm (5% desp.)", Unidad: "m²", Total_Teorico: cCalc * 1.05 });
+        list.push({ Actividad: r.Actividad, Insumo: "Pegacor Cerámico (Bultos 25kg)", Unidad: "Bultos", Total_Teorico: cCalc * 0.25 });
+        list.push({ Actividad: r.Actividad, Insumo: "Boquilla para Junta", Unidad: "kg", Total_Teorico: cCalc * 0.35 });
+        if (actN.includes("plantilla")) {
+          list.push({ Actividad: r.Actividad, Insumo: "Concreto Simple f'c=14 MPa (Plantilla)", Unidad: "m³", Total_Teorico: cCalc * 0.07 });
+          list.push({ Actividad: r.Actividad, Insumo: "Cemento Gris para Plantilla (Sacos)", Unidad: "Sacos", Total_Teorico: cCalc * 0.45 });
+        }
+      } else if (actN.includes("plantilla") || actN.includes("solado")) {
+        list.push({ Actividad: r.Actividad, Insumo: "Concreto Simple f'c=14 MPa (Plantilla)", Unidad: "m³", Total_Teorico: cCalc * 0.07 });
+        list.push({ Actividad: r.Actividad, Insumo: "Cemento Gris para Plantilla (Sacos)", Unidad: "Sacos", Total_Teorico: cCalc * 0.45 });
+      } else if (actN.includes("cielo raso") || actN.includes("cielorraso") || actN.includes("frescasa") || actN.includes("aislamiento")) {
+        if (actN.includes("cielo raso") || actN.includes("cielorraso") || actN.includes("drywall")) {
+          list.push({ Actividad: r.Actividad, Insumo: "Panel de Cielorraso Suspendido", Unidad: "m²", Total_Teorico: cCalc * 1.05 });
+          list.push({ Actividad: r.Actividad, Insumo: "Perfilería Angular y Perfiles Omega", Unidad: "ml", Total_Teorico: cCalc * 1.8 });
+        }
+        if (actN.includes("frescasa") || actN.includes("aislamiento") || actN.includes("fibra de vidrio")) {
+          const areaDesp = cCalc * 1.05;
+          list.push({ Actividad: r.Actividad, Insumo: "Rollo Frescasa Eco 2-1/2\" (7.62×1.22m = 9.30 m², +5% desp.)", Unidad: "Rollos", Total_Teorico: areaDesp / 9.2964 });
+          list.push({ Actividad: r.Actividad, Insumo: "Aislamiento Fibra de Vidrio Frescasa Eco (Área c/ 5% desp.)", Unidad: "m²", Total_Teorico: areaDesp });
+        }
+      } else if (actN.includes("concreto") || actN.includes("zapata") || actN.includes("columna") || actN.includes("viga") || actN.includes("pedestal") || actN.includes("losa") || actN.includes("placa")) {
         const vol = r.Unidad === "m²" ? cCalc * 0.11 : cCalc;
-        list.push({ Actividad: r.Actividad, Insumo: "Concreto Premezclado / Obra 3000-3500 PSI", Unidad: "m³", Total_Teorico: vol * 1.03 });
-        list.push({ Actividad: r.Actividad, Insumo: "Cemento Estructural (Equiv. Sacos 50kg)", Unidad: "Sacos", Total_Teorico: vol * 7.5 });
-      } else if (actN.includes("estuco") || actN.includes("pintura") || it === "4.1") {
-        list.push({ Actividad: r.Actividad, Insumo: "Estuco Plástico Blanco (Cuñetes 28kg)", Unidad: "Cuñetes", Total_Teorico: cCalc * 0.045 });
-        list.push({ Actividad: r.Actividad, Insumo: "Pintura Vinílica Tipo 1 (Cuñetes 5 Gal)", Unidad: "Cuñetes", Total_Teorico: cCalc * 0.015 });
-      } else if (
-        actN.includes("frescasa") ||
-        actN.includes("aislamiento") ||
-        actN.includes("aislante") ||
-        actN.includes("fibra de vidrio") ||
-        it === "3.2"
-      ) {
-        const areaDesp = cCalc * 1.05;
-        list.push({ Actividad: r.Actividad, Insumo: "Rollo Frescasa Eco 2-1/2\" (7.62×1.22m = 9.30 m², +5% desp.)", Unidad: "Rollos", Total_Teorico: areaDesp / 9.2964 });
-        list.push({ Actividad: r.Actividad, Insumo: "Aislamiento Fibra de Vidrio Frescasa Eco (Área c/ 5% desp.)", Unidad: "m²", Total_Teorico: areaDesp });
-      } else if (actN.includes("cielo raso") || actN.includes("cielorraso") || it === "3.1") {
-        list.push({ Actividad: r.Actividad, Insumo: "Lámina Drywall / PVC 1.22x2.44m", Unidad: "Láminas", Total_Teorico: cCalc / 2.9768 });
-        list.push({ Actividad: r.Actividad, Insumo: "Perfilería Galvanizada (Omegas/Viguetas)", Unidad: "ml", Total_Teorico: cCalc * 3.1 });
+        list.push({ Actividad: r.Actividad, Insumo: "Cemento Gris Tipo UG (Sacos 50kg)", Unidad: "Sacos", Total_Teorico: vol * 7.0 });
+        list.push({ Actividad: r.Actividad, Insumo: "Arena Lavada de Río", Unidad: "m³", Total_Teorico: vol * 0.55 });
+        list.push({ Actividad: r.Actividad, Insumo: "Gravilla Triturada 3/4 pulg", Unidad: "m³", Total_Teorico: vol * 0.85 });
       } else if (actN.includes("acero")) {
-        list.push({ Actividad: r.Actividad, Insumo: "Acero Estructural / Corrugado (+3% traslape)", Unidad: "kg", Total_Teorico: cCalc * 1.03 });
+        list.push({ Actividad: r.Actividad, Insumo: "Acero Corrugado 60 KSI (Figurado)", Unidad: "kg", Total_Teorico: cCalc * 1.05 });
+        list.push({ Actividad: r.Actividad, Insumo: "Alambre Negro #18 para Amarre", Unidad: "kg", Total_Teorico: cCalc * 0.03 });
       }
     }
     return list;

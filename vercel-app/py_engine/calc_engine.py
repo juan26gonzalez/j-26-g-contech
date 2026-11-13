@@ -197,48 +197,62 @@ def _calcular_insumos_desde_df(df_5d, campo_cant):
         return []
     insumos_calc = []
     for _, r in df_5d.iterrows():
-        it = str(r["Item"])
         c_calc = float(r[campo_cant] or 0)
         if c_calc <= 0:
             continue
         act_n = normalizar_texto(str(r["Actividad"]))
-        if "bloque" in act_n or "mamposteria" in act_n or it in ["1.1", "6.1"]:
-            cant_b = c_calc if r["Unidad"] == "und" else c_calc * 12.5
+        und = str(r.get("Unidad", "") or "").lower()
+        if any(k in act_n for k in ["cubierta", "eternit", "teja", "caballete"]):
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Teja Ondulada Eternit No. 6/8", "Unidad": "m²", "Total_Teorico": c_calc * 1.10})
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Caballete Articulado Cubierta Eternit", "Unidad": "ml", "Total_Teorico": c_calc * 0.12})
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ganchos de Fijación con Golilla", "Unidad": "Und", "Total_Teorico": c_calc * 3.0})
+        elif any(k in act_n for k in ["ventaneria", "ventana", "puerta"]):
+            if ("ventaneria" in act_n or "ventana" in act_n) and "puerta" in act_n:
+                n_win = int(round(c_calc * 0.57))
+                n_door = max(0, int(round(c_calc)) - n_win)
+                if n_win > 0:
+                    insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ventanas de Aluminio y Vidrio", "Unidad": "Und", "Total_Teorico": float(n_win)})
+                if n_door > 0:
+                    insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Puertas Entamboradas con Marco y Cerradura", "Unidad": "Und", "Total_Teorico": float(n_door)})
+            elif "puerta" in act_n:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Puertas Entamboradas con Marco y Cerradura", "Unidad": "Und", "Total_Teorico": c_calc})
+            else:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ventanas de Aluminio y Vidrio", "Unidad": "Und", "Total_Teorico": c_calc})
+        elif "bloque" in act_n or "mamposteria" in act_n:
+            cant_b = c_calc if und == "und" else c_calc * 12.5
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Bloque de Concreto No. 12 (40x20x10/12)", "Unidad": "Und", "Total_Teorico": cant_b})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Pega (Sacos 50kg)", "Unidad": "Sacos", "Total_Teorico": cant_b * 0.015})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Fina para Mortero de Pega", "Unidad": "m³", "Total_Teorico": cant_b * 0.002})
-        elif "panete" in act_n or "revoco" in act_n or it in ["1.2", "6.4"]:
+        elif "panete" in act_n or "revoco" in act_n:
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Pañete (Sacos 50kg)", "Unidad": "Sacos", "Total_Teorico": c_calc * 0.22})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada para Pañete", "Unidad": "m³", "Total_Teorico": c_calc * 0.028})
-        elif "plantilla" in act_n or "solado" in act_n or it in ["2.1", "3.1"]:
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Concreto Simple f'c=14 MPa (Plantilla)", "Unidad": "m³", "Total_Teorico": c_calc * 0.07})
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Plantilla (Sacos)", "Unidad": "Sacos", "Total_Teorico": c_calc * 0.45})
-        elif "porcelanato" in act_n or "ceramico" in act_n or "enchape" in act_n or it == "2.2":
+        elif "estuco" in act_n or "pintura" in act_n:
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Estuco Plástico Listo (Cuñetes)", "Unidad": "Cuñetes", "Total_Teorico": c_calc * 0.08})
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pintura Vinilo Tipo 1 (Galones)", "Unidad": "Gal", "Total_Teorico": c_calc * 0.12})
+        elif any(k in act_n for k in ["porcelanato", "ceramico", "enchape"]):
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Porcelanato / Cerámica 51x51 cm (5% desp.)", "Unidad": "m²", "Total_Teorico": c_calc * 1.05})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pegacor Cerámico (Bultos 25kg)", "Unidad": "Bultos", "Total_Teorico": c_calc * 0.25})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Boquilla para Junta", "Unidad": "kg", "Total_Teorico": c_calc * 0.35})
-        elif "frescasa" in act_n or "aislamiento" in act_n or "aislante" in act_n or "fibra de vidrio" in act_n or it == "3.2":
-            area_desp = c_calc * 1.05
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Rollo Frescasa Eco 2-1/2\" (7.62×1.22m = 9.30 m², +5% desp.)", "Unidad": "Rollos", "Total_Teorico": area_desp / 9.2964})
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Aislamiento Fibra de Vidrio Frescasa Eco (Área c/ 5% desp.)", "Unidad": "m²", "Total_Teorico": area_desp})
-        elif "cielorraso" in act_n or "cielo raso" in act_n or it == "3.1":
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Panel de Cielorraso Suspendido", "Unidad": "m²", "Total_Teorico": c_calc * 1.05})
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Perfilería Angular y Perfiles Omega", "Unidad": "ml", "Total_Teorico": c_calc * 1.8})
-        elif "estuco" in act_n or "pintura" in act_n or it == "4.1":
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Estuco Plástico Listo (Cuñetes)", "Unidad": "Cuñetes", "Total_Teorico": c_calc * 0.08})
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Pintura Vinilo Tipo 1 (Galones)", "Unidad": "Gal", "Total_Teorico": c_calc * 0.12})
-        elif "cubierta" in act_n or "eternit" in act_n or "teja" in act_n or it == "6.1":
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Teja Ondulada Eternit No. 6/8", "Unidad": "m²", "Total_Teorico": c_calc * 1.10})
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ganchos de Fijación con Golilla", "Unidad": "Und", "Total_Teorico": c_calc * 3.0})
-        elif "puertas" in act_n or it == "5.1":
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Puertas Entamboradas con Marco y Cerradura", "Unidad": "Und", "Total_Teorico": c_calc})
-        elif "ventanas" in act_n or it == "5.2":
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Ventanas de Aluminio y Vidrio", "Unidad": "Und", "Total_Teorico": c_calc})
-        elif any(k in act_n for k in ["concreto", "zapatas", "vigas", "pedestales", "foso"]):
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Tipo UG (Sacos 50kg)", "Unidad": "Sacos", "Total_Teorico": c_calc * 7.0})
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada de Río", "Unidad": "m³", "Total_Teorico": c_calc * 0.55})
-            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Gravilla Triturada 3/4 pulg", "Unidad": "m³", "Total_Teorico": c_calc * 0.85})
-        elif "acero" in act_n or it in ["4.1", "5.2"]:
+            if "plantilla" in act_n:
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Concreto Simple f'c=14 MPa (Plantilla)", "Unidad": "m³", "Total_Teorico": c_calc * 0.07})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Plantilla (Sacos)", "Unidad": "Sacos", "Total_Teorico": c_calc * 0.45})
+        elif "plantilla" in act_n or "solado" in act_n:
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Concreto Simple f'c=14 MPa (Plantilla)", "Unidad": "m³", "Total_Teorico": c_calc * 0.07})
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris para Plantilla (Sacos)", "Unidad": "Sacos", "Total_Teorico": c_calc * 0.45})
+        elif any(k in act_n for k in ["cielorraso", "cielo raso", "drywall", "frescasa", "aislamiento", "aislante", "fibra de vidrio"]):
+            if any(k in act_n for k in ["cielorraso", "cielo raso", "drywall"]):
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Panel de Cielorraso Suspendido", "Unidad": "m²", "Total_Teorico": c_calc * 1.05})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Perfilería Angular y Perfiles Omega", "Unidad": "ml", "Total_Teorico": c_calc * 1.8})
+            if any(k in act_n for k in ["frescasa", "aislamiento", "aislante", "fibra de vidrio"]):
+                area_desp = c_calc * 1.05
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Rollo Frescasa Eco 2-1/2\" (7.62×1.22m = 9.30 m², +5% desp.)", "Unidad": "Rollos", "Total_Teorico": area_desp / 9.2964})
+                insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Aislamiento Fibra de Vidrio Frescasa Eco (Área c/ 5% desp.)", "Unidad": "m²", "Total_Teorico": area_desp})
+        elif any(k in act_n for k in ["concreto", "zapatas", "zapata", "columnas", "columna", "vigas", "viga", "pedestales", "foso", "losa", "placa"]):
+            vol = c_calc * 0.11 if "m2" in und or "m²" in und else c_calc
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Cemento Gris Tipo UG (Sacos 50kg)", "Unidad": "Sacos", "Total_Teorico": vol * 7.0})
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Arena Lavada de Río", "Unidad": "m³", "Total_Teorico": vol * 0.55})
+            insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Gravilla Triturada 3/4 pulg", "Unidad": "m³", "Total_Teorico": vol * 0.85})
+        elif "acero" in act_n:
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Acero Corrugado 60 KSI (Figurado)", "Unidad": "kg", "Total_Teorico": c_calc * 1.05})
             insumos_calc.append({"Actividad": r["Actividad"], "Insumo": "Alambre Negro #18 para Amarre", "Unidad": "kg", "Total_Teorico": c_calc * 0.03})
 
@@ -267,46 +281,58 @@ def _normalizar_unidad(und):
 
 
 def _resolver_meta_apu(actividad, unidad=""):
-    """Retorna estándares constructivos realistas (Colombia) según actividad y unidad."""
+    """Retorna estándares constructivos realistas (Colombia / Estándar Internacional) según actividad y unidad."""
     act_n = normalizar_texto(str(actividad or ""))
     u_norm = _normalizar_unidad(unidad)
 
-    if any(k in act_n for k in ["frescasa", "aislamiento", "aislante", "fibra de vidrio", "termoacustico"]):
-        return {"meta_dia": 28.0, "und": "m²/día", "cuadrilla": "Cuadrilla Aislamiento: 1 Of + 1 Ayud"}
+    if any(k in act_n for k in ["cubierta", "eternit", "techo", "teja", "caballete"]):
+        return {"meta_dia": 20.0, "und": "m²/día", "cuadrilla": "Cuadrilla Metálica: 2 Montadores"}
+    if any(k in act_n for k in ["ventana", "ventaneria", "window"]) and any(k in act_n for k in ["puerta", "door"]):
+        return {"meta_dia": 3.0, "und": "und/día", "cuadrilla": "Cuadrilla Carpintería & Aluminio: 1 Oficial + 1 Ayud"}
+    if "puerta" in act_n or "door" in act_n:
+        return {"meta_dia": 2.5, "und": "und/día", "cuadrilla": "Cuadrilla Carpintería: 1 Oficial + 1 Ayud"}
+    if "ventana" in act_n or "ventaneria" in act_n or "window" in act_n:
+        return {"meta_dia": 3.5, "und": "und/día", "cuadrilla": "Cuadrilla Aluminio: 1 Oficial + 1 Ayud"}
+    if any(k in act_n for k in ["cielorraso", "cielo raso", "drywall", "superboard", "ceiling"]) and any(
+        k in act_n for k in ["frescasa", "aislamiento", "aislante", "fibra de vidrio"]
+    ):
+        return {"meta_dia": 13.0, "und": "m²/día", "cuadrilla": "Cuadrilla Liviana: 1 Of + 1 Ayud"}
+    if any(k in act_n for k in ["frescasa", "aislamiento", "aislante", "fibra de vidrio"]):
+        return {"meta_dia": 26.0, "und": "m²/día", "cuadrilla": "Cuadrilla Aislamiento: 1 Of + 1 Ayud"}
     if any(k in act_n for k in ["cielorraso", "cielo raso", "drywall", "superboard", "ceiling"]):
         return {"meta_dia": 14.0, "und": "m²/día", "cuadrilla": "Cuadrilla Liviana: 1 Of + 1 Ayud"}
     if any(k in act_n for k in ["guardaescoba", "zocalo"]):
         return {"meta_dia": 25.0, "und": "ml/día", "cuadrilla": "Cuadrilla Acabados: 1 Oficial"}
+    if any(k in act_n for k in ["porcelanato", "enchape", "ceramico", "ceramica", "baldosa"]) and any(
+        k in act_n for k in ["plantilla", "solado"]
+    ):
+        return {"meta_dia": 9.0, "und": "m²/día", "cuadrilla": "Cuadrilla Enchape: 1 Oficial + 1 Ayud"}
     if any(k in act_n for k in ["porcelanato", "enchape", "ceramico", "ceramica", "baldosa", "piso"]) and "plantilla" not in act_n:
-        return {"meta_dia": 11.0, "und": "m²/día", "cuadrilla": "Cuadrilla Enchape: 1 Oficial + 1 Ayud"}
+        return {"meta_dia": 10.5, "und": "m²/día", "cuadrilla": "Cuadrilla Enchape: 1 Oficial + 1 Ayud"}
+    if "estuco" in act_n and ("pintura" in act_n or "vinil" in act_n):
+        return {"meta_dia": 20.0, "und": "m²/día", "cuadrilla": "Cuadrilla Pintura: 1 Oficial + 1 Ayud"}
     if any(k in act_n for k in ["estuco", "pintura", "vinil"]):
-        return {"meta_dia": 26.0, "und": "m²/día", "cuadrilla": "Cuadrilla Pintura: 1 Oficial + 1 Ayud"}
+        return {"meta_dia": 28.0, "und": "m²/día", "cuadrilla": "Cuadrilla Pintura: 1 Oficial + 1 Ayud"}
     if any(k in act_n for k in ["panete", "revoco", "revoque", "repello"]):
-        return {"meta_dia": 16.0, "und": "m²/día", "cuadrilla": "Cuadrilla Pañete: 1 Oficial + 1 Ayud"}
+        return {"meta_dia": 14.0, "und": "m²/día", "cuadrilla": "Cuadrilla Pañete: 1 Oficial + 1 Ayud"}
     if any(k in act_n for k in ["mamposteria", "levante", "bloque", "ladrillo", "muro"]):
-        return {"meta_dia": 12.0, "und": "m²/día", "cuadrilla": "Cuadrilla Mampostería: 1 Oficial + 1 Ayud"}
+        return {"meta_dia": 10.5, "und": "m²/día", "cuadrilla": "Cuadrilla Mampostería: 1 Oficial + 1 Ayud"}
     if any(k in act_n for k in ["plantilla", "solado"]):
         if u_norm == "m3":
             return {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 3 Ayud"}
-        return {"meta_dia": 22.0, "und": "m²/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud"}
+        return {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud"}
     if any(k in act_n for k in ["losa", "placa", "metaldeck", "entrepiso"]):
         if u_norm == "m3":
             return {"meta_dia": 4.0, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 4 Ayud"}
-        return {"meta_dia": 24.0, "und": "m²/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 4 Ayud"}
-    if any(k in act_n for k in ["cubierta", "eternit", "techo", "teja", "caballete"]):
-        return {"meta_dia": 22.0, "und": "m²/día", "cuadrilla": "Cuadrilla Metálica: 2 Montadores"}
-    if "puerta" in act_n or "door" in act_n:
-        return {"meta_dia": 2.5, "und": "und/día", "cuadrilla": "Cuadrilla Carpintería: 1 Oficial + 1 Ayud"}
-    if "ventana" in act_n or "window" in act_n:
-        return {"meta_dia": 3.5, "und": "und/día", "cuadrilla": "Cuadrilla Aluminio: 1 Oficial + 1 Ayud"}
+        return {"meta_dia": 22.0, "und": "m²/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 4 Ayud"}
     if any(k in act_n for k in ["sanitario", "lavamanos", "ducha", "lavadero", "lavaplatos", "aparato"]):
         return {"meta_dia": 3.0, "und": "und/día", "cuadrilla": "Cuadrilla Hidrosanitaria: 1 Oficial"}
     if any(k in act_n for k in ["acero", "hierro", "varilla", "malla"]):
-        return {"meta_dia": 220.0, "und": "kg/día", "cuadrilla": "Cuadrilla Armadores: 2 Oficiales"}
+        return {"meta_dia": 240.0, "und": "kg/día", "cuadrilla": "Cuadrilla Armadores: 2 Oficiales"}
     if any(k in act_n for k in ["demolicion", "retiro"]):
         if u_norm == "m2":
-            return {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla Preliminares: 2 Ayudantes"}
-        return {"meta_dia": 4.5, "und": "m³/día", "cuadrilla": "Cuadrilla Preliminares: 2 Ayudantes"}
+            return {"meta_dia": 16.0, "und": "m²/día", "cuadrilla": "Cuadrilla Preliminares: 2 Ayudantes"}
+        return {"meta_dia": 4.0, "und": "m³/día", "cuadrilla": "Cuadrilla Preliminares: 2 Ayudantes"}
     if "excavacion" in act_n:
         return {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla Excavación: 2 Ayudantes"}
     if any(k in act_n for k in ["cerramiento", "polisombra"]):
@@ -314,13 +340,15 @@ def _resolver_meta_apu(actividad, unidad=""):
     if any(k in act_n for k in ["replanteo", "trazado", "localizacion"]):
         return {"meta_dia": 80.0, "und": "m²/día", "cuadrilla": "Comisión Topografía / Oficial"}
     if any(k in act_n for k in ["pedestal", "columna"]):
-        return {"meta_dia": 2.5, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
-    if any(k in act_n for k in ["viga", "dintel"]):
-        return {"meta_dia": 3.2, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
-    if any(k in act_n for k in ["zapata", "cimentacion", "foso", "concreto"]):
+        return {"meta_dia": 2.4, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
+    if any(k in act_n for k in ["zapata", "cimentacion", "foso"]):
         if u_norm == "m2":
-            return {"meta_dia": 20.0, "und": "m²/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud"}
-        return {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
+            return {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud"}
+        return {"meta_dia": 3.2, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
+    if any(k in act_n for k in ["viga", "dintel", "concreto"]):
+        if u_norm == "m2":
+            return {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud"}
+        return {"meta_dia": 3.0, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
 
     if u_norm == "m2":
         return {"meta_dia": 15.0, "und": "m²/día", "cuadrilla": "Cuadrilla General: 1 Oficial + 1 Ayud"}

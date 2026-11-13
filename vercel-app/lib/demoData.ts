@@ -372,116 +372,86 @@ export function getDemoShowcaseProject(): ProjectConfig {
 }
 
 export function getDemoBitacoraRows(): BitacoraRow[] {
-  return [
-    {
-      id: 901,
-      fecha: isoOffsetDays(-18),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Concreto en zapatas y vigas de cimentación f'c=21 MPa`,
-      unidad: "m³",
-      cantidad: 14.0,
-      desperdicio: 2.5,
-      created_at: `${isoOffsetDays(-18)}T16:30:00Z`,
-    },
-    {
-      id: 902,
-      fecha: isoOffsetDays(-15),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Concreto en zapatas y vigas de cimentación f'c=21 MPa`,
-      unidad: "m³",
-      cantidad: 14.0,
-      desperdicio: 2.0,
-      created_at: `${isoOffsetDays(-15)}T17:10:00Z`,
-    },
-    {
-      id: 903,
-      fecha: isoOffsetDays(-12),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Concreto en columnas y pórtico estructural f'c=24 MPa`,
-      unidad: "m³",
-      cantidad: 9.2,
-      desperdicio: 1.8,
-      created_at: `${isoOffsetDays(-12)}T16:45:00Z`,
-    },
-    {
-      id: 904,
-      fecha: isoOffsetDays(-10),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Concreto en columnas y pórtico estructural f'c=24 MPa`,
-      unidad: "m³",
-      cantidad: 8.8,
-      desperdicio: 1.5,
-      created_at: `${isoOffsetDays(-10)}T16:50:00Z`,
-    },
-    {
-      id: 905,
-      fecha: isoOffsetDays(-8),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Muros en mampostería de bloques de concreto No. 12`,
-      unidad: "m²",
-      cantidad: 72.0,
-      desperdicio: 4.0,
-      created_at: `${isoOffsetDays(-8)}T17:00:00Z`,
-    },
-    {
-      id: 906,
-      fecha: isoOffsetDays(-6),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Muros en mampostería de bloques de concreto No. 12`,
-      unidad: "m²",
-      cantidad: 68.0,
-      desperdicio: 3.5,
-      created_at: `${isoOffsetDays(-6)}T17:15:00Z`,
-    },
-    {
-      id: 907,
-      fecha: isoOffsetDays(-4),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Muros en mampostería de bloques de concreto No. 12`,
-      unidad: "m²",
-      cantidad: 70.0,
-      desperdicio: 3.0,
-      created_at: `${isoOffsetDays(-4)}T17:05:00Z`,
-    },
-    {
-      id: 908,
-      fecha: isoOffsetDays(-4),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Montaje de cubierta termoacústica Eternit y caballetes`,
-      unidad: "m²",
-      cantidad: 78.0,
-      desperdicio: 2.0,
-      created_at: `${isoOffsetDays(-4)}T17:20:00Z`,
-    },
-    {
-      id: 909,
-      fecha: isoOffsetDays(-2),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Montaje de cubierta termoacústica Eternit y caballetes`,
-      unidad: "m²",
-      cantidad: 77.0,
-      desperdicio: 2.0,
-      created_at: `${isoOffsetDays(-2)}T16:40:00Z`,
-    },
-    {
-      id: 910,
-      fecha: isoOffsetDays(-2),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Pañete y mortero de revoco en muros dos caras`,
-      unidad: "m²",
-      cantidad: 115.0,
-      desperdicio: 3.5,
-      created_at: `${isoOffsetDays(-2)}T17:10:00Z`,
-    },
-    {
-      id: 911,
-      fecha: isoOffsetDays(-1),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Pañete y mortero de revoco en muros dos caras`,
-      unidad: "m²",
-      cantidad: 140.0,
-      desperdicio: 3.0,
-      created_at: `${isoOffsetDays(-1)}T17:10:00Z`,
-    },
-    {
-      id: 912,
-      fecha: isoOffsetDays(-1),
-      actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] Instalación de piso en porcelanato 51x51 cm y plantilla (Lobby Principal)`,
-      unidad: "m²",
-      cantidad: 48.0,
-      desperdicio: 4.5,
-      created_at: `${isoOffsetDays(-1)}T17:30:00Z`,
-    },
-  ];
+  let nextId = 901;
+  const rows: BitacoraRow[] = [];
+  const pushShifts = (
+    actividad: string,
+    unidad: string,
+    startOffset: number,
+    dailyQtys: number[],
+    desperdicio: number
+  ) => {
+    dailyQtys.forEach((cantidad, idx) => {
+      const fecha = isoOffsetDays(startOffset + idx);
+      rows.push({
+        id: nextId++,
+        fecha,
+        actividad: `[${DEMO_SHOWCASE_PROJECT_ID}] ${actividad}`,
+        unidad,
+        cantidad,
+        desperdicio,
+        created_at: `${fecha}T17:10:00Z`,
+      });
+    });
+  };
+
+  // Real-world daily crew outputs matching Colombia (Construdata/Camacol) & RSMeans benchmarks:
+  // 1.1 Footings (3.2 m3/day target -> 8 shifts totaling 28.0 m3 => 3.50 m3/day = 109.4% efficiency)
+  pushShifts(
+    "Concreto en zapatas y vigas de cimentación f'c=21 MPa",
+    "m³",
+    -24,
+    [3.4, 3.6, 3.5, 3.3, 3.8, 3.4, 3.6, 3.4],
+    2.2
+  );
+  // 1.2 Structural columns (2.4 m3/day target -> 8 shifts totaling 18.0 m3 => 2.25 m3/day = 93.8% efficiency)
+  pushShifts(
+    "Concreto en columnas y pórtico estructural f'c=24 MPa",
+    "m³",
+    -19,
+    [2.3, 2.4, 2.2, 2.1, 2.3, 2.2, 2.3, 2.2],
+    1.8
+  );
+  // 2.1 CMU concrete block walls (10.5 m2/day target -> 19 shifts totaling 210.0 m2 => 11.05 m2/day = 105.2% efficiency)
+  pushShifts(
+    "Muros en mampostería de bloques de concreto No. 12",
+    "m²",
+    -20,
+    [
+      11.0, 10.5, 11.5, 10.0, 12.0, 11.2, 10.8, 11.5, 10.5, 11.0,
+      11.8, 10.6, 11.2, 11.4, 10.8, 11.2, 10.5, 11.5, 11.0,
+    ],
+    3.5
+  );
+  // 6.1 Thermo-acoustic corrugated roofing & ridge caps (20.0 m2/day target -> 8 shifts totaling 155.0 m2 => 19.38 m2/day = 96.9% efficiency)
+  pushShifts(
+    "Montaje de cubierta termoacústica Eternit y caballetes",
+    "m²",
+    -11,
+    [18.5, 19.5, 20.0, 19.0, 20.5, 19.5, 18.0, 20.0],
+    2.0
+  );
+  // 2.2 Two-sided cement stucco plaster (14.0 m2/day target -> 18 shifts totaling 255.0 m2 => 14.17 m2/day = 101.2% efficiency)
+  pushShifts(
+    "Pañete y mortero de revoco en muros dos caras",
+    "m²",
+    -18,
+    [
+      13.8, 14.5, 14.0, 13.5, 14.8, 14.2, 13.6, 14.4, 14.2,
+      13.9, 14.6, 14.1, 13.8, 14.5, 14.0, 14.3, 14.6, 14.2,
+    ],
+    3.2
+  );
+  // 3.1 Porcelain tile & sub-slab in Main Lobby (9.0 m2/day target -> 6 shifts totaling 48.0 m2 => 8.00 m2/day = 88.9% efficiency - watch front <90%)
+  pushShifts(
+    "Instalación de piso en porcelanato 51x51 cm y plantilla (Lobby Principal)",
+    "m²",
+    -6,
+    [7.5, 8.0, 7.5, 8.2, 8.3, 8.5],
+    4.5
+  );
+
+  return rows;
 }
 
 /**

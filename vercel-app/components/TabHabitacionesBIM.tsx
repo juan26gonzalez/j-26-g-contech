@@ -46,6 +46,7 @@ import {
   convertUnitLabel,
   localizeActivity,
   localizeMaterialName,
+  localizeRoomName,
   localizeTerm,
   unitConversionFactor,
 } from "../lib/units";
@@ -112,42 +113,9 @@ const ROOM_MATERIAL_EN: Record<string, string> = {
   "Ganchos de Fijación con Golilla": "Roofing J-hooks with EPDM washer",
 };
 
-function localizeRoomName(room: string, lang: "es" | "en"): string {
-  if (lang === "es") return room;
-  const fixed: Record<string, string> = {
-    "Habitación Mamá": "Master Suite / Mom's Bedroom",
-    "Habitacion Mama": "Master Suite / Mom's Bedroom",
-    "Habitación Principal": "Primary Bedroom",
-    "Habitación 1": "Bedroom 1",
-    "Habitación 2": "Bedroom 2",
-    "Sala": "Living Room",
-    "Comedor": "Dining Room",
-    "Sala / Comedor": "Living / Dining Area",
-    "Cocina": "Kitchen",
-    "Baño 1": "Bathroom 1",
-    "Baño 2": "Bathroom 2",
-    "Entrada / Puerta 1": "Main Entry / Door 1",
-    "Pasillo": "Hallway",
-    "Patio": "Patio / Courtyard",
-    "Cubierta": "Roof Deck",
-    "Zona A — Pórticos & Cimentación": "Zone A — Foundations & Structural Frame",
-    "Zona B — Envolvente & Acabados": "Zone B — Envelope & Architectural Finishes",
-    "Zona C — Cubierta & Carpintería": "Zone C — Roofing & Glazing",
-  };
-  return fixed[room] || localizeTerm(room, lang);
-}
-
 function localizeRoomMaterialUnit(unit: string, lang: "es" | "en"): string {
   if (lang === "es") return unit;
-  const map: Record<string, string> = {
-    Sacos: "Bags",
-    Bultos: "Bags",
-    Rollos: "Rolls",
-    Cuñetes: "5-gal pails",
-    Gal: "gal",
-    Und: "ea",
-  };
-  return map[unit] || convertUnitLabel(unit, lang);
+  return convertUnitLabel(unit, lang);
 }
 
 function localizeRoomMaterialName(insumo: string, lang: "es" | "en"): string {
@@ -572,7 +540,10 @@ export default function TabHabitacionesBIM({
       const direct = ((it.quantity * puCop) / fxRate).toFixed(2);
       const conAiu = ((it.quantity * puCop * aiuFactor) / fxRate).toFixed(2);
       lines.push(
-        `"${localizeRoomName(it.room, lang)}";"${localizeActivity(it.activityLabel, lang)}";"${it.sourceComment}";"${dispUnit}";${dispQty.toFixed(2)};${puDisplay};${direct};${conAiu}`
+        `"${localizeRoomName(it.room, lang)}";"${localizeActivity(it.activityLabel, lang)}";"${localizeTerm(
+          it.sourceComment,
+          lang
+        )}";"${dispUnit}";${dispQty.toFixed(2)};${puDisplay};${direct};${conAiu}`
       );
     }
     lines.push("");

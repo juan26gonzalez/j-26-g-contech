@@ -44,7 +44,13 @@ import {
   resolveUnitPriceForRoomItem,
 } from "../lib/revitRooms";
 import { ConsolidationResult, LiquidationParams, ProjectConfig, TabKey } from "../lib/types";
-import { localizeActivity, localizeBitacoraObservacion, localizeTerm } from "../lib/units";
+import {
+  localizeActivity,
+  localizeBitacoraObservacion,
+  localizeMaterialName,
+  localizeRoomName,
+  localizeTerm,
+} from "../lib/units";
 
 interface TabVisor3DBIMProps {
   proyecto: ProjectConfig;
@@ -56,31 +62,6 @@ interface TabVisor3DBIMProps {
 
 type ViewerMode = "semaforo" | "foco" | "caja3d" | "original";
 type InspectorTab = "actividades" | "habitaciones" | "elemento";
-
-function localizeRoomName(room: string, lang: "es" | "en"): string {
-  if (lang === "es") return room;
-  const fixed: Record<string, string> = {
-    "Habitación Mamá": "Master Suite / Mom's Bedroom",
-    "Habitacion Mama": "Master Suite / Mom's Bedroom",
-    "Habitación Principal": "Primary Bedroom",
-    "Habitación 1": "Bedroom 1",
-    "Habitación 2": "Bedroom 2",
-    "Sala": "Living Room",
-    "Comedor": "Dining Room",
-    "Sala / Comedor": "Living / Dining Area",
-    "Cocina": "Kitchen",
-    "Baño 1": "Bathroom 1",
-    "Baño 2": "Bathroom 2",
-    "Entrada / Puerta 1": "Main Entry / Door 1",
-    "Pasillo": "Hallway",
-    "Patio": "Patio / Courtyard",
-    "Cubierta": "Roof Deck",
-    "Zona A — Pórticos & Cimentación": "Zone A — Foundations & Structural Frame",
-    "Zona B — Envolvente & Acabados": "Zone B — Envelope & Architectural Finishes",
-    "Zona C — Cubierta & Carpintería": "Zone C — Roofing & Glazing",
-  };
-  return fixed[room] || localizeTerm(room, lang);
-}
 
 function formatLocalizedActivityTag(raw: string, lang: "es" | "en"): string {
   const m = /^(\[[^\]]+\]\s*)(.*)$/.exec(raw || "");
@@ -1361,17 +1342,21 @@ export default function TabVisor3DBIM({
                       <div>
                         <b>{isEn ? "Comments (Revit):" : "Comments (Revit):"}</b>{" "}
                         <span className="font-mono text-emerald-800 font-bold">
-                          {selectedElement.meta.comments ||
-                            (isEn ? "Not included in IFC" : "No incluido en IFC")}
+                          {selectedElement.meta.comments
+                            ? localizeTerm(selectedElement.meta.comments, lang)
+                            : isEn
+                            ? "Not included in IFC"
+                            : "No incluido en IFC"}
                         </span>
                       </div>
                       <div>
-                        <b>{isEn ? "Level:" : "Nivel:"}</b> {selectedElement.meta.level || "—"}
+                        <b>{isEn ? "Level:" : "Nivel:"}</b>{" "}
+                        {selectedElement.meta.level ? localizeTerm(selectedElement.meta.level, lang) : "—"}
                       </div>
                       <div>
                         <b>{isEn ? "Materials:" : "Materiales:"}</b>{" "}
                         {selectedElement.meta.materialNames.length > 0
-                          ? selectedElement.meta.materialNames.join(", ")
+                          ? selectedElement.meta.materialNames.map((m) => localizeMaterialName(m, lang)).join(", ")
                           : "—"}
                       </div>
                       <div>
