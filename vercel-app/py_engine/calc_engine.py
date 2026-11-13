@@ -251,42 +251,151 @@ def _calcular_insumos_desde_df(df_5d, campo_cant):
     return resumen.to_dict(orient="records")
 
 
+def _normalizar_unidad(und):
+    u = normalizar_texto(str(und or ""))
+    if "m3" in u or "m³" in u:
+        return "m3"
+    if "m2" in u or "m²" in u:
+        return "m2"
+    if "ml" in u or "metro lineal" in u:
+        return "ml"
+    if "kg" in u:
+        return "kg"
+    if "und" in u or "unid" in u or "pto" in u or "glb" in u:
+        return "und"
+    return u
+
+
+def _resolver_meta_apu(actividad, unidad=""):
+    """Retorna estándares constructivos realistas (Colombia) según actividad y unidad."""
+    act_n = normalizar_texto(str(actividad or ""))
+    u_norm = _normalizar_unidad(unidad)
+
+    if any(k in act_n for k in ["frescasa", "aislamiento", "aislante", "fibra de vidrio", "termoacustico"]):
+        return {"meta_dia": 28.0, "und": "m²/día", "cuadrilla": "Cuadrilla Aislamiento: 1 Of + 1 Ayud"}
+    if any(k in act_n for k in ["cielorraso", "cielo raso", "drywall", "superboard", "ceiling"]):
+        return {"meta_dia": 14.0, "und": "m²/día", "cuadrilla": "Cuadrilla Liviana: 1 Of + 1 Ayud"}
+    if any(k in act_n for k in ["guardaescoba", "zocalo"]):
+        return {"meta_dia": 25.0, "und": "ml/día", "cuadrilla": "Cuadrilla Acabados: 1 Oficial"}
+    if any(k in act_n for k in ["porcelanato", "enchape", "ceramico", "ceramica", "baldosa", "piso"]) and "plantilla" not in act_n:
+        return {"meta_dia": 11.0, "und": "m²/día", "cuadrilla": "Cuadrilla Enchape: 1 Oficial + 1 Ayud"}
+    if any(k in act_n for k in ["estuco", "pintura", "vinil"]):
+        return {"meta_dia": 26.0, "und": "m²/día", "cuadrilla": "Cuadrilla Pintura: 1 Oficial + 1 Ayud"}
+    if any(k in act_n for k in ["panete", "revoco", "revoque", "repello"]):
+        return {"meta_dia": 16.0, "und": "m²/día", "cuadrilla": "Cuadrilla Pañete: 1 Oficial + 1 Ayud"}
+    if any(k in act_n for k in ["mamposteria", "levante", "bloque", "ladrillo", "muro"]):
+        return {"meta_dia": 12.0, "und": "m²/día", "cuadrilla": "Cuadrilla Mampostería: 1 Oficial + 1 Ayud"}
+    if any(k in act_n for k in ["plantilla", "solado"]):
+        if u_norm == "m3":
+            return {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 3 Ayud"}
+        return {"meta_dia": 22.0, "und": "m²/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud"}
+    if any(k in act_n for k in ["losa", "placa", "metaldeck", "entrepiso"]):
+        if u_norm == "m3":
+            return {"meta_dia": 4.0, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 4 Ayud"}
+        return {"meta_dia": 24.0, "und": "m²/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 4 Ayud"}
+    if any(k in act_n for k in ["cubierta", "eternit", "techo", "teja", "caballete"]):
+        return {"meta_dia": 22.0, "und": "m²/día", "cuadrilla": "Cuadrilla Metálica: 2 Montadores"}
+    if "puerta" in act_n or "door" in act_n:
+        return {"meta_dia": 2.5, "und": "und/día", "cuadrilla": "Cuadrilla Carpintería: 1 Oficial + 1 Ayud"}
+    if "ventana" in act_n or "window" in act_n:
+        return {"meta_dia": 3.5, "und": "und/día", "cuadrilla": "Cuadrilla Aluminio: 1 Oficial + 1 Ayud"}
+    if any(k in act_n for k in ["sanitario", "lavamanos", "ducha", "lavadero", "lavaplatos", "aparato"]):
+        return {"meta_dia": 3.0, "und": "und/día", "cuadrilla": "Cuadrilla Hidrosanitaria: 1 Oficial"}
+    if any(k in act_n for k in ["acero", "hierro", "varilla", "malla"]):
+        return {"meta_dia": 220.0, "und": "kg/día", "cuadrilla": "Cuadrilla Armadores: 2 Oficiales"}
+    if any(k in act_n for k in ["demolicion", "retiro"]):
+        if u_norm == "m2":
+            return {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla Preliminares: 2 Ayudantes"}
+        return {"meta_dia": 4.5, "und": "m³/día", "cuadrilla": "Cuadrilla Preliminares: 2 Ayudantes"}
+    if "excavacion" in act_n:
+        return {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla Excavación: 2 Ayudantes"}
+    if any(k in act_n for k in ["cerramiento", "polisombra"]):
+        return {"meta_dia": 35.0, "und": "ml/día", "cuadrilla": "Cuadrilla Preliminares: 1 Of + 1 Ayud"}
+    if any(k in act_n for k in ["replanteo", "trazado", "localizacion"]):
+        return {"meta_dia": 80.0, "und": "m²/día", "cuadrilla": "Comisión Topografía / Oficial"}
+    if any(k in act_n for k in ["pedestal", "columna"]):
+        return {"meta_dia": 2.5, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
+    if any(k in act_n for k in ["viga", "dintel"]):
+        return {"meta_dia": 3.2, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
+    if any(k in act_n for k in ["zapata", "cimentacion", "foso", "concreto"]):
+        if u_norm == "m2":
+            return {"meta_dia": 20.0, "und": "m²/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud"}
+        return {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla Estructura: 1 Oficial + 3 Ayud"}
+
+    if u_norm == "m2":
+        return {"meta_dia": 15.0, "und": "m²/día", "cuadrilla": "Cuadrilla General: 1 Oficial + 1 Ayud"}
+    if u_norm == "m3":
+        return {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla Obra Gris: 1 Oficial + 3 Ayud"}
+    if u_norm == "ml":
+        return {"meta_dia": 25.0, "und": "ml/día", "cuadrilla": "Cuadrilla Acabados: 1 Oficial"}
+    if u_norm == "kg":
+        return {"meta_dia": 200.0, "und": "kg/día", "cuadrilla": "Cuadrilla Armadores: 2 Oficiales"}
+    return {"meta_dia": 4.0, "und": "und/día", "cuadrilla": "Cuadrilla Estándar: 1 Oficial"}
+
+
+def _normalizar_fecha_key(fecha_val, fallback_idx):
+    txt = str(fecha_val or "").strip()
+    if not txt:
+        return f"row_{fallback_idx}"
+    if "/" in txt:
+        parts = txt.split("/")
+        if len(parts) == 3:
+            d, m, y = parts[0].zfill(2), parts[1].zfill(2), parts[2]
+            if len(y) == 4:
+                return f"{y}-{m}-{d}"
+    return txt[:10]
+
+
 def _calcular_rendimientos_df(df_obra_activa):
-    """Calcula eficiencia diaria de cuadrillas con Pandas groupby sobre df_obra_activa."""
+    """Calcula eficiencia diaria real de cuadrillas excluyendo cargas BIM/MS Project y agrupando por día."""
     if df_obra_activa is None or df_obra_activa.empty or "actividad" not in df_obra_activa.columns:
         return []
 
-    metas_apu = {
-        "concreto": {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
-        "zapatas": {"meta_dia": 3.5, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
-        "pedestales": {"meta_dia": 2.5, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
-        "vigas": {"meta_dia": 3.0, "und": "m³/día", "cuadrilla": "Cuadrilla 1: 1 Oficial + 3 Ayudantes"},
-        "mamposteria": {"meta_dia": 12.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
-        "bloque": {"meta_dia": 12.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
-        "panete": {"meta_dia": 18.0, "und": "m²/día", "cuadrilla": "Cuadrilla 2: 1 Oficial + 1 Ayudante"},
-        "piso": {"meta_dia": 14.0, "und": "m²/día", "cuadrilla": "Cuadrilla Acabados: 1 Oficial"},
-        "frescasa": {"meta_dia": 28.0, "und": "m²/día", "cuadrilla": "Cuadrilla Aislamiento: 1 Of + 1 Ayud"},
-        "aislamiento": {"meta_dia": 28.0, "und": "m²/día", "cuadrilla": "Cuadrilla Aislamiento: 1 Of + 1 Ayud"},
-        "cubierta": {"meta_dia": 25.0, "und": "m²/día", "cuadrilla": "Cuadrilla Metálica: 2 Montadores"},
-        "acero": {"meta_dia": 250.0, "und": "kg/día", "cuadrilla": "Cuadrilla Armadores: 2 Oficiales"},
-    }
+    import re
+    grupos = {}
+    for idx, row in df_obra_activa.iterrows():
+        act_raw = str(row.get("actividad", "")).strip()
+        act_norm = normalizar_texto(act_raw)
+        if not act_norm:
+            continue
+        if any(skip in act_norm for skip in ["bim_takeoff", "takeoff", "msproject_sync"]):
+            continue
+        if act_norm == "test":
+            continue
 
-    df_clean = df_obra_activa.copy()
-    df_clean["cantidad"] = pd.to_numeric(df_clean["cantidad"], errors="coerce").fillna(0.0)
-    resumen_act = df_clean.groupby("actividad")["cantidad"].agg(["sum", "count", "mean"]).reset_index()
-    resumen_act.columns = ["Actividad", "Total_Producido", "Jornadas_Reportadas", "Promedio_Diario"]
+        try:
+            cant = float(row.get("cantidad", 0) or 0)
+        except Exception:
+            cant = 0.0
+        if cant <= 0:
+            continue
+
+        act_display = re.sub(r"^\s*\[[^\]]+\]\s*", "", act_raw).strip() or act_raw
+        act_key = normalizar_texto(act_display)
+        und = str(row.get("unidad", "") or "")
+        fecha_key = _normalizar_fecha_key(row.get("fecha", ""), idx)
+
+        if act_key not in grupos:
+            grupos[act_key] = {
+                "display": act_display,
+                "unidad": und,
+                "total": 0.0,
+                "dias": set(),
+            }
+        grupos[act_key]["total"] += cant
+        grupos[act_key]["dias"].add(fecha_key)
+        if not grupos[act_key]["unidad"] and und:
+            grupos[act_key]["unidad"] = und
 
     rendimientos = []
-    for _, r in resumen_act.iterrows():
-        act_n = normalizar_texto(str(r["Actividad"]))
-        meta_info = {"meta_dia": 10.0, "und": "unidades/día", "cuadrilla": "Cuadrilla Estándar"}
-        for k, v in metas_apu.items():
-            if k in act_n:
-                meta_info = v
-                break
-        prom = round(float(r["Promedio_Diario"]), 2)
+    for g in grupos.values():
+        jornadas = max(1, len(g["dias"]))
+        total_prod = round(float(g["total"]), 2)
+        prom = round(total_prod / jornadas, 2)
+        meta_info = _resolver_meta_apu(g["display"], g["unidad"])
         meta = float(meta_info["meta_dia"])
         eficiencia = round((prom / meta * 100), 1) if meta > 0 else 100.0
+
         if eficiencia >= 105.0:
             desempeno = "🟢 Alto Rendimiento"
         elif eficiencia >= 90.0:
@@ -295,15 +404,17 @@ def _calcular_rendimientos_df(df_obra_activa):
             desempeno = "🔴 Rendimiento Bajo"
 
         rendimientos.append({
-            "Actividad": str(r["Actividad"]),
+            "Actividad": g["display"],
             "Cuadrilla_Asignada": meta_info["cuadrilla"],
-            "Total_Producido": round(float(r["Total_Producido"]), 2),
-            "Jornadas": int(r["Jornadas_Reportadas"]),
+            "Total_Producido": total_prod,
+            "Jornadas": int(jornadas),
             "Rendimiento_Real": f"{prom} {meta_info['und']}",
             "Meta_APU_Teorica": f"{meta} {meta_info['und']}",
             "Eficiencia_%": eficiencia,
             "Evaluacion": desempeno,
         })
+
+    rendimientos.sort(key=lambda item: item["Actividad"])
     return rendimientos
 
 

@@ -17,6 +17,275 @@ export function normalizarTexto(texto: string): string {
     .trim();
 }
 
+export function normalizarUnidad(und?: string): string {
+  const u = normalizarTexto(String(und || ""));
+  if (u.includes("m3") || u.includes("m³")) return "m3";
+  if (u.includes("m2") || u.includes("m²")) return "m2";
+  if (u.includes("ml") || u.includes("metro lineal")) return "ml";
+  if (u.includes("kg")) return "kg";
+  if (
+    u.includes("und") ||
+    u.includes("unid") ||
+    u.includes("pto") ||
+    u.includes("glb")
+  ) {
+    return "und";
+  }
+  return u;
+}
+
+function normalizarFechaKey(fechaVal: unknown, fallbackIdx: number): string {
+  const txt = String(fechaVal || "").trim();
+  if (!txt) return `row_${fallbackIdx}`;
+  if (txt.includes("/")) {
+    const parts = txt.split("/");
+    if (parts.length === 3 && parts[2].length === 4) {
+      return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+    }
+  }
+  return txt.slice(0, 10);
+}
+
+export interface MetaApuSpec {
+  meta_dia: number;
+  und: string;
+  cuadrilla: string;
+}
+
+export function resolverMetaApu(
+  actividad: string,
+  unidad: string = ""
+): MetaApuSpec {
+  const actN = normalizarTexto(actividad);
+  const uNorm = normalizarUnidad(unidad);
+  const hasAny = (keys: string[]) => keys.some((k) => actN.includes(k));
+
+  if (
+    hasAny([
+      "frescasa",
+      "aislamiento",
+      "aislante",
+      "fibra de vidrio",
+      "termoacustico",
+    ])
+  ) {
+    return {
+      meta_dia: 28.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Aislamiento: 1 Of + 1 Ayud",
+    };
+  }
+  if (
+    hasAny(["cielorraso", "cielo raso", "drywall", "superboard", "ceiling"])
+  ) {
+    return {
+      meta_dia: 14.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Liviana: 1 Of + 1 Ayud",
+    };
+  }
+  if (hasAny(["guardaescoba", "zocalo"])) {
+    return {
+      meta_dia: 25.0,
+      und: "ml/día",
+      cuadrilla: "Cuadrilla Acabados: 1 Oficial",
+    };
+  }
+  if (
+    hasAny(["porcelanato", "enchape", "ceramico", "ceramica", "baldosa", "piso"]) &&
+    !actN.includes("plantilla")
+  ) {
+    return {
+      meta_dia: 11.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Enchape: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["estuco", "pintura", "vinil"])) {
+    return {
+      meta_dia: 26.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Pintura: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["panete", "revoco", "revoque", "repello"])) {
+    return {
+      meta_dia: 16.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Pañete: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["mamposteria", "levante", "bloque", "ladrillo", "muro"])) {
+    return {
+      meta_dia: 12.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Mampostería: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["plantilla", "solado"])) {
+    if (uNorm === "m3") {
+      return {
+        meta_dia: 3.5,
+        und: "m³/día",
+        cuadrilla: "Cuadrilla Obra Gris: 1 Oficial + 3 Ayud",
+      };
+    }
+    return {
+      meta_dia: 22.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud",
+    };
+  }
+  if (hasAny(["losa", "placa", "metaldeck", "entrepiso"])) {
+    if (uNorm === "m3") {
+      return {
+        meta_dia: 4.0,
+        und: "m³/día",
+        cuadrilla: "Cuadrilla Estructura: 1 Oficial + 4 Ayud",
+      };
+    }
+    return {
+      meta_dia: 24.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Estructura: 1 Oficial + 4 Ayud",
+    };
+  }
+  if (hasAny(["cubierta", "eternit", "techo", "teja", "caballete"])) {
+    return {
+      meta_dia: 22.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla Metálica: 2 Montadores",
+    };
+  }
+  if (hasAny(["puerta", "door"])) {
+    return {
+      meta_dia: 2.5,
+      und: "und/día",
+      cuadrilla: "Cuadrilla Carpintería: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (hasAny(["ventana", "window"])) {
+    return {
+      meta_dia: 3.5,
+      und: "und/día",
+      cuadrilla: "Cuadrilla Aluminio: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (
+    hasAny(["sanitario", "lavamanos", "ducha", "lavadero", "lavaplatos", "aparato"])
+  ) {
+    return {
+      meta_dia: 3.0,
+      und: "und/día",
+      cuadrilla: "Cuadrilla Hidrosanitaria: 1 Oficial",
+    };
+  }
+  if (hasAny(["acero", "hierro", "varilla", "malla"])) {
+    return {
+      meta_dia: 220.0,
+      und: "kg/día",
+      cuadrilla: "Cuadrilla Armadores: 2 Oficiales",
+    };
+  }
+  if (hasAny(["demolicion", "retiro"])) {
+    if (uNorm === "m2") {
+      return {
+        meta_dia: 18.0,
+        und: "m²/día",
+        cuadrilla: "Cuadrilla Preliminares: 2 Ayudantes",
+      };
+    }
+    return {
+      meta_dia: 4.5,
+      und: "m³/día",
+      cuadrilla: "Cuadrilla Preliminares: 2 Ayudantes",
+    };
+  }
+  if (actN.includes("excavacion")) {
+    return {
+      meta_dia: 3.5,
+      und: "m³/día",
+      cuadrilla: "Cuadrilla Excavación: 2 Ayudantes",
+    };
+  }
+  if (hasAny(["cerramiento", "polisombra"])) {
+    return {
+      meta_dia: 35.0,
+      und: "ml/día",
+      cuadrilla: "Cuadrilla Preliminares: 1 Of + 1 Ayud",
+    };
+  }
+  if (hasAny(["replanteo", "trazado", "localizacion"])) {
+    return {
+      meta_dia: 80.0,
+      und: "m²/día",
+      cuadrilla: "Comisión Topografía / Oficial",
+    };
+  }
+  if (hasAny(["pedestal", "columna"])) {
+    return {
+      meta_dia: 2.5,
+      und: "m³/día",
+      cuadrilla: "Cuadrilla Estructura: 1 Oficial + 3 Ayud",
+    };
+  }
+  if (hasAny(["viga", "dintel"])) {
+    return {
+      meta_dia: 3.2,
+      und: "m³/día",
+      cuadrilla: "Cuadrilla Estructura: 1 Oficial + 3 Ayud",
+    };
+  }
+  if (hasAny(["zapata", "cimentacion", "foso", "concreto"])) {
+    if (uNorm === "m2") {
+      return {
+        meta_dia: 20.0,
+        und: "m²/día",
+        cuadrilla: "Cuadrilla Obra Gris: 1 Oficial + 2 Ayud",
+      };
+    }
+    return {
+      meta_dia: 3.5,
+      und: "m³/día",
+      cuadrilla: "Cuadrilla Estructura: 1 Oficial + 3 Ayud",
+    };
+  }
+
+  if (uNorm === "m2") {
+    return {
+      meta_dia: 15.0,
+      und: "m²/día",
+      cuadrilla: "Cuadrilla General: 1 Oficial + 1 Ayud",
+    };
+  }
+  if (uNorm === "m3") {
+    return {
+      meta_dia: 3.5,
+      und: "m³/día",
+      cuadrilla: "Cuadrilla Obra Gris: 1 Oficial + 3 Ayud",
+    };
+  }
+  if (uNorm === "ml") {
+    return {
+      meta_dia: 25.0,
+      und: "ml/día",
+      cuadrilla: "Cuadrilla Acabados: 1 Oficial",
+    };
+  }
+  if (uNorm === "kg") {
+    return {
+      meta_dia: 200.0,
+      und: "kg/día",
+      cuadrilla: "Cuadrilla Armadores: 2 Oficiales",
+    };
+  }
+  return {
+    meta_dia: 4.0,
+    und: "und/día",
+    cuadrilla: "Cuadrilla Estándar: 1 Oficial",
+  };
+}
+
 export function filtrarBitacoraPorProyecto(
   registros: BitacoraRow[],
   proyecto: ProjectConfig
@@ -235,43 +504,53 @@ export function calcularConsolidacionLocal(
         : 0,
   }));
 
-  // Rendimientos
-  const metasApu: Record<string, { meta_dia: number; und: string; cuadrilla: string }> = {
-    bloque: { meta_dia: 14.0, und: "m²/día", cuadrilla: "Cuadrilla Mampostería: 1 Of + 1 Ayud" },
-    mamposteria: { meta_dia: 14.0, und: "m²/día", cuadrilla: "Cuadrilla Mampostería: 1 Of + 1 Ayud" },
-    panete: { meta_dia: 18.0, und: "m²/día", cuadrilla: "Cuadrilla Pañete: 1 Of + 1 Ayud" },
-    plantilla: { meta_dia: 20.0, und: "m²/día", cuadrilla: "Cuadrilla Pisos: 1 Of + 2 Ayud" },
-    porcelanato: { meta_dia: 12.0, und: "m²/día", cuadrilla: "Cuadrilla Enchape: 1 Oficial Especialista" },
-    estuco: { meta_dia: 30.0, und: "m²/día", cuadrilla: "Cuadrilla Pintura: 2 Pintores" },
-    pintura: { meta_dia: 30.0, und: "m²/día", cuadrilla: "Cuadrilla Pintura: 2 Pintores" },
-    cielo: { meta_dia: 15.0, und: "m²/día", cuadrilla: "Cuadrilla Liviana: 1 Of + 1 Ayud" },
-    frescasa: { meta_dia: 28.0, und: "m²/día", cuadrilla: "Cuadrilla Aislamiento: 1 Of + 1 Ayud" },
-    aislamiento: { meta_dia: 28.0, und: "m²/día", cuadrilla: "Cuadrilla Aislamiento: 1 Of + 1 Ayud" },
-    cubierta: { meta_dia: 25.0, und: "m²/día", cuadrilla: "Cuadrilla Metálica: 2 Montadores" },
-    acero: { meta_dia: 250.0, und: "kg/día", cuadrilla: "Cuadrilla Armadores: 2 Oficiales" },
-  };
-
-  const actStats = new Map<string, { sum: number; count: number }>();
-  for (const r of obraActiva) {
-    const act = String(r.actividad || "").trim();
-    if (!act || normalizarTexto(act).includes("bim_takeoff")) continue;
-    const prev = actStats.get(act) || { sum: 0, count: 0 };
-    prev.sum += Number(r.cantidad || 0) || 0;
-    prev.count += 1;
-    actStats.set(act, prev);
-  }
-  const rendimientos: RendimientoRow[] = [];
-  actStats.forEach((st, act) => {
-    const actN = normalizarTexto(act);
-    let metaInfo = { meta_dia: 10.0, und: "unidades/día", cuadrilla: "Cuadrilla Estándar" };
-    for (const [k, v] of Object.entries(metasApu)) {
-      if (actN.includes(k)) {
-        metaInfo = v;
-        break;
-      }
+  // Rendimientos reales por jornada (agrupados por fecha única, excluyendo BIM_TAKEOFF / MSPROJECT_SYNC)
+  const actStats = new Map<
+    string,
+    { display: string; unidad: string; sum: number; dias: Set<string> }
+  >();
+  obraActiva.forEach((r, idx) => {
+    const actRaw = String(r.actividad || "").trim();
+    const actNorm = normalizarTexto(actRaw);
+    if (!actNorm) return;
+    if (
+      actNorm.includes("bim_takeoff") ||
+      actNorm.includes("takeoff") ||
+      actNorm.includes("msproject_sync") ||
+      actNorm === "test"
+    ) {
+      return;
     }
-    const prom = Math.round((st.sum / Math.max(1, st.count)) * 100) / 100;
-    const eficiencia = Math.round((prom / metaInfo.meta_dia) * 1000) / 10;
+    const cant = Number(r.cantidad || 0) || 0;
+    if (cant <= 0) return;
+
+    const display = actRaw.replace(/^\s*\[[^\]]+\]\s*/g, "").trim() || actRaw;
+    const key = normalizarTexto(display);
+    const und = String(r.unidad || "");
+    const fechaKey = normalizarFechaKey(r.fecha, idx);
+
+    const prev = actStats.get(key) || {
+      display,
+      unidad: und,
+      sum: 0,
+      dias: new Set<string>(),
+    };
+    prev.sum += cant;
+    prev.dias.add(fechaKey);
+    if (!prev.unidad && und) prev.unidad = und;
+    actStats.set(key, prev);
+  });
+
+  const rendimientos: RendimientoRow[] = [];
+  actStats.forEach((st) => {
+    const jornadas = Math.max(1, st.dias.size);
+    const totalProd = Math.round(st.sum * 100) / 100;
+    const prom = Math.round((totalProd / jornadas) * 100) / 100;
+    const metaInfo = resolverMetaApu(st.display, st.unidad);
+    const eficiencia =
+      metaInfo.meta_dia > 0
+        ? Math.round((prom / metaInfo.meta_dia) * 1000) / 10
+        : 100;
     const evaluacion =
       eficiencia >= 105
         ? "🟢 Alto Rendimiento"
@@ -279,16 +558,17 @@ export function calcularConsolidacionLocal(
         ? "🔵 En Rango APU"
         : "🔴 Rendimiento Bajo";
     rendimientos.push({
-      Actividad: act,
+      Actividad: st.display,
       Cuadrilla_Asignada: metaInfo.cuadrilla,
-      Total_Producido: Math.round(st.sum * 100) / 100,
-      Jornadas: st.count,
+      Total_Producido: totalProd,
+      Jornadas: jornadas,
       Rendimiento_Real: `${prom} ${metaInfo.und}`,
       Meta_APU_Teorica: `${metaInfo.meta_dia} ${metaInfo.und}`,
       "Eficiencia_%": eficiencia,
       Evaluacion: evaluacion,
     });
   });
+  rendimientos.sort((a, b) => a.Actividad.localeCompare(b.Actividad));
 
   // Insumos
   const calcInsumos = (campo: "Cantidad_Contratada" | "Cantidad_Ejecutada"): InsumoRow[] => {
