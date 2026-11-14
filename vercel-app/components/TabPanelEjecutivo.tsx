@@ -2,6 +2,7 @@
 
 import React from "react";
 import {
+  ArrowRight,
   BarChart3,
   CalendarClock,
   CheckCircle2,
@@ -9,6 +10,7 @@ import {
   Globe2,
   Layers,
   ShieldCheck,
+  Wallet,
 } from "lucide-react";
 import {
   BarChart,
@@ -20,18 +22,33 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import {
+  computePayrollSummary,
+  type SstSummaryMetrics,
+} from "../lib/erpStorage";
 import { useAppPreferences } from "../lib/i18n";
 import { localizeChapter } from "../lib/units";
-import { ConsolidationResult, LiquidationParams } from "../lib/types";
+import {
+  ConsolidationResult,
+  LiquidationParams,
+  PayrollProjectData,
+  TabKey,
+} from "../lib/types";
 
 interface TabPanelEjecutivoProps {
   data: ConsolidationResult;
   params: LiquidationParams;
+  sstSummary?: SstSummaryMetrics;
+  payrollState?: PayrollProjectData;
+  onNavigateTab?: (tab: TabKey) => void;
 }
 
 export default function TabPanelEjecutivo({
   data,
   params,
+  sstSummary,
+  payrollState,
+  onNavigateTab,
 }: TabPanelEjecutivoProps) {
   const {
     tr,
@@ -262,6 +279,84 @@ export default function TabPanelEjecutivo({
           </div>
         </div>
       </div>
+
+      {(sstSummary || payrollState) && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
+          {sstSummary && (
+            <div className="bento-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 px-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-emerald-700">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  {lang === "en" ? "HSE / Jobsite Safety Pulse" : "Pulso SST & Seguridad en Obra"}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-slate-900">
+                  <span>
+                    {sstSummary.diasSinLti} {lang === "en" ? "LTI-free days" : "días sin LTI"}
+                  </span>
+                  <span className="text-slate-500">•</span>
+                  <span>
+                    {sstSummary.permisosActivos} {lang === "en" ? "active PTAR" : "PTAR vigentes"}
+                  </span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-emerald-700">
+                    {sstSummary.eppPct}% {lang === "en" ? "PPE" : "EPP"}
+                  </span>
+                </div>
+              </div>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab("sst")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shrink-0 self-start sm:self-center transition-colors"
+                >
+                  {tr.tabs.sst}
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {payrollState && (() => {
+            const paySum = computePayrollSummary(payrollState, lang);
+            return (
+              <div className="bento-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 px-4">
+                <div className="space-y-1">
+                  <div className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-sky-700">
+                    <Wallet className="w-3.5 h-3.5" />
+                    {lang === "en"
+                      ? `Payroll & Piecework Pulse (${paySum.periodo})`
+                      : `Pulso Nómina Mixta & Destajo (${paySum.periodo})`}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-slate-900">
+                    <span>
+                      {lang === "en" ? "Net:" : "Neto:"} {formatMoney(paySum.netoPagarCop)}
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span>
+                      {lang === "en" ? "Burden Cost:" : "Costo Emp.:"}{" "}
+                      {formatMoney(paySum.costoTotalEmpresaCop)}
+                    </span>
+                    <span className="text-slate-500">•</span>
+                    <span className="text-sky-700">
+                      {paySum.trabajadores} {lang === "en" ? "crews/staff" : "cuadrillas/roles"}
+                    </span>
+                  </div>
+                </div>
+                {onNavigateTab && (
+                  <button
+                    type="button"
+                    onClick={() => onNavigateTab("nomina")}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shrink-0 self-start sm:self-center transition-colors"
+                  >
+                    {tr.tabs.nomina}
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+        </div>
+      )}
 
       {/* Enterprise BIM & EVM Standards Strip */}
       <div className="bento-card flex flex-wrap items-center justify-between gap-3 py-3.5 px-4">

@@ -10,8 +10,10 @@ export type TabKey =
   | "contratos"
   | "bitacora"
   | "rendimiento"
+  | "sst"
   | "mayores"
-  | "actas";
+  | "actas"
+  | "nomina";
 
 export type RoomActivityKey =
   | "plantilla"
@@ -222,4 +224,125 @@ export interface SubcontractCfg {
   plazo_dias: number;
   fecha_inicio: string;
   fecha_entrega: string;
+}
+
+// =============================================================================
+// FASE 1 ERP: SST / HSE (ISO 45001 • DEC. 1072 / RES. 4272 • OSHA 1926)
+// =============================================================================
+
+export type SstPermitType =
+  | "alturas"
+  | "caliente"
+  | "excavacion"
+  | "electrico"
+  | "izaje";
+
+export type SstPermitStatus = "vigente" | "pendiente" | "vencido" | "cerrado";
+
+export interface SstPermit {
+  id: string;
+  codigo: string;
+  fecha: string;
+  tipo: SstPermitType;
+  frente: string;
+  frenteEn?: string;
+  responsable: string;
+  responsableEn?: string;
+  alturaM?: number;
+  ptarChecklistOk: boolean;
+  arlVerificada: boolean;
+  estado: SstPermitStatus;
+  notas?: string;
+  notasEn?: string;
+}
+
+export interface SstTalk {
+  id: string;
+  fecha: string;
+  frente: string;
+  frenteEn?: string;
+  tema: string;
+  temaEn: string;
+  instructor: string;
+  instructorEn?: string;
+  asistentes: number;
+  atsCompletado: boolean;
+}
+
+export interface SstEppWorker {
+  id: string;
+  codigo: string;
+  rol: string;
+  rolEn: string;
+  cuadrilla: string;
+  cargoCertAltura: boolean;
+  venceCertAltura: string;
+  estadoAfiliacion: "activa" | "pendiente" | "vencida";
+  casco: boolean;
+  botas: boolean;
+  arnes: boolean;
+  guantes: boolean;
+  gafas: boolean;
+}
+
+export type SstIncidentType =
+  | "cuasi_accidente"
+  | "condicion_insegura"
+  | "incidente_leve"
+  | "accidente_lti";
+
+export interface SstIncident {
+  id: string;
+  fecha: string;
+  tipo: SstIncidentType;
+  frente: string;
+  frenteEn?: string;
+  descripcion: string;
+  descripcionEn: string;
+  accionCapa: string;
+  accionCapaEn: string;
+  responsable: string;
+  fechaLimite: string;
+  cerrado: boolean;
+}
+
+export interface SstProjectData {
+  diasSinLti: number;
+  horasHombreAcum: number;
+  permisos: SstPermit[];
+  charlas: SstTalk[];
+  eppTrabajadores: SstEppWorker[];
+  incidentes: SstIncident[];
+}
+
+// =============================================================================
+// FASE 1 ERP: PAGO DE NÓMINA & DESTAJO (PILA CO / CERTIFIED PAYROLL US-EU)
+// =============================================================================
+
+export type PayrollModalidad = "jornal" | "destajo";
+export type PayrollStatus = "borrador" | "aprobada" | "pagada";
+
+export interface PayrollWorkerEntry {
+  id: string;
+  codigo: string;
+  nombreRol: string;
+  nombreRolEn: string;
+  especialidad: string;
+  especialidadEn: string;
+  modalidad: PayrollModalidad;
+  unidadPago: string;
+  tarifaBaseCop: number;
+  diasTrabajados: number;
+  horasExtra: number;
+  cantidadDestajoMetric: number;
+  actividadMatchItem?: string;
+  prestamoDescuentoCop: number;
+  afiliadoArlRiesgoV: boolean;
+  estado: PayrollStatus;
+  notas?: string;
+}
+
+export interface PayrollProjectData {
+  periodo: string;
+  registros: PayrollWorkerEntry[];
 }

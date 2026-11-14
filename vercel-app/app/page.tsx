@@ -11,9 +11,11 @@ import TabCurvaS from "../components/TabCurvaS";
 import TabHabitacionesBIM from "../components/TabHabitacionesBIM";
 import TabInsumosBIM from "../components/TabInsumosBIM";
 import TabMayoresCantidades from "../components/TabMayoresCantidades";
+import TabNominaPagos from "../components/TabNominaPagos";
 import TabPanelEjecutivo from "../components/TabPanelEjecutivo";
 import TabPresupuestoAPU from "../components/TabPresupuestoAPU";
 import TabRendimiento from "../components/TabRendimiento";
+import TabSstSeguridad from "../components/TabSstSeguridad";
 import TabVisor3DBIM from "../components/TabVisor3DBIM";
 import TopHeader from "../components/TopHeader";
 import {
@@ -28,6 +30,14 @@ import {
   getDemoShowcaseProject,
 } from "../lib/demoData";
 import {
+  computeSstSummary,
+  loadPayrollProjectState,
+  loadSstProjectState,
+  savePayrollProjectState,
+  saveSstProjectState,
+  syncPayrollDestajoWith5D,
+} from "../lib/erpStorage";
+import {
   fetchBitacoraCloud,
   loadCustomProjects,
   PROYECTOS_BASE,
@@ -37,7 +47,9 @@ import {
   BitacoraRow,
   ConsolidationResult,
   LiquidationParams,
+  PayrollProjectData,
   ProjectConfig,
+  SstProjectData,
   TabKey,
 } from "../lib/types";
 
@@ -241,6 +253,49 @@ export default function GerenciaBim5DPage() {
 
   const activeData = pythonData || clientFallbackData;
 
+  const hasManualPayrollEditRef = useRef(false);
+  const [sstState, setSstState] = useState<SstProjectData>(() =>
+    loadSstProjectState(proyectoActual, isDemo)
+  );
+  const [payrollState, setPayrollState] = useState<PayrollProjectData>(() =>
+    loadPayrollProjectState(proyectoActual, activeData, isDemo)
+  );
+
+  useEffect(() => {
+    hasManualPayrollEditRef.current = false;
+    setSstState(loadSstProjectState(proyectoActual, isDemo));
+    setPayrollState(loadPayrollProjectState(proyectoActual, activeData, isDemo));
+    // Re-seed SST & Payroll on active project or Demo/Real session transitions
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [proyectoActual.id, isDemo]);
+
+  useEffect(() => {
+    if (hasManualPayrollEditRef.current) return;
+    setPayrollState((prev) => {
+      const { next, updatedCount } = syncPayrollDestajoWith5D(prev, activeData);
+      return updatedCount > 0 ? next : prev;
+    });
+  }, [activeData]);
+
+  const handleUpdateSst = useCallback(
+    (next: SstProjectData) => {
+      setSstState(next);
+      saveSstProjectState(proyectoActual, next, isDemo);
+    },
+    [proyectoActual, isDemo]
+  );
+
+  const handleUpdatePayroll = useCallback(
+    (next: PayrollProjectData) => {
+      hasManualPayrollEditRef.current = true;
+      setPayrollState(next);
+      savePayrollProjectState(proyectoActual, next, isDemo);
+    },
+    [proyectoActual, isDemo]
+  );
+
+  const sstSummary = useMemo(() => computeSstSummary(sstState), [sstState]);
+
   const persistProyectoChange = (updated: ProjectConfig) => {
     const nextMap = { ...proyectos, [updated.id]: updated };
     setProyectos(nextMap);
@@ -404,7 +459,13 @@ export default function GerenciaBim5DPage() {
         />
 
         {activeTab === "panel" && (
-          <TabPanelEjecutivo data={activeData} params={params} />
+          <TabPanelEjecutivo
+            data={activeData}
+            params={params}
+            sstSummary={sstSummary}
+            payrollState={payrollState}
+            onNavigateTab={setActiveTab}
+          />
         )}
         {activeTab === "habitaciones" && (
           <TabHabitacionesBIM
@@ -468,6 +529,23 @@ export default function GerenciaBim5DPage() {
             data={activeData}
             allCloudRows={cloudRows}
             onSyncedReload={syncCloud}
+            isDemo={isDemo}
+          />
+        )}
+        {activeTab === "sst" && (
+          <TabSstSeguridad
+            proyecto={proyectoActual}
+            sstState={sstState}
+            onChangeSst={handleUpdateSst}
+            isDemo={isDemo}
+          />
+        )}
+        {activeTab === "nomina" && (
+          <TabNominaPagos
+            proyecto={proyectoActual}
+            data={activeData}
+            payrollState={payrollState}
+            onChangePayroll={handleUpdatePayroll}
             isDemo={isDemo}
           />
         )}

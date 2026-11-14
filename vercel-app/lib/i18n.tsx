@@ -76,6 +76,7 @@ export interface Translations {
     planning4d5d: string;
     field: string;
     controlBilling: string;
+    erpFinance: string;
   };
   tabs: Record<TabKey, string>;
   // Sidebar
@@ -171,8 +172,9 @@ const ES_TR: Translations = {
     direction: "1. Dirección",
     bim3d: "2. BIM 3D",
     planning4d5d: "3. Planeación 4D/5D",
-    field: "4. Campo",
+    field: "4. Campo & SST",
     controlBilling: "5. Control & Cobro",
+    erpFinance: "6. ERP & Nómina",
   },
   tabs: {
     panel: "Panel Ejecutivo",
@@ -184,8 +186,10 @@ const ES_TR: Translations = {
     contratos: "Contratos PDF",
     bitacora: "Bitácora Cloud",
     rendimiento: "Rendimiento & Cuadrillas",
+    sst: "Seguridad & SST",
     mayores: "Mayores Cant. & Adicionales",
     actas: "Actas de Corte & Cobro",
+    nomina: "Pago de Nómina",
   },
   sidebar: {
     openFieldApp: "Abrir Bitácora de Campo",
@@ -277,8 +281,9 @@ const EN_TR: Translations = {
     direction: "1. Executive",
     bim3d: "2. BIM 3D",
     planning4d5d: "3. 4D/5D Planning",
-    field: "4. Field Ops",
+    field: "4. Field Ops & HSE",
     controlBilling: "5. Control & Billing",
+    erpFinance: "6. ERP & Payroll",
   },
   tabs: {
     panel: "Executive Dashboard",
@@ -290,8 +295,10 @@ const EN_TR: Translations = {
     contratos: "PDF Contracts",
     bitacora: "Cloud Field Log",
     rendimiento: "Crew Productivity",
+    sst: "HSE & Safety",
     mayores: "Change Orders & Overruns",
     actas: "Payment Certificates",
+    nomina: "Payroll & Crews",
   },
   sidebar: {
     openFieldApp: "Open Mobile Field Log",

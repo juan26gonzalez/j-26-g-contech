@@ -20,10 +20,12 @@ import {
   PanelLeftOpen,
   Radio,
   Receipt,
+  ShieldCheck,
   Smartphone,
   Sun,
   User,
   Users,
+  Wallet,
 } from "lucide-react";
 import { AppCurrency, useAppPreferences } from "../lib/i18n";
 import { BITACORA_APP_URL } from "../lib/projects";
@@ -53,12 +55,20 @@ const TAB_ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   contratos: FileText,
   bitacora: Radio,
   rendimiento: Users,
+  sst: ShieldCheck,
   mayores: AlertTriangle,
   actas: Receipt,
+  nomina: Wallet,
 };
 
 const TAB_GROUPS: {
-  groupKey: "direction" | "bim3d" | "planning4d5d" | "field" | "controlBilling";
+  groupKey:
+    | "direction"
+    | "bim3d"
+    | "planning4d5d"
+    | "field"
+    | "controlBilling"
+    | "erpFinance";
   keys: TabKey[];
 }[] = [
   { groupKey: "direction", keys: ["panel"] },
@@ -67,8 +77,9 @@ const TAB_GROUPS: {
     groupKey: "planning4d5d",
     keys: ["presupuesto", "curva_s", "insumos", "contratos"],
   },
-  { groupKey: "field", keys: ["bitacora", "rendimiento"] },
+  { groupKey: "field", keys: ["bitacora", "rendimiento", "sst"] },
   { groupKey: "controlBilling", keys: ["mayores", "actas"] },
+  { groupKey: "erpFinance", keys: ["nomina"] },
 ];
 
 export default function TopHeader({
