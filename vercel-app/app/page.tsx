@@ -51,6 +51,7 @@ import {
   PROYECTOS_BASE,
   saveCustomProjects,
 } from "../lib/projects";
+import { useAppPreferences } from "../lib/i18n";
 import {
   BitacoraRow,
   ClientsProjectData,
@@ -83,6 +84,7 @@ function loadFullRealPortfolio(): Record<string, ProjectConfig> {
 }
 
 export default function GerenciaBim5DPage() {
+  const { tr } = useAppPreferences();
   const [proyectos, setProyectos] = useState<Record<string, ProjectConfig>>(
     PROYECTOS_BASE
   );
@@ -621,7 +623,7 @@ export default function GerenciaBim5DPage() {
         )}
 
         <footer className="pt-4 pb-2 text-center text-[11px] text-slate-600 font-semibold">
-          JGM ConTech • ISO 19650 • BIM 3D / 4D / 5D • Project Controls • Ing. Juan González Mendoza (Next.js + Python Pandas + Supabase)
+          JGM ConTech • {tr.appSlogan} • ISO 19650 • BIM 3D / 4D / 5D • Ing. Juan González Mendoza
         </footer>
       </main>
 

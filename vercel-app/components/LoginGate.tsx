@@ -129,6 +129,9 @@ export default function LoginGate({ onAuthenticated }: LoginGateProps) {
           <p className="text-xs sm:text-sm font-medium text-slate-300 mt-1">
             {tr.login.subtitle}
           </p>
+          <p className="text-[11px] font-semibold text-emerald-300/95 tracking-wide mt-2 max-w-xs mx-auto leading-snug">
+            {tr.appSlogan}
+          </p>
         </div>
 
         {/* Formulario */}

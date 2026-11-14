@@ -106,6 +106,9 @@ export default function Sidebar({
             <X className="w-4 h-4" />
           </button>
         </div>
+        <p className="text-[11px] font-medium text-slate-300 leading-snug mb-2.5">
+          {tr.appSlogan}
+        </p>
         <div className="flex items-center justify-between pt-2.5 border-t border-white/10 text-[10px] font-bold">
           <span className="flex items-center gap-1.5 text-emerald-300 tracking-wide">
             <Cpu className="w-3.5 h-3.5 shrink-0" />

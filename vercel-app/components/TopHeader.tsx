@@ -296,6 +296,9 @@ export default function TopHeader({
                 className="hidden sm:block w-12 h-12 rounded-xl border border-slate-300/50 shadow-md shrink-0"
               />
               <div className="min-w-0">
+                <div className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-emerald-300/95 truncate mb-0.5">
+                  JGM ConTech • {tr.appSlogan}
+                </div>
                 <h1 className="text-xl sm:text-2xl font-extrabold tracking-tight leading-snug text-white truncate">
                   {proyecto.nombre}
                 </h1>

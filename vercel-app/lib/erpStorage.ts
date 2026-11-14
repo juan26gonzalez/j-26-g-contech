@@ -1027,7 +1027,7 @@ export function openExecutivePrintSheet(opts: {
   </div>
   ${opts.bodyHtml}
   <div class="footer">
-    <span>JGM ConTech • BIM 5D & ERP Field Controls</span>
+    <span>JGM ConTech • ${isEn ? "Real-time technical and financial civil construction control." : "Dirección técnica y financiera de obra civil en tiempo real."}</span>
     <span>${escapeHtml(opts.footerNote)}</span>
   </div>
   <script>

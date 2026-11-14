@@ -56,6 +56,7 @@ interface AppPreferencesValue {
 export interface Translations {
   // Generales & Header
   appSubtitle: string;
+  appSlogan: string;
   online: string;
   demoSandboxBadge: string;
   openBitacora: string;
@@ -155,6 +156,7 @@ export interface Translations {
 
 const ES_TR: Translations = {
   appSubtitle: "Gerencia BIM 5D",
+  appSlogan: "Dirección técnica y financiera de obra civil en tiempo real.",
   online: "EN LÍNEA",
   demoSandboxBadge: "DEMO LINKEDIN (SOLO LECTURA)",
   openBitacora: "Ir a Bitácora App",
@@ -266,6 +268,7 @@ const ES_TR: Translations = {
 
 const EN_TR: Translations = {
   appSubtitle: "BIM 5D Management",
+  appSlogan: "Real-time technical and financial civil construction control.",
   online: "ONLINE",
   demoSandboxBadge: "LINKEDIN DEMO (READ-ONLY)",
   openBitacora: "Field Log App",

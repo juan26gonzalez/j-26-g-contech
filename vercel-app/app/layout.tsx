@@ -24,9 +24,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "JGM ConTech | BIM 5D Construction & Project Controls Platform",
+  title: "JGM ConTech | Dirección técnica y financiera de obra civil en tiempo real",
   description:
-    "Plataforma ejecutiva BIM 3D/4D/5D (ISO 19650, OpenBIM IFC, MS Project 4D, Earned Value Management & Supabase Cloud) creada por Ing. Juan González Mendoza.",
+    "JGM ConTech — Dirección técnica y financiera de obra civil en tiempo real. Plataforma ejecutiva BIM 3D/4D/5D (ISO 19650, OpenBIM IFC, MS Project 4D, Earned Value Management & Supabase Cloud) creada por Ing. Juan González Mendoza.",
   manifest: "/manifest.json",
   icons: {
     icon: [
