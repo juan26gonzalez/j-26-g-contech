@@ -4,10 +4,12 @@ import React from "react";
 import {
   ArrowRight,
   BarChart3,
+  Building2,
   CalendarClock,
   CheckCircle2,
   ClipboardList,
   Globe2,
+  Landmark,
   Layers,
   ShieldCheck,
   Wallet,
@@ -24,7 +26,9 @@ import {
 } from "recharts";
 import {
   computePayrollSummary,
+  type ClientsSummaryMetrics,
   type SstSummaryMetrics,
+  type SuppliersSummaryMetrics,
 } from "../lib/erpStorage";
 import { useAppPreferences } from "../lib/i18n";
 import { localizeChapter } from "../lib/units";
@@ -40,6 +44,8 @@ interface TabPanelEjecutivoProps {
   params: LiquidationParams;
   sstSummary?: SstSummaryMetrics;
   payrollState?: PayrollProjectData;
+  suppliersSummary?: SuppliersSummaryMetrics;
+  clientsSummary?: ClientsSummaryMetrics;
   onNavigateTab?: (tab: TabKey) => void;
 }
 
@@ -48,6 +54,8 @@ export default function TabPanelEjecutivo({
   params,
   sstSummary,
   payrollState,
+  suppliersSummary,
+  clientsSummary,
   onNavigateTab,
 }: TabPanelEjecutivoProps) {
   const {
@@ -280,7 +288,7 @@ export default function TabPanelEjecutivo({
         </div>
       </div>
 
-      {(sstSummary || payrollState) && (
+      {(sstSummary || payrollState || suppliersSummary || clientsSummary) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3.5">
           {sstSummary && (
             <div className="bento-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 px-4">
@@ -355,6 +363,84 @@ export default function TabPanelEjecutivo({
               </div>
             );
           })()}
+
+          {suppliersSummary && (
+            <div className="bento-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 px-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-amber-700">
+                  <Building2 className="w-3.5 h-3.5" />
+                  {lang === "en"
+                    ? "Procurement, Suppliers & Accounts Payable"
+                    : "Pulso Proveedores, OC & Cartera CxP"}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-slate-900">
+                  <span>
+                    {lang === "en" ? "AP Due:" : "CxP Saldo:"}{" "}
+                    {formatMoney(suppliersSummary.cuentasPorPagarCop)}
+                  </span>
+                  <span className="text-slate-500">•</span>
+                  <span>
+                    {suppliersSummary.ordenesAbiertas}{" "}
+                    {lang === "en" ? "open POs" : "OC abiertas"}
+                  </span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-amber-700">
+                    {suppliersSummary.cumplimientoEntregaPct}%{" "}
+                    {lang === "en" ? "delivered" : "recibido"}
+                  </span>
+                </div>
+              </div>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab("proveedores")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shrink-0 self-start sm:self-center transition-colors"
+                >
+                  {tr.tabs.proveedores}
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
+
+          {clientsSummary && (
+            <div className="bento-card flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-3.5 px-4">
+              <div className="space-y-1">
+                <div className="inline-flex items-center gap-1.5 text-[10px] font-extrabold uppercase tracking-wider text-indigo-700">
+                  <Landmark className="w-3.5 h-3.5" />
+                  {lang === "en"
+                    ? "Client Billing, Cash & Receivables (AR)"
+                    : "Pulso Clientes, Actas & Cartera CxC"}
+                </div>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs font-bold text-slate-900">
+                  <span>
+                    {lang === "en" ? "AR Due:" : "CxC Cobro:"}{" "}
+                    {formatMoney(clientsSummary.cuentasPorCobrarCop)}
+                  </span>
+                  <span className="text-slate-500">•</span>
+                  <span>
+                    {lang === "en" ? "Unbilled WIP:" : "Por Facturar:"}{" "}
+                    {formatMoney(clientsSummary.porFacturarDeEjecucionCop)}
+                  </span>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-emerald-700">
+                    {lang === "en" ? "Collected:" : "Caja:"}{" "}
+                    {formatMoney(clientsSummary.totalRecaudadoCop)}
+                  </span>
+                </div>
+              </div>
+              {onNavigateTab && (
+                <button
+                  type="button"
+                  onClick={() => onNavigateTab("clientes")}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white text-[11px] font-bold shrink-0 self-start sm:self-center transition-colors"
+                >
+                  {tr.tabs.clientes}
+                  <ArrowRight className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
 

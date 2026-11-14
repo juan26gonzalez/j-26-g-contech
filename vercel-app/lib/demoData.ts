@@ -6,11 +6,14 @@ import {
 } from "./ifcEngine";
 import {
   BitacoraRow,
+  ClientsProjectData,
   ConsolidationResult,
   GanttTask,
+  LiquidationParams,
   PayrollProjectData,
   ProjectConfig,
   SstProjectData,
+  SuppliersProjectData,
 } from "./types";
 
 export const DEMO_SHOWCASE_PROJECT_ID = "demo_showcase";
@@ -815,6 +818,274 @@ export function getDemoPayrollState(data: ConsolidationResult): PayrollProjectDa
         afiliadoArlRiesgoV: true,
         estado: "aprobada",
         notas: "Cubierta 100% instalada con PTAR Alturas #001 cerrado/aprobado.",
+      },
+    ],
+  };
+}
+
+export function getDemoSuppliersState(): SuppliersProjectData {
+  return {
+    proveedores: [
+      {
+        id: "sup-nb-1",
+        codigo: "PROV-01",
+        razonSocial: "Northbridge Ready-Mix & Precast",
+        razonSocialEn: "Northbridge Ready-Mix & Precast",
+        nitTaxId: "TAX-900-412-001",
+        categoria: "concreto",
+        especialidad: "Concreto Premezclado f'c 21 / 24 MPa + Bombeo",
+        especialidadEn: "Ready-Mix Concrete 3,000 / 3,500 PSI & Pump",
+        contactoRol: "Despacho Planta Central",
+        condicionPago: "Crédito 15 días",
+        condicionPagoEn: "Net 15",
+        calificacion: 4.9,
+        retencionPct: 2.5,
+      },
+      {
+        id: "sup-nb-2",
+        codigo: "PROV-02",
+        razonSocial: "Aceros & Bloques Estructurales S.A.",
+        razonSocialEn: "Andina Structural Steel & CMU Supply",
+        nitTaxId: "TAX-900-518-044",
+        categoria: "aceros_mamposteria",
+        especialidad: "Bloque No. 12, Acero Refuerzo y Cemento Tipo I",
+        especialidadEn: "CMU Blocks, Rebar & Type-I Structural Cement",
+        contactoRol: "Asesor Comercial Mayorista",
+        condicionPago: "Crédito 30 días",
+        condicionPagoEn: "Net 30",
+        calificacion: 4.7,
+        retencionPct: 2.5,
+      },
+      {
+        id: "sup-nb-3",
+        codigo: "PROV-03",
+        razonSocial: "Porcelana & Drywall Architectural Co.",
+        razonSocialEn: "Porcelana & Drywall Architectural Co.",
+        nitTaxId: "TAX-800-741-920",
+        categoria: "acabados",
+        especialidad: "Porcelanato 51x51 cm, Drywall, Frescasa Eco y Pintura",
+        especialidadEn: '20"x20" Porcelain Tile, Drywall & Acoustic Insulation',
+        contactoRol: "Coordinación Logística Acabados",
+        condicionPago: "Crédito 15 días",
+        condicionPagoEn: "Net 15",
+        calificacion: 4.6,
+        retencionPct: 2.5,
+      },
+      {
+        id: "sup-nb-4",
+        codigo: "PROV-04",
+        razonSocial: "Eternit & Thermal Aluminum Envelope",
+        razonSocialEn: "Eternit & Thermal Aluminum Envelope",
+        nitTaxId: "TAX-901-203-774",
+        categoria: "cubierta_carpinteria",
+        especialidad: "Cubierta Termoacústica, Ventanería Aluminio & Puertas",
+        especialidadEn: "Thermo-Acoustic Roofing, Aluminum Glazing & Doors",
+        contactoRol: "Ingeniería de Envolvente",
+        condicionPago: "50% Anticipo / 50% Entrega",
+        condicionPagoEn: "50% Deposit / 50% Delivery",
+        calificacion: 4.8,
+        retencionPct: 4.0,
+      },
+      {
+        id: "sup-nb-5",
+        codigo: "PROV-05",
+        razonSocial: "CertiSafe Industrial PPE & Anchors",
+        razonSocialEn: "CertiSafe Industrial PPE & Anchors",
+        nitTaxId: "TAX-901-609-118",
+        categoria: "equipos_sst",
+        especialidad: "Arneses ANSI Z359, Líneas de Vida, Cascos y Botas",
+        especialidadEn: "ANSI Z359 Harnesses, Lifelines & Jobsite PPE",
+        contactoRol: "Suministro HSE Certificado",
+        condicionPago: "Contado",
+        condicionPagoEn: "Due on Receipt",
+        calificacion: 5.0,
+        retencionPct: 0,
+      },
+    ],
+    ordenes: [
+      {
+        id: "oc-nb-101",
+        codigo: "OC-NB-101",
+        fecha: isoOffsetDays(-19),
+        fechaEntrega: isoOffsetDays(-14),
+        proveedorId: "sup-nb-1",
+        proveedorNombre: "Northbridge Ready-Mix & Precast",
+        concepto: "Concreto Premezclado Zapatas y Columnas (21/24 MPa)",
+        conceptoEn: "Ready-Mix Concrete Footings & Columns (3,000/3,500 PSI)",
+        unidad: "m³",
+        cantidad: 46,
+        precioUnitarioCop: 525000,
+        bimMaterialMatch: "Concreto Premezclado",
+        porcentajeRecibido: 100,
+        pagadoCop: 24150000,
+        estado: "pagada",
+        notas: "Despachos 100% verificados con cilindros ASTM C39.",
+      },
+      {
+        id: "oc-nb-102",
+        codigo: "OC-NB-102",
+        fecha: isoOffsetDays(-15),
+        fechaEntrega: isoOffsetDays(-10),
+        proveedorId: "sup-nb-2",
+        proveedorNombre: "Aceros & Bloques Estructurales S.A.",
+        concepto: "Bloque de Concreto No. 12 + Cemento Gris Sacos 50kg",
+        conceptoEn: "CMU Concrete Block No. 12 + Type-I Cement Bags",
+        unidad: "m²",
+        cantidad: 210,
+        precioUnitarioCop: 41000,
+        bimMaterialMatch: "Bloque de Concreto No. 12",
+        porcentajeRecibido: 100,
+        pagadoCop: 4305000,
+        estado: "recibida",
+        notas: "Material completo en patio; saldo pendiente vencimiento 30d.",
+      },
+      {
+        id: "oc-nb-103",
+        codigo: "OC-NB-103",
+        fecha: isoOffsetDays(-11),
+        fechaEntrega: isoOffsetDays(-6),
+        proveedorId: "sup-nb-4",
+        proveedorNombre: "Eternit & Thermal Aluminum Envelope",
+        concepto: "Teja Ondulada Termoacústica Eternit y Caballetes",
+        conceptoEn: "Thermo-Acoustic Corrugated Roof Panels & Ridge Caps",
+        unidad: "m²",
+        cantidad: 155,
+        precioUnitarioCop: 58000,
+        bimMaterialMatch: "Cubierta Termoacústica",
+        porcentajeRecibido: 100,
+        pagadoCop: 8990000,
+        estado: "pagada",
+        notas: "Instalación completada al 100% según Bitácora.",
+      },
+      {
+        id: "oc-nb-104",
+        codigo: "OC-NB-104",
+        fecha: isoOffsetDays(-4),
+        fechaEntrega: isoOffsetDays(2),
+        proveedorId: "sup-nb-3",
+        proveedorNombre: "Porcelana & Drywall Architectural Co.",
+        concepto: 'Porcelanato 51x51 cm Tráfico 5 + Rollos Frescasa Eco 2-1/2"',
+        conceptoEn: '20"x20" Porcelain Floor Tile + Frescasa Eco 2-1/2" Rolls',
+        unidad: "m²",
+        cantidad: 140,
+        precioUnitarioCop: 74000,
+        bimMaterialMatch: "Porcelanato 51x51",
+        porcentajeRecibido: 45,
+        pagadoCop: 4144000,
+        estado: "en_obra",
+        notas: "Primer lote entregado en Lobby Principal; saldo drywall en tránsito.",
+      },
+      {
+        id: "oc-nb-105",
+        codigo: "OC-NB-105",
+        fecha: isoOffsetDays(-1),
+        fechaEntrega: isoOffsetDays(5),
+        proveedorId: "sup-nb-4",
+        proveedorNombre: "Eternit & Thermal Aluminum Envelope",
+        concepto: "Ventanería Aluminio Termoacústica y Puertas Acceso (14 und)",
+        conceptoEn: "Thermo-Acoustic Aluminum Windows & Interior Doors (14 ea)",
+        unidad: "und",
+        cantidad: 14,
+        precioUnitarioCop: 820000,
+        bimMaterialMatch: "Ventanería Aluminio",
+        porcentajeRecibido: 0,
+        pagadoCop: 5740000,
+        estado: "emitida",
+        notas: "Anticipo 50% pagado para fabricación en taller de aluminio.",
+      },
+    ],
+  };
+}
+
+export function getDemoClientsState(
+  proyecto: ProjectConfig,
+  data: ConsolidationResult,
+  params: LiquidationParams
+): ClientsProjectData {
+  const pctAiu = (params.pct_a + params.pct_i + params.pct_u) / 100;
+  const valorContrato = Math.round(data.totals.total_ppto_contratado * (1 + pctAiu));
+  const ejecutadoBruto = Math.round(data.totals.total_costo_ejecutado * (1 + pctAiu));
+
+  const pctAnt = params.pct_anticipo / 100;
+  const pctGar = params.pct_garantia / 100;
+  const pctIvaSobreU = (params.pct_u / 100) * 0.19;
+
+  // Anticipo contractual (20% sobre total contratado)
+  const anticipoBruto = Math.round(valorContrato * (pctAnt > 0 ? pctAnt : 0.2));
+
+  // Acta #1: Primer tramo (aprox 55% de lo ejecutado actual) ya aprobado y recaudado
+  const acta1Bruto = Math.max(12000000, Math.round(ejecutadoBruto * 0.55));
+  const acta1Ant = Math.round(acta1Bruto * pctAnt);
+  const acta1Gar = Math.round(acta1Bruto * pctGar);
+  const acta1Iva = Math.round(
+    (acta1Bruto / (1 + pctAiu)) * pctIvaSobreU
+  );
+  const acta1Neto = acta1Bruto - acta1Ant - acta1Gar + acta1Iva;
+
+  // Acta #2: Segundo tramo (aprox 35% de lo ejecutado actual) radicada por cobrar
+  const acta2Bruto = Math.max(6000000, Math.round(ejecutadoBruto * 0.35));
+  const acta2Ant = Math.round(acta2Bruto * pctAnt);
+  const acta2Gar = Math.round(acta2Bruto * pctGar);
+  const acta2Iva = Math.round(
+    (acta2Bruto / (1 + pctAiu)) * pctIvaSobreU
+  );
+
+  return {
+    clienteNombre: proyecto.contratante || "Northbridge Capital Partners",
+    clienteIdFiscal: "ENTITY-US-CO-901884210",
+    representanteRol: "Gerencia de Inversión & Interventoría",
+    representanteRolEn: "Capital Investment & Owner's Rep",
+    condicionCobro: "Actas Quincenales • Pago 15 días radicación",
+    condicionCobroEn: "Bi-weekly Progress Certificates • Net 15",
+    cupoAprobadoCop: Math.round(valorContrato * 1.15),
+    facturas: [
+      {
+        id: "cli-nb-1",
+        numero: "ANT-NB-001",
+        fechaEmision: isoOffsetDays(-21),
+        fechaVencimiento: isoOffsetDays(-16),
+        tipo: "anticipo",
+        concepto: "Anticipo Contractual Inicial (Inicio Obra BIM 5D)",
+        conceptoEn: "Contract Mobilization Advance Payment (BIM 5D Kickoff)",
+        valorBrutoCop: anticipoBruto,
+        amortizacionAnticipoCop: 0,
+        retencionGarantiaCop: 0,
+        ivaCop: 0,
+        recaudadoCop: anticipoBruto,
+        estado: "pagada",
+        notas: "Desembolso completo contra póliza de buen manejo de anticipo.",
+      },
+      {
+        id: "cli-nb-2",
+        numero: "ACTA-NB-001",
+        fechaEmision: isoOffsetDays(-10),
+        fechaVencimiento: isoOffsetDays(-2),
+        tipo: "acta_avance",
+        concepto: "Acta de Corte #1 — Cimentación, Estructura & Cubierta",
+        conceptoEn: "Progress Certificate #1 — Foundations, Frame & Roof Deck",
+        valorBrutoCop: acta1Bruto,
+        amortizacionAnticipoCop: acta1Ant,
+        retencionGarantiaCop: acta1Gar,
+        ivaCop: acta1Iva,
+        recaudadoCop: acta1Neto,
+        estado: "pagada",
+        notas: "Aprobada por Interventoría contra corte físico 3D/Bitácora.",
+      },
+      {
+        id: "cli-nb-3",
+        numero: "ACTA-NB-002",
+        fechaEmision: isoOffsetDays(-1),
+        fechaVencimiento: isoOffsetDays(14),
+        tipo: "acta_avance",
+        concepto: "Acta de Corte #2 — Mampostería, Pañetes & Porcelanato Parcial",
+        conceptoEn: "Progress Certificate #2 — CMU Walls, Stucco & Partial Flooring",
+        valorBrutoCop: acta2Bruto,
+        amortizacionAnticipoCop: acta2Ant,
+        retencionGarantiaCop: acta2Gar,
+        ivaCop: acta2Iva,
+        recaudadoCop: 0,
+        estado: "radicada",
+        notas: "Radicada para aprobación y desembolso dentro de 15 días.",
       },
     ],
   };

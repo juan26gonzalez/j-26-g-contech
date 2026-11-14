@@ -6,6 +6,7 @@ import NewProjectModal from "../components/NewProjectModal";
 import Sidebar from "../components/Sidebar";
 import TabActasCorte from "../components/TabActasCorte";
 import TabBitacoraCloud from "../components/TabBitacoraCloud";
+import TabClientesCartera from "../components/TabClientesCartera";
 import TabContratosPDF from "../components/TabContratosPDF";
 import TabCurvaS from "../components/TabCurvaS";
 import TabHabitacionesBIM from "../components/TabHabitacionesBIM";
@@ -14,6 +15,7 @@ import TabMayoresCantidades from "../components/TabMayoresCantidades";
 import TabNominaPagos from "../components/TabNominaPagos";
 import TabPanelEjecutivo from "../components/TabPanelEjecutivo";
 import TabPresupuestoAPU from "../components/TabPresupuestoAPU";
+import TabProveedoresCompras from "../components/TabProveedoresCompras";
 import TabRendimiento from "../components/TabRendimiento";
 import TabSstSeguridad from "../components/TabSstSeguridad";
 import TabVisor3DBIM from "../components/TabVisor3DBIM";
@@ -30,11 +32,17 @@ import {
   getDemoShowcaseProject,
 } from "../lib/demoData";
 import {
+  computeClientsSummary,
   computeSstSummary,
+  computeSuppliersSummary,
+  loadClientsProjectState,
   loadPayrollProjectState,
   loadSstProjectState,
+  loadSuppliersProjectState,
+  saveClientsProjectState,
   savePayrollProjectState,
   saveSstProjectState,
+  saveSuppliersProjectState,
   syncPayrollDestajoWith5D,
 } from "../lib/erpStorage";
 import {
@@ -45,11 +53,13 @@ import {
 } from "../lib/projects";
 import {
   BitacoraRow,
+  ClientsProjectData,
   ConsolidationResult,
   LiquidationParams,
   PayrollProjectData,
   ProjectConfig,
   SstProjectData,
+  SuppliersProjectData,
   TabKey,
 } from "../lib/types";
 
@@ -254,28 +264,42 @@ export default function GerenciaBim5DPage() {
   const activeData = pythonData || clientFallbackData;
 
   const hasManualPayrollEditRef = useRef(false);
+  const hasManualClientsEditRef = useRef(false);
   const [sstState, setSstState] = useState<SstProjectData>(() =>
     loadSstProjectState(proyectoActual, isDemo)
   );
   const [payrollState, setPayrollState] = useState<PayrollProjectData>(() =>
     loadPayrollProjectState(proyectoActual, activeData, isDemo)
   );
+  const [suppliersState, setSuppliersState] = useState<SuppliersProjectData>(() =>
+    loadSuppliersProjectState(proyectoActual, activeData, isDemo)
+  );
+  const [clientsState, setClientsState] = useState<ClientsProjectData>(() =>
+    loadClientsProjectState(proyectoActual, activeData, params, isDemo)
+  );
 
   useEffect(() => {
     hasManualPayrollEditRef.current = false;
+    hasManualClientsEditRef.current = false;
     setSstState(loadSstProjectState(proyectoActual, isDemo));
     setPayrollState(loadPayrollProjectState(proyectoActual, activeData, isDemo));
-    // Re-seed SST & Payroll on active project or Demo/Real session transitions
+    setSuppliersState(loadSuppliersProjectState(proyectoActual, activeData, isDemo));
+    setClientsState(loadClientsProjectState(proyectoActual, activeData, params, isDemo));
+    // Re-seed ERP states on active project or Demo/Real session transitions
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [proyectoActual.id, isDemo]);
 
   useEffect(() => {
-    if (hasManualPayrollEditRef.current) return;
-    setPayrollState((prev) => {
-      const { next, updatedCount } = syncPayrollDestajoWith5D(prev, activeData);
-      return updatedCount > 0 ? next : prev;
-    });
-  }, [activeData]);
+    if (!hasManualPayrollEditRef.current) {
+      setPayrollState((prev) => {
+        const { next, updatedCount } = syncPayrollDestajoWith5D(prev, activeData);
+        return updatedCount > 0 ? next : prev;
+      });
+    }
+    if (isDemo && !hasManualClientsEditRef.current) {
+      setClientsState(loadClientsProjectState(proyectoActual, activeData, params, true));
+    }
+  }, [activeData, params, proyectoActual, isDemo]);
 
   const handleUpdateSst = useCallback(
     (next: SstProjectData) => {
@@ -294,7 +318,32 @@ export default function GerenciaBim5DPage() {
     [proyectoActual, isDemo]
   );
 
+  const handleUpdateSuppliers = useCallback(
+    (next: SuppliersProjectData) => {
+      setSuppliersState(next);
+      saveSuppliersProjectState(proyectoActual, next, isDemo);
+    },
+    [proyectoActual, isDemo]
+  );
+
+  const handleUpdateClients = useCallback(
+    (next: ClientsProjectData) => {
+      hasManualClientsEditRef.current = true;
+      setClientsState(next);
+      saveClientsProjectState(proyectoActual, next, isDemo);
+    },
+    [proyectoActual, isDemo]
+  );
+
   const sstSummary = useMemo(() => computeSstSummary(sstState), [sstState]);
+  const suppliersSummary = useMemo(
+    () => computeSuppliersSummary(suppliersState),
+    [suppliersState]
+  );
+  const clientsSummary = useMemo(
+    () => computeClientsSummary(clientsState, activeData, params),
+    [clientsState, activeData, params]
+  );
 
   const persistProyectoChange = (updated: ProjectConfig) => {
     const nextMap = { ...proyectos, [updated.id]: updated };
@@ -464,6 +513,8 @@ export default function GerenciaBim5DPage() {
             params={params}
             sstSummary={sstSummary}
             payrollState={payrollState}
+            suppliersSummary={suppliersSummary}
+            clientsSummary={clientsSummary}
             onNavigateTab={setActiveTab}
           />
         )}
@@ -546,6 +597,25 @@ export default function GerenciaBim5DPage() {
             data={activeData}
             payrollState={payrollState}
             onChangePayroll={handleUpdatePayroll}
+            isDemo={isDemo}
+          />
+        )}
+        {activeTab === "proveedores" && (
+          <TabProveedoresCompras
+            proyecto={proyectoActual}
+            data={activeData}
+            suppliersState={suppliersState}
+            onChangeSuppliers={handleUpdateSuppliers}
+            isDemo={isDemo}
+          />
+        )}
+        {activeTab === "clientes" && (
+          <TabClientesCartera
+            proyecto={proyectoActual}
+            data={activeData}
+            params={params}
+            clientsState={clientsState}
+            onChangeClients={handleUpdateClients}
             isDemo={isDemo}
           />
         )}

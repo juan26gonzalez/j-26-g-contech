@@ -4,12 +4,14 @@ import React from "react";
 import {
   AlertTriangle,
   Box,
+  Building2,
   Calculator,
   Compass,
   ExternalLink,
   FileText,
   GanttChart,
   Globe,
+  Landmark,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
@@ -59,6 +61,8 @@ const TAB_ICONS: Record<TabKey, React.ComponentType<{ className?: string }>> = {
   mayores: AlertTriangle,
   actas: Receipt,
   nomina: Wallet,
+  proveedores: Building2,
+  clientes: Landmark,
 };
 
 const TAB_GROUPS: {
@@ -79,7 +83,7 @@ const TAB_GROUPS: {
   },
   { groupKey: "field", keys: ["bitacora", "rendimiento", "sst"] },
   { groupKey: "controlBilling", keys: ["mayores", "actas"] },
-  { groupKey: "erpFinance", keys: ["nomina"] },
+  { groupKey: "erpFinance", keys: ["nomina", "proveedores", "clientes"] },
 ];
 
 export default function TopHeader({

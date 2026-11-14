@@ -13,7 +13,9 @@ export type TabKey =
   | "sst"
   | "mayores"
   | "actas"
-  | "nomina";
+  | "nomina"
+  | "proveedores"
+  | "clientes";
 
 export type RoomActivityKey =
   | "plantilla"
@@ -345,4 +347,104 @@ export interface PayrollWorkerEntry {
 export interface PayrollProjectData {
   periodo: string;
   registros: PayrollWorkerEntry[];
+}
+
+// =============================================================================
+// FASE 2 ERP: PROVEEDORES & COMPRAS (AP) + CLIENTES & CARTERA (AR)
+// =============================================================================
+
+export type SupplierCategory =
+  | "concreto"
+  | "aceros_mamposteria"
+  | "acabados"
+  | "cubierta_carpinteria"
+  | "equipos_sst"
+  | "subcontrato";
+
+export type PurchaseOrderStatus =
+  | "cotizada"
+  | "emitida"
+  | "en_obra"
+  | "recibida"
+  | "pagada";
+
+export interface SupplierVendor {
+  id: string;
+  codigo: string;
+  razonSocial: string;
+  razonSocialEn: string;
+  nitTaxId: string;
+  categoria: SupplierCategory;
+  especialidad: string;
+  especialidadEn: string;
+  contactoRol: string;
+  condicionPago: string;
+  condicionPagoEn: string;
+  calificacion: number;
+  retencionPct: number;
+}
+
+export interface PurchaseOrder {
+  id: string;
+  codigo: string;
+  fecha: string;
+  fechaEntrega: string;
+  proveedorId: string;
+  proveedorNombre: string;
+  concepto: string;
+  conceptoEn: string;
+  unidad: string;
+  cantidad: number;
+  precioUnitarioCop: number;
+  bimMaterialMatch?: string;
+  porcentajeRecibido: number;
+  pagadoCop: number;
+  estado: PurchaseOrderStatus;
+  notas?: string;
+}
+
+export interface SuppliersProjectData {
+  proveedores: SupplierVendor[];
+  ordenes: PurchaseOrder[];
+}
+
+export type ClientInvoiceStatus =
+  | "borrador"
+  | "radicada"
+  | "aprobada"
+  | "pagada"
+  | "vencida";
+
+export type ClientInvoiceType =
+  | "anticipo"
+  | "acta_avance"
+  | "adicional"
+  | "liberacion_garantia";
+
+export interface ClientInvoiceEntry {
+  id: string;
+  numero: string;
+  fechaEmision: string;
+  fechaVencimiento: string;
+  tipo: ClientInvoiceType;
+  concepto: string;
+  conceptoEn: string;
+  valorBrutoCop: number;
+  amortizacionAnticipoCop: number;
+  retencionGarantiaCop: number;
+  ivaCop: number;
+  recaudadoCop: number;
+  estado: ClientInvoiceStatus;
+  notas?: string;
+}
+
+export interface ClientsProjectData {
+  clienteNombre: string;
+  clienteIdFiscal: string;
+  representanteRol: string;
+  representanteRolEn: string;
+  condicionCobro: string;
+  condicionCobroEn: string;
+  cupoAprobadoCop: number;
+  facturas: ClientInvoiceEntry[];
 }

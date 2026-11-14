@@ -1,15 +1,27 @@
-import { getDemoPayrollState, getDemoSstState } from "./demoData";
+import {
+  getDemoClientsState,
+  getDemoPayrollState,
+  getDemoSstState,
+  getDemoSuppliersState,
+} from "./demoData";
 import type { AppLang } from "./i18n";
 import type {
+  ClientInvoiceEntry,
+  ClientsProjectData,
   ConsolidationResult,
+  LiquidationParams,
   PayrollProjectData,
   PayrollWorkerEntry,
   ProjectConfig,
+  PurchaseOrder,
   SstProjectData,
+  SuppliersProjectData,
 } from "./types";
 
 const SST_STORAGE_PREFIX = "jgm_contech_sst_v1_";
 const PAYROLL_STORAGE_PREFIX = "jgm_contech_payroll_v1_";
+const SUPPLIERS_STORAGE_PREFIX = "jgm_contech_suppliers_v1_";
+const CLIENTS_STORAGE_PREFIX = "jgm_contech_clients_v1_";
 
 function todayIso(): string {
   return new Date().toISOString().slice(0, 10);
@@ -457,6 +469,359 @@ export function syncPayrollDestajoWith5D(
       registros: nextRegistros,
     },
     updatedCount,
+  };
+}
+
+// =============================================================================
+// FASE 2: PROVEEDORES & COMPRAS (AP) + CLIENTES & CARTERA (AR)
+// =============================================================================
+
+function buildDefaultRealSuppliersState(
+  proyecto: ProjectConfig,
+  data: ConsolidationResult
+): SuppliersProjectData {
+  const key = safeProjectKey(proyecto.id);
+  const firstInsumo = data.insumos_demanda[0];
+  const firstQty = firstInsumo ? Math.max(1, Math.round(firstInsumo.Total_Teorico)) : 20;
+  return {
+    proveedores: [
+      {
+        id: `sup-${key}-1`,
+        codigo: "PROV-01",
+        razonSocial: "Suministros & Materiales de Construcción",
+        razonSocialEn: "Core Construction Materials Supply",
+        nitTaxId: "NIT-900-000-001",
+        categoria: "aceros_mamposteria",
+        especialidad: "Cementos, Agregados, Aceros & Bloques",
+        especialidadEn: "Cement, Aggregates, Rebar & Masonry",
+        contactoRol: "Ejecutivo de Cuenta Obra",
+        condicionPago: "Crédito 30 días",
+        condicionPagoEn: "Net 30",
+        calificacion: 4.8,
+        retencionPct: 2.5,
+      },
+      {
+        id: `sup-${key}-2`,
+        codigo: "PROV-02",
+        razonSocial: "Acabados, Pisos & Carpintería Técnica",
+        razonSocialEn: "Architectural Finishes & Glazing Co.",
+        nitTaxId: "NIT-900-000-002",
+        categoria: "acabados",
+        especialidad: "Porcelanatos, Drywall, Pintura & Carpintería",
+        especialidadEn: "Porcelain Tile, Drywall, Latex & Doors",
+        contactoRol: "Despachos & Logística",
+        condicionPago: "Crédito 15 días",
+        condicionPagoEn: "Net 15",
+        calificacion: 4.7,
+        retencionPct: 2.5,
+      },
+    ],
+    ordenes: firstInsumo
+      ? [
+          {
+            id: `oc-${key}-1`,
+            codigo: "OC-001",
+            fecha: offsetIsoDays(-3),
+            fechaEntrega: offsetIsoDays(4),
+            proveedorId: `sup-${key}-1`,
+            proveedorNombre: "Suministros & Materiales de Construcción",
+            concepto: firstInsumo.Insumo,
+            conceptoEn: firstInsumo.Insumo,
+            unidad: firstInsumo.Unidad || "und",
+            cantidad: firstQty,
+            precioUnitarioCop: 36500,
+            bimMaterialMatch: firstInsumo.Insumo,
+            porcentajeRecibido: 50,
+            pagadoCop: Math.round(firstQty * 36500 * 0.5),
+            estado: "en_obra",
+            notas: "Orden inicial generada desde explosión de insumos BIM 5D.",
+          },
+        ]
+      : [],
+  };
+}
+
+export function loadSuppliersProjectState(
+  proyecto: ProjectConfig,
+  data: ConsolidationResult,
+  isDemo: boolean
+): SuppliersProjectData {
+  if (isDemo || proyecto.id === "demo_showcase") {
+    return getDemoSuppliersState();
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem(
+        `${SUPPLIERS_STORAGE_PREFIX}${safeProjectKey(proyecto.id)}`
+      );
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<SuppliersProjectData>;
+        if (parsed && Array.isArray(parsed.proveedores) && Array.isArray(parsed.ordenes)) {
+          return {
+            proveedores: parsed.proveedores,
+            ordenes: parsed.ordenes,
+          };
+        }
+      }
+    } catch {
+      // Ignore malformed storage
+    }
+  }
+  return buildDefaultRealSuppliersState(proyecto, data);
+}
+
+export function saveSuppliersProjectState(
+  proyecto: ProjectConfig,
+  state: SuppliersProjectData,
+  isDemo: boolean
+): void {
+  if (isDemo || proyecto.id === "demo_showcase") return;
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      `${SUPPLIERS_STORAGE_PREFIX}${safeProjectKey(proyecto.id)}`,
+      JSON.stringify(state)
+    );
+  } catch {
+    // Ignore quota errors
+  }
+}
+
+export function computeOrderTotalCop(order: PurchaseOrder): number {
+  return Math.round(
+    Math.max(0, Number(order.cantidad || 0)) *
+      Math.max(0, Number(order.precioUnitarioCop || 0))
+  );
+}
+
+export interface SuppliersSummaryMetrics {
+  proveedoresCount: number;
+  ordenesTotales: number;
+  ordenesAbiertas: number;
+  totalComprometidoCop: number;
+  totalPagadoCop: number;
+  cuentasPorPagarCop: number;
+  cumplimientoEntregaPct: number;
+  calificacionPromedio: number;
+}
+
+export function computeSuppliersSummary(
+  state: SuppliersProjectData
+): SuppliersSummaryMetrics {
+  let totalComprometidoCop = 0;
+  let totalPagadoCop = 0;
+  let ordenesAbiertas = 0;
+  let sumRecibido = 0;
+
+  for (const oc of state.ordenes) {
+    totalComprometidoCop += computeOrderTotalCop(oc);
+    totalPagadoCop += Math.max(0, Number(oc.pagadoCop || 0));
+    sumRecibido += Math.min(100, Math.max(0, Number(oc.porcentajeRecibido || 0)));
+    if (oc.estado !== "pagada") ordenesAbiertas += 1;
+  }
+
+  const cuentasPorPagarCop = Math.max(0, totalComprometidoCop - totalPagadoCop);
+  const cumplimientoEntregaPct =
+    state.ordenes.length > 0 ? Math.round(sumRecibido / state.ordenes.length) : 100;
+
+  const calificacionPromedio =
+    state.proveedores.length > 0
+      ? Math.round(
+          (state.proveedores.reduce((acc, p) => acc + Number(p.calificacion || 4.5), 0) /
+            state.proveedores.length) *
+            10
+        ) / 10
+      : 5.0;
+
+  return {
+    proveedoresCount: state.proveedores.length,
+    ordenesTotales: state.ordenes.length,
+    ordenesAbiertas,
+    totalComprometidoCop,
+    totalPagadoCop,
+    cuentasPorPagarCop,
+    cumplimientoEntregaPct,
+    calificacionPromedio,
+  };
+}
+
+function buildDefaultRealClientsState(
+  proyecto: ProjectConfig,
+  data: ConsolidationResult,
+  params: LiquidationParams
+): ClientsProjectData {
+  const key = safeProjectKey(proyecto.id);
+  const pctAiu = (params.pct_a + params.pct_i + params.pct_u) / 100;
+  const valorContrato = Math.round(data.totals.total_ppto_contratado * (1 + pctAiu));
+  const anticipoPct = params.pct_anticipo > 0 ? params.pct_anticipo / 100 : 0.15;
+  const anticipoVal = Math.round(valorContrato * anticipoPct);
+
+  return {
+    clienteNombre: proyecto.contratante || "Cliente Contratante",
+    clienteIdFiscal: proyecto.cedula_cliente || "NIT / ID Fiscal por definir",
+    representanteRol: "Interventoría / Supervisión Técnica",
+    representanteRolEn: "Client Representative / Supervision",
+    condicionCobro: "Actas de Corte Mensuales • Pago 15 días",
+    condicionCobroEn: "Monthly Progress Certificates • Net 15",
+    cupoAprobadoCop: Math.round(valorContrato * 1.15),
+    facturas:
+      anticipoVal > 0
+        ? [
+            {
+              id: `cli-${key}-1`,
+              numero: "ANT-001",
+              fechaEmision: offsetIsoDays(-7),
+              fechaVencimiento: todayIso(),
+              tipo: "anticipo",
+              concepto: `Anticipo Contractual (${Math.round(anticipoPct * 100)}%)`,
+              conceptoEn: `Contract Advance Payment (${Math.round(anticipoPct * 100)}%)`,
+              valorBrutoCop: anticipoVal,
+              amortizacionAnticipoCop: 0,
+              retencionGarantiaCop: 0,
+              ivaCop: 0,
+              recaudadoCop: anticipoVal,
+              estado: "pagada",
+              notas: "Base contractual inicial del proyecto.",
+            },
+          ]
+        : [],
+  };
+}
+
+export function loadClientsProjectState(
+  proyecto: ProjectConfig,
+  data: ConsolidationResult,
+  params: LiquidationParams,
+  isDemo: boolean
+): ClientsProjectData {
+  if (isDemo || proyecto.id === "demo_showcase") {
+    return getDemoClientsState(proyecto, data, params);
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const raw = window.localStorage.getItem(
+        `${CLIENTS_STORAGE_PREFIX}${safeProjectKey(proyecto.id)}`
+      );
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<ClientsProjectData>;
+        if (parsed && Array.isArray(parsed.facturas)) {
+          return {
+            clienteNombre: String(parsed.clienteNombre || proyecto.contratante || "Cliente"),
+            clienteIdFiscal: String(parsed.clienteIdFiscal || proyecto.cedula_cliente || ""),
+            representanteRol: String(parsed.representanteRol || "Supervisión Técnica"),
+            representanteRolEn: String(parsed.representanteRolEn || "Client Representative"),
+            condicionCobro: String(parsed.condicionCobro || "Pago 15 días"),
+            condicionCobroEn: String(parsed.condicionCobroEn || "Net 15"),
+            cupoAprobadoCop: Number(parsed.cupoAprobadoCop ?? 0),
+            facturas: parsed.facturas,
+          };
+        }
+      }
+    } catch {
+      // Ignore malformed storage
+    }
+  }
+  return buildDefaultRealClientsState(proyecto, data, params);
+}
+
+export function saveClientsProjectState(
+  proyecto: ProjectConfig,
+  state: ClientsProjectData,
+  isDemo: boolean
+): void {
+  if (isDemo || proyecto.id === "demo_showcase") return;
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      `${CLIENTS_STORAGE_PREFIX}${safeProjectKey(proyecto.id)}`,
+      JSON.stringify(state)
+    );
+  } catch {
+    // Ignore quota errors
+  }
+}
+
+export function computeInvoiceNetCop(inv: ClientInvoiceEntry): number {
+  return Math.max(
+    0,
+    Math.round(
+      Number(inv.valorBrutoCop || 0) -
+        Number(inv.amortizacionAnticipoCop || 0) -
+        Number(inv.retencionGarantiaCop || 0) +
+        Number(inv.ivaCop || 0)
+    )
+  );
+}
+
+export interface ClientsSummaryMetrics {
+  valorContratoTotalCop: number;
+  valorEjecutadoBrutoCop: number;
+  totalFacturadoNetoCop: number;
+  totalFacturadoBrutoAvanceCop: number;
+  totalRecaudadoCop: number;
+  cuentasPorCobrarCop: number;
+  porFacturarDeEjecucionCop: number;
+  fondoGarantiaRetenidoCop: number;
+  facturasVencidasCount: number;
+  facturasCount: number;
+}
+
+export function computeClientsSummary(
+  state: ClientsProjectData,
+  data: ConsolidationResult,
+  params: LiquidationParams
+): ClientsSummaryMetrics {
+  const pctAiu = (params.pct_a + params.pct_i + params.pct_u) / 100;
+  const valorContratoTotalCop = Math.round(
+    Number(data.totals?.total_ppto_contratado || 0) * (1 + pctAiu)
+  );
+  const valorEjecutadoBrutoCop = Math.round(
+    Number(data.totals?.total_costo_ejecutado || 0) * (1 + pctAiu)
+  );
+
+  let totalFacturadoNetoCop = 0;
+  let totalFacturadoBrutoAvanceCop = 0;
+  let totalRecaudadoCop = 0;
+  let fondoGarantiaRetenidoCop = 0;
+  let facturasVencidasCount = 0;
+
+  for (const inv of state.facturas) {
+    const net = computeInvoiceNetCop(inv);
+    if (inv.estado !== "borrador") {
+      totalFacturadoNetoCop += net;
+      if (inv.tipo === "acta_avance" || inv.tipo === "adicional") {
+        totalFacturadoBrutoAvanceCop += Number(inv.valorBrutoCop || 0);
+      }
+      if (inv.tipo === "liberacion_garantia") {
+        fondoGarantiaRetenidoCop = Math.max(
+          0,
+          fondoGarantiaRetenidoCop - Number(inv.valorBrutoCop || 0)
+        );
+      } else {
+        fondoGarantiaRetenidoCop += Number(inv.retencionGarantiaCop || 0);
+      }
+    }
+    totalRecaudadoCop += Math.max(0, Number(inv.recaudadoCop || 0));
+    if (inv.estado === "vencida") facturasVencidasCount += 1;
+  }
+
+  const cuentasPorCobrarCop = Math.max(0, totalFacturadoNetoCop - totalRecaudadoCop);
+  const porFacturarDeEjecucionCop = Math.max(
+    0,
+    valorEjecutadoBrutoCop - totalFacturadoBrutoAvanceCop
+  );
+
+  return {
+    valorContratoTotalCop,
+    valorEjecutadoBrutoCop,
+    totalFacturadoNetoCop,
+    totalFacturadoBrutoAvanceCop,
+    totalRecaudadoCop,
+    cuentasPorCobrarCop,
+    porFacturarDeEjecucionCop,
+    fondoGarantiaRetenidoCop,
+    facturasVencidasCount,
+    facturasCount: state.facturas.length,
   };
 }
 

@@ -174,7 +174,7 @@ const ES_TR: Translations = {
     planning4d5d: "3. Planeación 4D/5D",
     field: "4. Campo & SST",
     controlBilling: "5. Control & Cobro",
-    erpFinance: "6. ERP & Nómina",
+    erpFinance: "6. ERP & Finanzas",
   },
   tabs: {
     panel: "Panel Ejecutivo",
@@ -190,6 +190,8 @@ const ES_TR: Translations = {
     mayores: "Mayores Cant. & Adicionales",
     actas: "Actas de Corte & Cobro",
     nomina: "Pago de Nómina",
+    proveedores: "Proveedores & OC",
+    clientes: "Clientes & Cartera",
   },
   sidebar: {
     openFieldApp: "Abrir Bitácora de Campo",
@@ -283,7 +285,7 @@ const EN_TR: Translations = {
     planning4d5d: "3. 4D/5D Planning",
     field: "4. Field Ops & HSE",
     controlBilling: "5. Control & Billing",
-    erpFinance: "6. ERP & Payroll",
+    erpFinance: "6. ERP & Finance",
   },
   tabs: {
     panel: "Executive Dashboard",
@@ -299,6 +301,8 @@ const EN_TR: Translations = {
     mayores: "Change Orders & Overruns",
     actas: "Payment Certificates",
     nomina: "Payroll & Crews",
+    proveedores: "Suppliers & POs",
+    clientes: "Clients & Billing AR",
   },
   sidebar: {
     openFieldApp: "Open Mobile Field Log",
