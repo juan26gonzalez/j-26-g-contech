@@ -2,8 +2,19 @@ import * as THREE from "three";
 import { normalizarTexto } from "./calcClient";
 import {
   IfcElementRenderData,
+  IfcGeometryPart,
   ParsedIfcModel,
+  StructuralRebarSpec,
 } from "./ifcEngine";
+import {
+  buildColumnRebarPackage,
+  buildFootingRebarPackage,
+  buildGradeBeamRebarPackage,
+  buildSlabTempMeshPackage,
+  buildSlopedRafterRebarPackage,
+  buildUpperBeamRebarPackage,
+  RebarPackageResult,
+} from "./rebarBuilder";
 import {
   BitacoraRow,
   ClientsProjectData,
@@ -1117,6 +1128,7 @@ export function buildShowcaseIfcModel(
     color: number;
     opacity?: number;
     geom: THREE.BufferGeometry;
+    rebarPkg?: RebarPackageResult;
   }) => {
     opts.geom.computeVertexNormals();
     opts.geom.computeBoundingBox();
@@ -1124,11 +1136,42 @@ export function buildShowcaseIfcModel(
       boundingBox.union(opts.geom.boundingBox);
     }
 
+    const rSpec: StructuralRebarSpec | undefined = opts.rebarPkg?.spec;
+    const rebarSearchWords = rSpec
+      ? `acero refuerzo rebar varilla estribo nsr10 nsr-10 aci318 aci-318 astm ntc2289 ${rSpec.codeColombia} ${rSpec.codeUs} ${rSpec.longitudinalEs} ${rSpec.transverseEs}`
+      : "";
+
     const searchTextNorm = normalizarTexto(
-      `${opts.ifcType} ${opts.name} ${opts.objectType} ${opts.comments} ${opts.material} ${opts.level} ${opts.bimTags || ""}`
+      `${opts.ifcType} ${opts.name} ${opts.objectType} ${opts.comments} ${opts.material} ${opts.level} ${opts.bimTags || ""} ${rebarSearchWords}`
     );
 
     const id = nextId++;
+    const parts: IfcGeometryPart[] = [
+      {
+        geometry: opts.geom,
+        originalColor: new THREE.Color(opts.color),
+        originalOpacity: opts.opacity ?? 1,
+      },
+      ...(opts.rebarPkg?.parts || []),
+    ];
+
+    const rawProps: Record<string, string> = {
+      "GlobalId / Tag": `NB-${id}`,
+      Pset_BIM5D: opts.comments,
+      Material: opts.material,
+    };
+    if (rSpec) {
+      rawProps["Code_Colombia"] = rSpec.codeColombia;
+      rawProps["Code_USA"] = rSpec.codeUs;
+      rawProps["Rebar_Grade"] = isEn ? rSpec.steelGradeEn : rSpec.steelGradeEs;
+      rawProps["Clear_Cover"] = `${rSpec.clearCoverMm} mm (${(rSpec.clearCoverMm / 25.4).toFixed(1)}")`;
+      rawProps["Rebar_Main"] = isEn ? rSpec.longitudinalEn : rSpec.longitudinalEs;
+      rawProps["Rebar_Ties"] = isEn ? rSpec.transverseEn : rSpec.transverseEs;
+      rawProps["Steel_Weight"] = `${rSpec.estimatedSteelKg.toFixed(1)} kg (${(
+        rSpec.estimatedSteelKg * 2.20462
+      ).toFixed(1)} lb)`;
+    }
+
     elements.push({
       expressID: id,
       meta: {
@@ -1140,21 +1183,14 @@ export function buildShowcaseIfcModel(
         tag: `BIM-${id}`,
         comments: opts.comments,
         level: opts.level,
-        materialNames: [opts.material],
-        rawProps: {
-          "GlobalId / Tag": `NB-${id}`,
-          Pset_BIM5D: opts.comments,
-          Material: opts.material,
-        },
+        materialNames: rSpec
+          ? [opts.material, isEn ? rSpec.steelGradeEn : rSpec.steelGradeEs]
+          : [opts.material],
+        rawProps,
         searchTextNorm,
+        rebarSpec: rSpec,
       },
-      parts: [
-        {
-          geometry: opts.geom,
-          originalColor: new THREE.Color(opts.color),
-          originalOpacity: opts.opacity ?? 1,
-        },
-      ],
+      parts,
     });
   };
 
@@ -1175,6 +1211,7 @@ export function buildShowcaseIfcModel(
     y: number;
     z: number;
     rotZ?: number;
+    rebarPkg?: RebarPackageResult;
   }) => {
     const geom = new THREE.BoxGeometry(opts.w, opts.h, opts.d);
     if (opts.rotZ) {
@@ -1221,6 +1258,14 @@ export function buildShowcaseIfcModel(
       x: cx,
       y: -0.175,
       z: cz,
+      rebarPkg: buildFootingRebarPackage({
+        w: 1.1,
+        h: 0.35,
+        d: 1.1,
+        cx,
+        cy: -0.175,
+        cz,
+      }),
     });
     pushBox({
       ifcType: "IFCCOLUMN",
@@ -1240,6 +1285,15 @@ export function buildShowcaseIfcModel(
       x: cx,
       y: colTopY / 2,
       z: cz,
+      rebarPkg: buildColumnRebarPackage({
+        w: 0.32,
+        h: colTopY,
+        d: 0.32,
+        cx,
+        cy: colTopY / 2,
+        cz,
+        isRidge: isCenterRidgeCol,
+      }),
     });
   });
 
@@ -1263,6 +1317,15 @@ export function buildShowcaseIfcModel(
       x: 0,
       y: -0.02,
       z: gz,
+      rebarPkg: buildGradeBeamRebarPackage({
+        w: 11.32,
+        h: 0.28,
+        d: 0.3,
+        cx: 0,
+        cy: -0.02,
+        cz: gz,
+        axis: "x",
+      }),
     });
   });
   ([-5.5, 0, 5.5] as const).forEach((gx, i) => {
@@ -1284,6 +1347,15 @@ export function buildShowcaseIfcModel(
       x: gx,
       y: -0.02,
       z: 0,
+      rebarPkg: buildGradeBeamRebarPackage({
+        w: 0.3,
+        h: 0.28,
+        d: 7.0,
+        cx: gx,
+        cy: -0.02,
+        cz: 0,
+        axis: "z",
+      }),
     });
   });
 
@@ -1307,6 +1379,14 @@ export function buildShowcaseIfcModel(
       x: ex,
       y: EAVE_Y - 0.125,
       z: 0,
+      rebarPkg: buildUpperBeamRebarPackage({
+        w: 0.32,
+        h: 0.25,
+        d: 7.32,
+        cx: ex,
+        cy: EAVE_Y - 0.125,
+        cz: 0,
+      }),
     });
   });
 
@@ -1326,6 +1406,14 @@ export function buildShowcaseIfcModel(
     x: 0,
     y: RIDGE_Y - 0.125,
     z: 0,
+    rebarPkg: buildUpperBeamRebarPackage({
+      w: 0.3,
+      h: 0.25,
+      d: 7.32,
+      cx: 0,
+      cy: RIDGE_Y - 0.125,
+      cz: 0,
+    }),
   });
 
   // Sloped structural frame rafters connecting center ridge column to corner eave columns
@@ -1347,6 +1435,15 @@ export function buildShowcaseIfcModel(
       y: (RIDGE_Y + EAVE_Y) / 2 - 0.11,
       z: rz,
       rotZ: ROOF_SLOPE_RAD,
+      rebarPkg: buildSlopedRafterRebarPackage({
+        w: halfSlopeLen,
+        h: 0.22,
+        d: 0.28,
+        cx: -HALF_SPAN / 2,
+        cy: (RIDGE_Y + EAVE_Y) / 2 - 0.11,
+        cz: rz,
+        rotZ: ROOF_SLOPE_RAD,
+      }),
     });
     pushBox({
       ifcType: "IFCBEAM",
@@ -1364,6 +1461,15 @@ export function buildShowcaseIfcModel(
       y: (RIDGE_Y + EAVE_Y) / 2 - 0.11,
       z: rz,
       rotZ: -ROOF_SLOPE_RAD,
+      rebarPkg: buildSlopedRafterRebarPackage({
+        w: halfSlopeLen,
+        h: 0.22,
+        d: 0.28,
+        cx: HALF_SPAN / 2,
+        cy: (RIDGE_Y + EAVE_Y) / 2 - 0.11,
+        cz: rz,
+        rotZ: -ROOF_SLOPE_RAD,
+      }),
     });
   });
 
@@ -1383,6 +1489,14 @@ export function buildShowcaseIfcModel(
     x: -2.7425,
     y: 0.06,
     z: 0,
+    rebarPkg: buildSlabTempMeshPackage({
+      w: 5.335,
+      h: 0.12,
+      d: 6.82,
+      cx: -2.7425,
+      cy: 0.06,
+      cz: 0,
+    }),
   });
   pushBox({
     ifcType: "IFCSLAB",
@@ -1399,6 +1513,14 @@ export function buildShowcaseIfcModel(
     x: 2.7425,
     y: 0.06,
     z: -1.7425,
+    rebarPkg: buildSlabTempMeshPackage({
+      w: 5.335,
+      h: 0.12,
+      d: 3.335,
+      cx: 2.7425,
+      cy: 0.06,
+      cz: -1.7425,
+    }),
   });
   pushBox({
     ifcType: "IFCSLAB",
@@ -1415,6 +1537,14 @@ export function buildShowcaseIfcModel(
     x: 2.7425,
     y: 0.06,
     z: 1.7425,
+    rebarPkg: buildSlabTempMeshPackage({
+      w: 5.335,
+      h: 0.12,
+      d: 3.335,
+      cx: 2.7425,
+      cy: 0.06,
+      cz: 1.7425,
+    }),
   });
 
   // 3. Full-height Perimeter & Partition Masonry Walls (tight column-to-column & up to bond beam)

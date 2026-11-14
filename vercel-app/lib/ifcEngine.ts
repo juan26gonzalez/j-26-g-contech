@@ -13,6 +13,36 @@ import {
   RoomActivityKey,
 } from "./types";
 
+export interface StructuralNormCheck {
+  clauseCol: string;
+  clauseUs: string;
+  labelEs: string;
+  labelEn: string;
+  passed: boolean;
+}
+
+export interface StructuralRebarSpec {
+  elementCategory: "footing" | "column" | "grade_beam" | "beam" | "rafter" | "slab";
+  codeColombia: string;
+  codeUs: string;
+  steelGradeEs: string;
+  steelGradeEn: string;
+  concreteClassEs: string;
+  concreteClassEn: string;
+  sectionDimsEs: string;
+  sectionDimsEn: string;
+  clearCoverMm: number;
+  longitudinalEs: string;
+  longitudinalEn: string;
+  transverseEs: string;
+  transverseEn: string;
+  confinementZoneMm: number;
+  hookAngleDeg: number;
+  estimatedSteelKg: number;
+  rebarRatioPct: number;
+  normativeChecks: StructuralNormCheck[];
+}
+
 export interface IfcElementMeta {
   expressID: number;
   ifcType: string;
@@ -25,12 +55,15 @@ export interface IfcElementMeta {
   materialNames: string[];
   rawProps: Record<string, string>;
   searchTextNorm: string;
+  rebarSpec?: StructuralRebarSpec;
 }
 
 export interface IfcGeometryPart {
   geometry: THREE.BufferGeometry;
   originalColor: THREE.Color;
   originalOpacity: number;
+  isRebar?: boolean;
+  rebarZone?: "longitudinal" | "confinement" | "stirrup" | "dowel" | "mesh";
 }
 
 export interface IfcElementRenderData {

@@ -9,17 +9,21 @@ import {
   ArrowUpRight,
   Box,
   Building2,
+  CheckCircle2,
   Crosshair,
   DollarSign,
   DoorOpen,
+  Eye,
   FolderOpen,
   Home,
+  Layers,
   Lightbulb,
   Loader2,
   Package,
   Palette,
   Radio,
   Search,
+  ShieldCheck,
   Sparkles,
   Trash2,
   Wallet,
@@ -62,6 +66,18 @@ interface TabVisor3DBIMProps {
 
 type ViewerMode = "semaforo" | "foco" | "caja3d" | "original";
 type InspectorTab = "actividades" | "habitaciones" | "elemento";
+type XrayMode = "xray" | "skeleton" | "off";
+type NormFilter = "dual" | "co" | "us";
+
+const STRUCTURAL_IFC_TYPES = new Set(["IFCFOOTING", "IFCCOLUMN", "IFCBEAM", "IFCSLAB"]);
+
+interface MeshRenderEntry {
+  mesh: THREE.Mesh;
+  originalColor: THREE.Color;
+  originalOpacity: number;
+  isRebar: boolean;
+  isStructural: boolean;
+}
 
 function formatLocalizedActivityTag(raw: string, lang: "es" | "en"): string {
   const m = /^(\[[^\]]+\]\s*)(.*)$/.exec(raw || "");
@@ -125,10 +141,9 @@ export default function TabVisor3DBIM({
   const gridRef = useRef<THREE.GridHelper | null>(null);
   const clipPlaneRef = useRef<THREE.Plane>(new THREE.Plane(new THREE.Vector3(0, -1, 0), 100));
 
-  const meshMapRef = useRef<
-    Map<number, { mesh: THREE.Mesh; originalColor: THREE.Color; originalOpacity: number }[]>
-  >(new Map());
+  const meshMapRef = useRef<Map<number, MeshRenderEntry[]>>(new Map());
   const highlightedIdsRef = useRef<Set<number>>(new Set());
+  const rebarPickPriorityRef = useRef<boolean>(false);
   const lastProjectIdRef = useRef<string | null>(null);
   const lastFittedSigRef = useRef<string>("");
 
@@ -143,6 +158,9 @@ export default function TabVisor3DBIM({
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
   const [selectedExpressId, setSelectedExpressId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [showRebar, setShowRebar] = useState<boolean>(true);
+  const [xrayMode, setXrayMode] = useState<XrayMode>("xray");
+  const [normFilter, setNormFilter] = useState<NormFilter>("dual");
 
   // Quick 3D cashflow simulator stored in COP
   const [cashBudget, setCashBudget] = useState<number>(3_000_000);
@@ -331,6 +349,41 @@ export default function TabVisor3DBIM({
     cashRoomIds,
   ]);
 
+  const rebarSummary = useMemo(() => {
+    if (!parsedModel) {
+      return { hasRebar: false, totalKg: 0, count: 0, footings: 0, columns: 0, beams: 0, slabs: 0 };
+    }
+    let hasRebar = false;
+    let totalKg = 0;
+    let count = 0;
+    let footings = 0;
+    let columns = 0;
+    let beams = 0;
+    let slabs = 0;
+
+    for (const el of parsedModel.elements) {
+      if (el.parts.some((p) => p.isRebar)) hasRebar = true;
+      const spec = el.meta.rebarSpec;
+      if (!spec) continue;
+      count++;
+      totalKg += spec.estimatedSteelKg;
+      if (spec.elementCategory === "footing") footings++;
+      else if (spec.elementCategory === "column") columns++;
+      else if (
+        spec.elementCategory === "grade_beam" ||
+        spec.elementCategory === "beam" ||
+        spec.elementCategory === "rafter"
+      )
+        beams++;
+      else if (spec.elementCategory === "slab") slabs++;
+    }
+    return { hasRebar, totalKg, count, footings, columns, beams, slabs };
+  }, [parsedModel]);
+
+  useEffect(() => {
+    rebarPickPriorityRef.current = rebarSummary.hasRebar && xrayMode !== "off";
+  }, [rebarSummary.hasRebar, xrayMode]);
+
   useEffect(() => {
     highlightedIdsRef.current = activeHighlightIds;
   }, [activeHighlightIds]);
@@ -456,9 +509,16 @@ export default function TabVisor3DBIM({
         -((ev.clientY - rect.top) / rect.height) * 2 + 1
       );
       raycaster.setFromCamera(ndc, camera);
-      const hits = raycaster.intersectObjects(modelGroupRef.current.children, false);
+      const hits = raycaster
+        .intersectObjects(modelGroupRef.current.children, false)
+        .filter((h) => h.object.visible);
       if (hits.length > 0) {
-        const eid = Number(hits[0].object.userData?.expressID);
+        const picked = rebarPickPriorityRef.current
+          ? hits.find((h) => h.object.userData?.isRebar) ||
+            hits.find((h) => h.object.userData?.isStructural) ||
+            hits[0]
+          : hits[0];
+        const eid = Number(picked.object.userData?.expressID);
         if (eid) {
           setSelectedExpressId(eid);
           setInspectorTab("elemento");
@@ -536,23 +596,30 @@ export default function TabVisor3DBIM({
     if (!parsedModel) return;
 
     for (const el of parsedModel.elements) {
-      const entries: { mesh: THREE.Mesh; originalColor: THREE.Color; originalOpacity: number }[] = [];
+      const entries: MeshRenderEntry[] = [];
+      const isStructural = STRUCTURAL_IFC_TYPES.has(el.meta.ifcType);
       for (const part of el.parts) {
+        const isRebar = Boolean(part.isRebar);
         const mat = new THREE.MeshStandardMaterial({
           color: part.originalColor.clone(),
-          roughness: 0.55,
-          metalness: 0.12,
+          roughness: isRebar ? 0.3 : 0.55,
+          metalness: isRebar ? 0.62 : 0.12,
+          emissive: isRebar ? part.originalColor.clone() : new THREE.Color(0x000000),
+          emissiveIntensity: isRebar ? 0.22 : 0,
           side: THREE.DoubleSide,
-          transparent: part.originalOpacity < 0.99,
-          opacity: part.originalOpacity,
+          transparent: !isRebar && part.originalOpacity < 0.99,
+          opacity: isRebar ? 1 : part.originalOpacity,
         });
         const mesh = new THREE.Mesh(part.geometry, mat);
-        mesh.userData = { expressID: el.expressID };
+        mesh.renderOrder = isRebar ? 1 : 0;
+        mesh.userData = { expressID: el.expressID, isRebar, isStructural };
         group.add(mesh);
         entries.push({
           mesh,
           originalColor: part.originalColor.clone(),
           originalOpacity: part.originalOpacity,
+          isRebar,
+          isStructural,
         });
       }
       meshMapRef.current.set(el.expressID, entries);
@@ -569,11 +636,13 @@ export default function TabVisor3DBIM({
     }
   }, [parsedModel, proyecto.id]);
 
-  // Reactive materials & section clipping
+  // Reactive materials, X-Ray transparency, rebar visibility & section clipping
   useEffect(() => {
     if (!parsedModel) return;
     clipPlaneRef.current.constant = clipHeight;
     const hasFilterFocus = activeHighlightIds.size > 0;
+    const effectiveXray: XrayMode = rebarSummary.hasRebar ? xrayMode : "off";
+    const xrayActive = effectiveXray !== "off";
 
     for (const el of parsedModel.elements) {
       const entries = meshMapRef.current.get(el.expressID);
@@ -583,17 +652,68 @@ export default function TabVisor3DBIM({
       const isSelected = selectedExpressId === el.expressID;
       const isHighlighted = activeHighlightIds.has(el.expressID);
 
-      for (const { mesh, originalColor, originalOpacity } of entries) {
+      for (const { mesh, originalColor, originalOpacity, isRebar, isStructural } of entries) {
         const mat = mesh.material as THREE.MeshStandardMaterial;
         mat.clippingPlanes = clipEnabled ? [clipPlaneRef.current] : [];
+
+        if (isRebar) {
+          mesh.visible = showRebar;
+          if (!mesh.visible) continue;
+          mesh.renderOrder = 1;
+          mat.color.copy(originalColor);
+          if (isSelected) {
+            mat.emissive.copy(originalColor);
+            mat.emissiveIntensity = 0.55;
+            mat.transparent = false;
+            mat.opacity = 1;
+            mat.depthWrite = true;
+          } else if (hasFilterFocus) {
+            if (isHighlighted) {
+              mat.emissive.copy(originalColor);
+              mat.emissiveIntensity = 0.35;
+              mat.transparent = false;
+              mat.opacity = 1;
+              mat.depthWrite = true;
+            } else {
+              mat.emissive.setHex(0x000000);
+              mat.emissiveIntensity = 0;
+              mat.transparent = true;
+              mat.opacity = 0.12;
+              mat.depthWrite = false;
+            }
+          } else {
+            mat.emissive.copy(originalColor);
+            mat.emissiveIntensity = 0.22;
+            mat.transparent = false;
+            mat.opacity = 1;
+            mat.depthWrite = true;
+          }
+          mat.needsUpdate = true;
+          continue;
+        }
+
+        if (effectiveXray === "skeleton" && !isStructural) {
+          mesh.visible = false;
+          continue;
+        }
+        mesh.visible = true;
 
         if (isSelected) {
           mat.color.setHex(0x38bdf8);
           mat.emissive.setHex(0x0284c7);
-          mat.emissiveIntensity = 0.45;
-          mat.transparent = false;
-          mat.opacity = 1;
-          mat.depthWrite = true;
+          if (xrayActive && showRebar && isStructural) {
+            mat.emissiveIntensity = 0.25;
+            mat.transparent = true;
+            mat.opacity = 0.28;
+            mat.depthWrite = false;
+            mesh.renderOrder = 2;
+          } else {
+            mat.emissiveIntensity = 0.45;
+            mat.transparent = false;
+            mat.opacity = 1;
+            mat.depthWrite = true;
+            mesh.renderOrder = 0;
+          }
         } else if (hasFilterFocus) {
           if (isHighlighted) {
             if (match?.status === "done") {
@@ -606,54 +726,82 @@ export default function TabVisor3DBIM({
               mat.color.setHex(0xf59e0b);
               mat.emissive.setHex(0xd97706);
             }
-            mat.emissiveIntensity = 0.35;
-            mat.transparent = false;
-            mat.opacity = 1;
-            mat.depthWrite = true;
+            if (xrayActive && showRebar && isStructural) {
+              mat.emissiveIntensity = 0.22;
+              mat.transparent = true;
+              mat.opacity = 0.28;
+              mat.depthWrite = false;
+              mesh.renderOrder = 2;
+            } else {
+              mat.emissiveIntensity = 0.35;
+              mat.transparent = false;
+              mat.opacity = 1;
+              mat.depthWrite = true;
+              mesh.renderOrder = 0;
+            }
           } else {
             mat.color.setHex(0x475569);
             mat.emissive.setHex(0x000000);
             mat.emissiveIntensity = 0;
             mat.transparent = true;
-            mat.opacity = 0.14;
+            mat.opacity = 0.1;
             mat.depthWrite = false;
+            mesh.renderOrder = 3;
           }
         } else if (viewerMode === "original") {
           mat.color.copy(originalColor);
           mat.emissive.setHex(0x000000);
           mat.emissiveIntensity = 0;
-          mat.transparent = originalOpacity < 0.99;
-          mat.opacity = originalOpacity;
-          mat.depthWrite = originalOpacity >= 0.99;
+          if (xrayActive) {
+            mat.transparent = true;
+            mat.opacity = isStructural ? 0.24 : 0.13;
+            mat.depthWrite = false;
+            mesh.renderOrder = isStructural ? 2 : 3;
+          } else {
+            mat.transparent = originalOpacity < 0.99;
+            mat.opacity = originalOpacity;
+            mat.depthWrite = originalOpacity >= 0.99;
+            mesh.renderOrder = 0;
+          }
         } else {
           if (match?.status === "done") {
             mat.color.setHex(0x10b981);
             mat.emissive.setHex(0x047857);
-            mat.emissiveIntensity = 0.18;
-            mat.transparent = false;
-            mat.opacity = 1;
-            mat.depthWrite = true;
+            mat.emissiveIntensity = xrayActive ? 0.12 : 0.18;
           } else if (match?.status === "partial") {
             mat.color.setHex(0xf59e0b);
             mat.emissive.setHex(0xb45309);
-            mat.emissiveIntensity = 0.18;
-            mat.transparent = false;
-            mat.opacity = 1;
-            mat.depthWrite = true;
+            mat.emissiveIntensity = xrayActive ? 0.12 : 0.18;
           } else if (match?.status === "pending") {
             mat.color.setHex(0xcbd5e1);
             mat.emissive.setHex(0x000000);
             mat.emissiveIntensity = 0;
-            mat.transparent = true;
-            mat.opacity = 0.42;
-            mat.depthWrite = true;
           } else {
             mat.color.copy(originalColor);
             mat.emissive.setHex(0x000000);
             mat.emissiveIntensity = 0;
+          }
+
+          if (xrayActive) {
+            mat.transparent = true;
+            mat.opacity = isStructural ? 0.26 : 0.12;
+            mat.depthWrite = false;
+            mesh.renderOrder = isStructural ? 2 : 3;
+          } else if (match?.status === "done" || match?.status === "partial") {
+            mat.transparent = false;
+            mat.opacity = 1;
+            mat.depthWrite = true;
+            mesh.renderOrder = 0;
+          } else if (match?.status === "pending") {
+            mat.transparent = true;
+            mat.opacity = 0.42;
+            mat.depthWrite = true;
+            mesh.renderOrder = 0;
+          } else {
             mat.transparent = true;
             mat.opacity = Math.min(originalOpacity, 0.35);
             mat.depthWrite = false;
+            mesh.renderOrder = 0;
           }
         }
         mat.needsUpdate = true;
@@ -667,6 +815,9 @@ export default function TabVisor3DBIM({
     selectedExpressId,
     clipEnabled,
     clipHeight,
+    showRebar,
+    xrayMode,
+    rebarSummary.hasRebar,
   ]);
 
   const handleSelectBudgetActivity = (itemCode: string) => {
@@ -1008,6 +1159,77 @@ export default function TabVisor3DBIM({
                 </div>
               )}
             </div>
+
+            {/* Structural Steel / X-Ray Toolbar Row */}
+            {rebarSummary.hasRebar && (
+              <div className="w-full pt-2 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowRebar((v) => !v)}
+                    className={`px-2.5 py-1 rounded-lg font-extrabold transition inline-flex items-center gap-1.5 border ${
+                      showRebar
+                        ? "bg-orange-600 text-white border-orange-500 shadow-sm"
+                        : "bg-slate-200/80 text-slate-700 border-slate-300"
+                    }`}
+                  >
+                    <Layers className="w-3.5 h-3.5" />
+                    <span>
+                      {isEn
+                        ? `Rebar 3D ${showRebar ? "ON" : "OFF"}`
+                        : `Acero Estructural ${showRebar ? "ON" : "OFF"}`}
+                    </span>
+                  </button>
+
+                  <div className="inline-flex rounded-lg bg-slate-200/80 p-0.5 border border-slate-300">
+                    {(
+                      [
+                        {
+                          key: "xray" as const,
+                          label: isEn ? "Concrete X-Ray" : "Rayos X Concreto",
+                        },
+                        {
+                          key: "skeleton" as const,
+                          label: isEn ? "Structure + Rebar" : "Solo Estructura",
+                        },
+                        {
+                          key: "off" as const,
+                          label: isEn ? "Solid" : "Sólido",
+                        },
+                      ] as const
+                    ).map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setXrayMode(opt.key)}
+                        className={`px-2 py-0.5 rounded-md font-bold transition inline-flex items-center gap-1 ${
+                          xrayMode === opt.key
+                            ? "steel-btn-primary text-white shadow-sm"
+                            : "text-slate-700 hover:text-slate-900"
+                        }`}
+                      >
+                        {opt.key === "xray" && <Eye className="w-3 h-3" />}
+                        <span>{opt.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>NSR-10 Tít. C + ACI 318-19</span>
+                  </span>
+                  <span className="font-mono font-extrabold text-slate-700 px-2 py-0.5 rounded-md bg-slate-100 border border-slate-300">
+                    {unitSystem === "imperial"
+                      ? `${Math.round(rebarSummary.totalKg * 2.20462).toLocaleString()} lb (${rebarSummary.totalKg.toFixed(0)} kg)`
+                      : `${rebarSummary.totalKg.toFixed(0)} kg (${Math.round(
+                          rebarSummary.totalKg * 2.20462
+                        ).toLocaleString()} lb)`}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* WebGL Viewport + Dropzone */}
@@ -1101,31 +1323,122 @@ export default function TabVisor3DBIM({
 
             {/* Floating Legend */}
             {parsedModel && (
-              <div className="pointer-events-none absolute bottom-3 left-3 flex flex-wrap items-center gap-2 rounded-xl bg-slate-950/80 backdrop-blur px-3 py-1.5 text-[10px] font-bold text-slate-200 border border-slate-700/70">
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
-                  {isEn ? "100% Built" : "100% Ejec."} ({statsSemaforo.done})
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
-                  {isEn ? "In Progress" : "En Curso"} ({statsSemaforo.partial})
-                </span>
-                <span className="inline-flex items-center gap-1">
-                  <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
-                  {isEn ? "Pending" : "Pendiente"} ({statsSemaforo.pending})
-                </span>
-                <span className="text-slate-400">
-                  {isEn
-                    ? "• Drag: orbit | Wheel: zoom | Click: inspect"
-                    : "• Arrastra: rotar | Rueda: zoom | Clic: inspeccionar"}
-                </span>
+              <div className="pointer-events-none absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-2 rounded-xl bg-slate-950/85 backdrop-blur px-3 py-1.5 text-[10px] font-bold text-slate-200 border border-slate-700/70">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    {isEn ? "100% Built" : "100% Ejec."} ({statsSemaforo.done})
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-amber-500" />
+                    {isEn ? "In Progress" : "En Curso"} ({statsSemaforo.partial})
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2.5 w-2.5 rounded-full bg-slate-300" />
+                    {isEn ? "Pending" : "Pendiente"} ({statsSemaforo.pending})
+                  </span>
+                  {rebarSummary.hasRebar && showRebar && (
+                    <>
+                      <span className="text-slate-600">|</span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-orange-500" />
+                        {isEn ? "Main Bars #4/#5" : "Acero Long. #4/#5"}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                        {isEn ? "Seismic Lo (135°)" : "Confinam. Lo (135°)"}
+                      </span>
+                      <span className="inline-flex items-center gap-1">
+                        <span className="h-2.5 w-2.5 rounded-full bg-sky-400" />
+                        {isEn ? "Ties/Dowels/Mesh #3" : "Estribos/Arranques/Malla"}
+                      </span>
+                    </>
+                  )}
+                  <span className="text-slate-400">
+                    {isEn
+                      ? "• Drag: orbit | Wheel: zoom | Click rebar/element"
+                      : "• Arrastra: rotar | Rueda: zoom | Clic: inspeccionar"}
+                  </span>
+                </div>
               </div>
             )}
           </div>
+
+          {/* Dual-Code Structural Reinforcement Engineering Summary Strip */}
+          {rebarSummary.hasRebar && (
+            <div className="bento-card !p-3 space-y-2 text-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>
+                    {isEn
+                      ? "Reinforcing Steel Detailing — Colombia (NSR-10 / NTC 2289) & USA (ACI 318-19 / ASTM A706)"
+                      : "Despiece Acero Estructural — Norma Dual Colombia (NSR-10 / NTC 2289) & EE.UU. (ACI 318-19 / ASTM A706)"}
+                  </span>
+                </div>
+                <span className="font-mono text-[11px] font-bold text-slate-600">
+                  fy = 420 MPa (60,000 PSI) • {isEn ? "Hooks 135°/90°" : "Ganchos 135°/90°"}
+                </span>
+              </div>
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                {[
+                  {
+                    q: isEn ? "Spread Footing" : "Zapata Cimentación",
+                    label: isEn
+                      ? `${rebarSummary.footings} Footings (#4 @ 6" + 8#5 Dowels • c=3.0")`
+                      : `${rebarSummary.footings} Zapatas (Parrilla #4 @ 15cm + 8#5 Arranques • Rec. 75mm)`,
+                  },
+                  {
+                    q: isEn ? "Structural Column" : "Columna Estructural",
+                    label: isEn
+                      ? `${rebarSummary.columns} Columns (8#5 • Lo=24" #3 @ 3.1" 135°)`
+                      : `${rebarSummary.columns} Columnas (8#5 • Lo=60cm #3 @ 8cm 135°)`,
+                  },
+                  {
+                    q: isEn ? "Grade Beam" : "Viga de Cimentación",
+                    label: isEn
+                      ? `${rebarSummary.beams} Beams (Grade + Portal #4/#5 • #3 135°)`
+                      : `${rebarSummary.beams} Vigas Ciment. & Pórtico (#4/#5 • Est. #3 135°)`,
+                  },
+                  {
+                    q: isEn ? "Porcelain Floor" : "Piso Porcelanato",
+                    label: isEn
+                      ? `${rebarSummary.slabs} Slabs (#3 @ 10" Temp. Grid)`
+                      : `${rebarSummary.slabs} Placas (Malla Temp. #3 @ 25cm)`,
+                  },
+                ].map((chip) => {
+                  const isActiveFilter = searchQuery === chip.q;
+                  return (
+                    <button
+                      key={chip.q}
+                      type="button"
+                      onClick={() => setSearchQuery(isActiveFilter ? "" : chip.q)}
+                      className={`px-2 py-1 rounded-lg border font-bold transition ${
+                        isActiveFilter
+                          ? "bg-orange-600 text-white border-orange-500"
+                          : "steel-subcard text-slate-700 hover:bg-white"
+                      }`}
+                    >
+                      {chip.label}
+                    </button>
+                  );
+                })}
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="px-2 py-1 rounded-lg border border-slate-300 bg-white text-slate-700 font-bold hover:bg-slate-100"
+                  >
+                    {isEn ? "Show All" : "Ver Todo"}
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* REACTIVE SIDE INSPECTOR */}
-        <div className="xl:col-span-4 bento-card !p-4 flex flex-col gap-3 max-h-[572px]">
+        <div className="xl:col-span-4 bento-card !p-4 flex flex-col gap-3 max-h-[675px]">
           <div className="grid grid-cols-3 gap-1 bg-slate-200/70 p-1 rounded-xl text-[11px] font-bold">
             <button
               type="button"
@@ -1377,6 +1690,113 @@ export default function TabVisor3DBIM({
                         </div>
                       )}
                     </div>
+
+                    {selectedElement.meta.rebarSpec && (() => {
+                      const rs = selectedElement.meta.rebarSpec;
+                      const coverIn = (rs.clearCoverMm / 25.4).toFixed(1);
+                      const steelLb = (rs.estimatedSteelKg * 2.20462).toFixed(1);
+                      return (
+                        <div className="pt-2.5 border-t border-slate-200 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-1.5">
+                            <span className="font-extrabold text-slate-900 inline-flex items-center gap-1">
+                              <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                              <span>
+                                {isEn ? "Structural Rebar Spec" : "Acero de Refuerzo Normativo"}
+                              </span>
+                            </span>
+                            <div className="inline-flex rounded-md bg-slate-200/80 p-0.5 text-[10px] font-bold">
+                              {(
+                                [
+                                  { id: "dual" as const, lbl: "Dual" },
+                                  { id: "co" as const, lbl: "CO · NSR-10" },
+                                  { id: "us" as const, lbl: "US · ACI 318" },
+                                ] as const
+                              ).map((nf) => (
+                                <button
+                                  key={nf.id}
+                                  type="button"
+                                  onClick={() => setNormFilter(nf.id)}
+                                  className={`px-1.5 py-0.5 rounded transition ${
+                                    normFilter === nf.id
+                                      ? "steel-btn-primary text-white"
+                                      : "text-slate-700"
+                                  }`}
+                                >
+                                  {nf.lbl}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="rounded-lg border border-slate-200 border-l-4 border-l-orange-500 bg-slate-50 p-2 space-y-1 text-[11px]">
+                            <div>
+                              <b>{isEn ? "Steel Grade:" : "Calidad Acero:"}</b>{" "}
+                              {isEn ? rs.steelGradeEn : rs.steelGradeEs}
+                            </div>
+                            <div>
+                              <b>{isEn ? "Section / f'c:" : "Sección / f'c:"}</b>{" "}
+                              {isEn
+                                ? `${rs.sectionDimsEn} • ${rs.concreteClassEn}`
+                                : `${rs.sectionDimsEs} • ${rs.concreteClassEs}`}
+                            </div>
+                            <div>
+                              <b>{isEn ? "Clear Cover:" : "Recubrimiento Libre:"}</b>{" "}
+                              {unitSystem === "imperial"
+                                ? `${coverIn}" (${rs.clearCoverMm} mm)`
+                                : `${rs.clearCoverMm} mm (${coverIn}")`}
+                            </div>
+                            <div>
+                              <b>{isEn ? "Main Bars:" : "Acero Longitudinal / Parrilla:"}</b>{" "}
+                              <span className="font-mono font-bold text-slate-900">
+                                {isEn ? rs.longitudinalEn : rs.longitudinalEs}
+                              </span>
+                            </div>
+                            <div>
+                              <b>{isEn ? "Stirrups / Confinement:" : "Estribos / Confinamiento:"}</b>{" "}
+                              <span className="font-mono font-bold text-slate-900">
+                                {isEn ? rs.transverseEn : rs.transverseEs}
+                              </span>
+                            </div>
+                            <div>
+                              <b>{isEn ? "Rebar Mass:" : "Peso Acero Calculado:"}</b>{" "}
+                              <span className="font-mono font-extrabold text-emerald-700">
+                                {unitSystem === "imperial"
+                                  ? `${steelLb} lb (${rs.estimatedSteelKg.toFixed(1)} kg)`
+                                  : `${rs.estimatedSteelKg.toFixed(1)} kg (${steelLb} lb)`}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <div className="text-[10px] font-bold uppercase text-slate-500">
+                              {isEn
+                                ? "Code Compliance Audit (CO & USA)"
+                                : "Auditoría Normativa (NSR-10 & ACI 318-19)"}
+                            </div>
+                            {rs.normativeChecks.map((chk, idx) => (
+                              <div
+                                key={`${chk.clauseCol}-${idx}`}
+                                className="flex items-start gap-1.5 rounded-md border border-slate-200 bg-white px-2 py-1 text-[10px]"
+                              >
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" />
+                                <div className="min-w-0">
+                                  <div className="font-mono font-extrabold text-emerald-800">
+                                    {normFilter === "co"
+                                      ? chk.clauseCol
+                                      : normFilter === "us"
+                                      ? chk.clauseUs
+                                      : `${chk.clauseCol} | ${chk.clauseUs}`}
+                                  </div>
+                                  <div className="text-slate-700 leading-snug">
+                                    {isEn ? chk.labelEn : chk.labelEs}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {Object.keys(selectedElement.meta.rawProps).length > 0 && (
                       <div className="pt-2 border-t border-slate-200">
